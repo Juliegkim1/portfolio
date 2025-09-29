@@ -1,0 +1,10 @@
+python-dotenv
+google-genai
+llama-index
+llama-index-llms-gemini
+llama-cloud-services
+llama-cloud
+llama-cloud-index
+llama-cloud-extract
+llama-cloud-report
+llama-cloud-parse

@@ -1,0 +1,75 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Coverage/test
+.coverage
+.coverage.*
+.tox/
+.pytest_cache/
+htmlcov/
+pytestdebug.log
+
+# MyPy/Type checker
+.mypy_cache/
+.pytype/
+
+# Jupyter/IPython
+.ipynb_checkpoints
+
+# Local data
+data/
+*.sqlite3
+
+# Secrets and env files
+.env
+.env.*
+*.env
+*.env.*
+.python-version
+
+# Node (if present)
+node_modules/
+package-lock.json
+
