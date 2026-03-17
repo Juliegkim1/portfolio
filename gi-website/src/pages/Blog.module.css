@@ -91,3 +91,66 @@
 .card:hover .readMore {
   color: var(--text-dark);
 }
+
+/* ── Tabs ─────────────────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 2.5rem;
+  border-bottom: 1px solid var(--ivory-border);
+  padding-bottom: 0;
+}
+
+.tab,
+.tabActive {
+  background: none;
+  border: none;
+  padding: 0.6rem 1.1rem;
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  color: var(--text-light);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.2s, border-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.tab:hover { color: var(--text-mid); }
+
+.tabActive {
+  color: var(--text-dark);
+  font-weight: 500;
+  border-bottom-color: var(--accent-rose);
+}
+
+/* ── LinkedIn cards ───────────────────────────── */
+.liBadge {
+  display: flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #0A66C2;
+}
+
+.liFooter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.tag {
+  padding: 0.25rem 0.65rem;
+  background: var(--ivory-dark);
+  border-radius: 100px;
+  font-size: 0.75rem;
+  color: var(--text-light);
+  letter-spacing: 0.02em;
+}

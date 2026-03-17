@@ -5,7 +5,7 @@ export const posts = [
     date: '2026-03-10',
     category: 'AI & Engineering',
     excerpt:
-      'Large language models are no longer just demos — here's what I've learned after shipping an LLM-powered feature to production.',
+      "Large language models are no longer just demos — here's what I've learned after shipping an LLM-powered feature to production.",
     content: `
 Large language models have gone from research curiosity to production staple in under two years. Having shipped an LLM-powered feature, here are the lessons that stuck with me.
 

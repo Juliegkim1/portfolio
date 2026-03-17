@@ -12,7 +12,7 @@
  *     VITE_APPS_SCRIPT_URL=https://script.google.com/macros/s/YOUR_ID/exec
  */
 
-const SHEET_ID = 'YOUR_GOOGLE_SHEET_ID_HERE'
+const SHEET_ID = '1ej0rlWsOh_nkhfo3ORBN6xWXsnS931qJnUz5lGcI9HRrhfKfd4rDqs67'
 const SHEET_NAME = 'Contacts' // name of the tab inside your sheet
 
 function doPost(e) {

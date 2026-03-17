@@ -19,13 +19,14 @@ export default function Contact() {
     try {
       await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
-        // Apps Script requires text/plain to avoid CORS preflight
+        mode: 'no-cors', // Apps Script redirects cause CORS errors; no-cors lets the request through
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
           ...form,
           timestamp: new Date().toISOString(),
         }),
       })
+      // no-cors responses are opaque — we can't read status, so assume success
       setStatus('success')
       setForm({ name: '', email: '', subject: '', message: '' })
     } catch {
@@ -58,8 +59,8 @@ export default function Contact() {
                 {
                   icon: '💼',
                   label: 'LinkedIn',
-                  value: 'linkedin.com/in/gi-kim',
-                  href: 'https://www.linkedin.com/in/gi-kim',
+                  value: 'linkedin.com/in/julie-gi-kim-71430513/',
+                  href: 'https://www.linkedin.com/in/julie-gi-kim-71430513/',
                 },
                 {
                   icon: '📍',
