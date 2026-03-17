@@ -1,0 +1,93 @@
+.page {
+  padding: 5rem 0 6rem;
+}
+
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 2.5rem;
+}
+
+.header {
+  margin-bottom: 3.5rem;
+}
+
+.title {
+  font-family: var(--font-serif);
+  font-size: 2.8rem;
+  color: var(--text-dark);
+  margin-bottom: 0.75rem;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: var(--text-light);
+  font-weight: 300;
+  line-height: 1.7;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.card {
+  display: block;
+  padding: 2rem 0;
+  border-bottom: 1px solid var(--ivory-border);
+  transition: opacity 0.2s;
+}
+
+.card:first-child {
+  border-top: 1px solid var(--ivory-border);
+}
+
+.card:hover { opacity: 0.75; }
+
+.cardMeta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.category {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-rose);
+}
+
+.date {
+  font-size: 0.8rem;
+  color: var(--text-light);
+}
+
+.cardTitle {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  color: var(--text-dark);
+  margin-bottom: 0.6rem;
+  line-height: 1.3;
+}
+
+.cardExcerpt {
+  font-size: 0.9rem;
+  color: var(--text-mid);
+  line-height: 1.75;
+  font-weight: 300;
+  margin-bottom: 1rem;
+}
+
+.readMore {
+  font-size: 0.83rem;
+  color: var(--text-light);
+  letter-spacing: 0.02em;
+  transition: color 0.2s;
+}
+
+.card:hover .readMore {
+  color: var(--text-dark);
+}

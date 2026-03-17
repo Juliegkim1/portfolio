@@ -1,0 +1,49 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --ivory: #FDFAF4;
+  --ivory-dark: #F5F0E8;
+  --ivory-border: #E8E0D0;
+  --text-dark: #2C2A26;
+  --text-mid: #5C5850;
+  --text-light: #9C9488;
+  --accent-rose: #C9A99A;
+  --accent-sage: #8FAF9A;
+  --accent-lavender: #A89BB8;
+  --accent-peach: #D4B89A;
+  --card-bg: #FFFEFB;
+  --font-serif: 'DM Serif Display', serif;
+  --font-sans: 'DM Sans', sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--ivory);
+  color: var(--text-dark);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+button {
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
