@@ -1,37 +1,36 @@
 .page {
   width: 100%;
+  min-height: 100vh;
 }
 
-/* ── Hero ─────────────────────────────────────── */
-.hero {
-  position: relative;
-  overflow: hidden;
-  min-height: 92vh;
+/* ── Two-column layout ─────────────────────────── */
+.layout {
   display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 4rem;
-  padding: 6rem 2.5rem 6rem 5vw;
+  grid-template-columns: 360px 1fr;
+  min-height: 100vh;
   max-width: 1200px;
   margin: 0 auto;
+  padding: 0 2.5rem;
+  gap: 5rem;
 }
 
-.heroInner {
+/* ── Left: Photo column ────────────────────────── */
+.photoCol {
   position: relative;
-  z-index: 1;
-  max-width: 580px;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 5rem;
 }
 
-/* ── Profile photo ────────────────────────────── */
-.heroPhoto {
-  position: relative;
-  z-index: 1;
-  flex-shrink: 0;
+.photoSticky {
+  position: sticky;
+  top: 5rem;
+  width: 100%;
 }
 
 .photoFrame {
-  width: 340px;
-  height: 400px;
+  width: 100%;
+  aspect-ratio: 4 / 5;
   border-radius: 6px;
   overflow: hidden;
   position: relative;
@@ -40,7 +39,6 @@
     0 12px 40px rgba(44, 42, 38, 0.1);
 }
 
-/* Subtle decorative border offset */
 .photoFrame::before {
   content: '';
   position: absolute;
@@ -59,31 +57,77 @@
   display: block;
 }
 
+.blob1 {
+  position: absolute;
+  right: -60px;
+  top: -40px;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(201,169,154,0.2) 0%, transparent 70%);
+  border-radius: 50%;
+  filter: blur(40px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.blob2 {
+  position: absolute;
+  left: -40px;
+  bottom: -40px;
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, rgba(143,175,154,0.16) 0%, transparent 70%);
+  border-radius: 50%;
+  filter: blur(30px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ── Right: Content column ─────────────────────── */
+.contentCol {
+  padding: 5rem 0 6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Divider ───────────────────────────────────── */
+.divider {
+  border: none;
+  border-top: 1px solid var(--ivory-border);
+  margin: 3rem 0;
+}
+
+/* ── Hero ──────────────────────────────────────── */
+.hero {
+  padding-bottom: 0;
+}
+
 .greeting {
   display: block;
-  font-size: 0.95rem;
-  font-weight: 400;
+  font-size: 0.82rem;
+  font-weight: 500;
   color: var(--text-light);
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   margin-bottom: 0.75rem;
 }
 
 .name {
   font-family: var(--font-serif);
-  font-size: clamp(3.5rem, 8vw, 6.5rem);
+  font-size: clamp(3rem, 5vw, 5rem);
   line-height: 1.05;
   color: var(--text-dark);
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
 }
 
 .tagline {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 300;
   color: var(--text-mid);
-  max-width: 520px;
-  line-height: 1.75;
-  margin-bottom: 2.5rem;
+  max-width: 540px;
+  line-height: 1.8;
+  margin-bottom: 2rem;
 }
 
 .heroCta {
@@ -123,45 +167,12 @@
   color: var(--text-dark);
 }
 
-/* Decorative blobs — positioned relative to .heroPhoto */
-.blob1 {
-  position: absolute;
-  right: -60px;
-  top: -40px;
-  width: 320px;
-  height: 320px;
-  background: radial-gradient(circle, rgba(201,169,154,0.22) 0%, transparent 70%);
-  border-radius: 50%;
-  filter: blur(40px);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.blob2 {
-  position: absolute;
-  left: -40px;
-  bottom: -40px;
-  width: 240px;
-  height: 240px;
-  background: radial-gradient(circle, rgba(143,175,154,0.18) 0%, transparent 70%);
-  border-radius: 50%;
-  filter: blur(30px);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* ── Shared container ─────────────────────────── */
-.container {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 0 2.5rem;
-}
-
+/* ── Section title ─────────────────────────────── */
 .sectionTitle {
   font-family: var(--font-serif);
-  font-size: 2rem;
+  font-size: 1.75rem;
   color: var(--text-dark);
-  margin-bottom: 2.5rem;
+  margin-bottom: 1.5rem;
   position: relative;
   display: inline-block;
 }
@@ -171,87 +182,84 @@
   position: absolute;
   left: 0;
   bottom: -6px;
-  width: 40px;
+  width: 36px;
   height: 2px;
   background: var(--accent-rose);
   border-radius: 1px;
 }
 
-/* ── About ────────────────────────────────────── */
+/* ── About ─────────────────────────────────────── */
 .about {
-  padding: 6rem 0;
-  background: var(--ivory-dark);
-}
-
-.aboutGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 3rem;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
 .aboutText {
   display: flex;
   flex-direction: column;
-  gap: 1.1rem;
+  gap: 1rem;
   color: var(--text-mid);
-  font-size: 1rem;
-  line-height: 1.8;
+  font-size: 0.97rem;
+  line-height: 1.85;
   font-weight: 300;
 }
 
 .aboutCards {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
 }
 
 .card {
   background: var(--card-bg);
   border: 1px solid var(--ivory-border);
   border-radius: 4px;
-  padding: 1.25rem 1.5rem;
+  padding: 1rem 1.25rem;
   display: flex;
   align-items: flex-start;
   gap: 1rem;
 }
 
 .cardIcon {
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   flex-shrink: 0;
   margin-top: 2px;
 }
 
 .cardTitle {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 500;
   color: var(--text-dark);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.2rem;
 }
 
 .cardDesc {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: var(--text-light);
   line-height: 1.5;
 }
 
-/* ── Skills ───────────────────────────────────── */
+/* ── Skills ────────────────────────────────────── */
 .skills {
-  padding: 6rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .skillGrid {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 0.6rem;
 }
 
 .skillTag {
-  padding: 0.45rem 1rem;
+  padding: 0.4rem 0.9rem;
   background: var(--card-bg);
   border: 1px solid var(--ivory-border);
   border-radius: 100px;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: var(--text-mid);
   letter-spacing: 0.02em;
   transition: border-color 0.2s, color 0.2s;
@@ -262,33 +270,35 @@
   color: var(--text-dark);
 }
 
-/* ── Responsive ───────────────────────────────── */
-@media (max-width: 860px) {
-  .hero {
+/* ── Responsive ────────────────────────────────── */
+@media (max-width: 900px) {
+  .layout {
     grid-template-columns: 1fr;
-    min-height: unset;
-    padding: 5rem 2rem 3rem;
-    gap: 3rem;
+    gap: 0;
+    padding: 0 2rem;
   }
 
-  .heroPhoto {
-    display: flex;
+  .photoCol {
+    padding-top: 4rem;
     justify-content: center;
-    order: -1;
+  }
+
+  .photoSticky {
+    position: static;
+    width: 200px;
   }
 
   .photoFrame {
-    width: 220px;
-    height: 260px;
+    aspect-ratio: 4 / 5;
   }
 
-  .heroInner {
-    max-width: 100%;
+  .contentCol {
+    padding-top: 2.5rem;
   }
 }
 
-@media (max-width: 720px) {
-  .aboutGrid {
-    grid-template-columns: 1fr;
+@media (max-width: 480px) {
+  .layout {
+    padding: 0 1.25rem;
   }
 }

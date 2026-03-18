@@ -25,6 +25,7 @@ export default function Navbar() {
         {[
           { to: '/', label: 'Home' },
           { to: '/portfolio', label: 'Portfolio' },
+          { to: '/resume', label: 'Resume' },
           { to: '/blog', label: 'Blog' },
           { to: '/contact', label: 'Contact' },
         ].map(({ to, label }) => (

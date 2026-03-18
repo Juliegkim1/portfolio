@@ -4,35 +4,42 @@ import styles from './Home.module.css'
 export default function Home() {
   return (
     <div className={styles.page}>
-      {/* Hero */}
-      <section className={styles.hero}>
-        <div className={styles.heroInner}>
-          <span className={styles.greeting}>Data Analytics Engineer &amp; Program Leader</span>
-          <h1 className={styles.name}>Gi Kim</h1>
-          <p className={styles.tagline}>
-            10+ years turning complex data into decisions that matter — from enterprise
-            AI systems at Deloitte to cloud data platforms serving healthcare, finance,
-            and the public sector.
-          </p>
-          <div className={styles.heroCta}>
-            <Link to="/portfolio" className={styles.btnPrimary}>View My Work</Link>
-            <Link to="/contact" className={styles.btnSecondary}>Get in Touch</Link>
-          </div>
-        </div>
-        <div className={styles.heroPhoto}>
-          <div className={styles.photoFrame}>
-            <img src="/profile.jpg" alt="Gi Kim" className={styles.photo} />
-          </div>
-          <div className={styles.blob1} aria-hidden="true" />
-          <div className={styles.blob2} aria-hidden="true" />
-        </div>
-      </section>
+      <div className={styles.layout}>
 
-      {/* About */}
-      <section className={styles.about}>
-        <div className={styles.container}>
-          <h2 className={styles.sectionTitle}>About Me</h2>
-          <div className={styles.aboutGrid}>
+        {/* ── Left: Photo ── */}
+        <aside className={styles.photoCol}>
+          <div className={styles.photoSticky}>
+            <div className={styles.photoFrame}>
+              <img src="/profile.jpg" alt="Gi Kim" className={styles.photo} />
+            </div>
+            <div className={styles.blob1} aria-hidden="true" />
+            <div className={styles.blob2} aria-hidden="true" />
+          </div>
+        </aside>
+
+        {/* ── Right: All content ── */}
+        <main className={styles.contentCol}>
+
+          {/* Hero */}
+          <section className={styles.hero}>
+            <span className={styles.greeting}>Data Analytics Engineer &amp; Program Leader</span>
+            <h1 className={styles.name}>Gi Kim</h1>
+            <p className={styles.tagline}>
+              10+ years turning complex data into decisions that matter — from enterprise
+              AI systems at Deloitte to cloud data platforms serving healthcare, finance,
+              and the public sector.
+            </p>
+            <div className={styles.heroCta}>
+              <Link to="/portfolio" className={styles.btnPrimary}>View My Work</Link>
+              <Link to="/contact" className={styles.btnSecondary}>Get in Touch</Link>
+            </div>
+          </section>
+
+          <hr className={styles.divider} />
+
+          {/* About */}
+          <section className={styles.about}>
+            <h2 className={styles.sectionTitle}>About Me</h2>
             <div className={styles.aboutText}>
               <p>
                 I'm a data analytics engineer and program leader with a decade of experience
@@ -64,27 +71,28 @@ export default function Home() {
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      </section>
+          </section>
 
-      {/* Skills */}
-      <section className={styles.skills}>
-        <div className={styles.container}>
-          <h2 className={styles.sectionTitle}>Skills &amp; Tools</h2>
-          <div className={styles.skillGrid}>
-            {[
-              'Python', 'SQL', 'JavaScript', 'PySpark',
-              'Google Cloud Platform', 'AWS', 'Azure', 'BigQuery',
-              'Snowflake', 'Databricks', 'Vertex AI', 'Dataflow',
-              'Tableau', 'Looker', 'Power BI', 'Generative AI',
-              'PostgreSQL', 'ServiceNow', 'SAP', 'Lean Six Sigma',
-            ].map(skill => (
-              <span key={skill} className={styles.skillTag}>{skill}</span>
-            ))}
-          </div>
-        </div>
-      </section>
+          <hr className={styles.divider} />
+
+          {/* Skills */}
+          <section className={styles.skills}>
+            <h2 className={styles.sectionTitle}>Skills &amp; Tools</h2>
+            <div className={styles.skillGrid}>
+              {[
+                'Python', 'SQL', 'JavaScript', 'PySpark',
+                'Google Cloud Platform', 'AWS', 'Azure', 'BigQuery',
+                'Snowflake', 'Databricks', 'Vertex AI', 'Dataflow',
+                'Tableau', 'Looker', 'Power BI', 'Generative AI',
+                'PostgreSQL', 'ServiceNow', 'SAP', 'Lean Six Sigma',
+              ].map(skill => (
+                <span key={skill} className={styles.skillTag}>{skill}</span>
+              ))}
+            </div>
+          </section>
+
+        </main>
+      </div>
     </div>
   )
 }
