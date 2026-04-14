@@ -17,7 +17,7 @@ from ui.theme import (FONT, BG_PRIMARY, BG_SECONDARY, IOS_BLUE, IOS_GREEN,
 from ui.widgets import (with_bg, ios_label, ios_button, ios_input,
                          nav_bar, show_toast, edit_form_popup)
 
-_LOGO_PATH = os.path.join(os.path.dirname(__file__), "..", "images", "logo.png")
+_LOGO_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "images", "Cabrera Construction logo.png"))
 
 PROJECT_FIELDS = [
     ("Project Name", "name", "e.g. Kitchen Remodel", True),
