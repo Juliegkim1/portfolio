@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgresql://cabrera:cabrera@db:5432/construction
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - GOOGLE_CREDENTIALS_FILE=/app/google_credentials.json
+      - QUICKEN_EXPORT_DIR=/tmp/quicken
+    volumes:
+      - ./google_credentials.json:/app/google_credentials.json:ro
+      - pdf_output:/app/output
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: cabrera
+      POSTGRES_PASSWORD: cabrera
+      POSTGRES_DB: construction
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cabrera -d construction"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pg_data:
+  pdf_output:

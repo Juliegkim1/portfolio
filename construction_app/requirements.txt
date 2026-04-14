@@ -1,0 +1,35 @@
+# UI — cross-platform mobile + desktop
+kivy>=2.3.0
+kivymd>=1.2.0          # optional Material Design widgets
+
+# MCP framework
+mcp>=1.0.0
+
+# PDF generation
+jinja2>=3.1.0
+reportlab>=4.0.4
+
+# Stripe payments
+stripe>=8.0.0
+
+# Google Drive
+google-api-python-client>=2.120.0
+google-auth>=2.28.0
+google-auth-oauthlib>=1.2.0
+google-auth-httplib2>=0.2.0
+
+# HTTP client (used by HTTPClient when connecting to Cloud Run backend)
+requests>=2.31.0
+
+# Database — SQLite is stdlib; psycopg2 for PostgreSQL (Cloud Run / local Docker)
+psycopg2-binary>=2.9.9
+
+# API server (also used locally for development)
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.0.0
+
+# iOS packaging (use Kivy's toolchain — not pip)
+# Install separately:
+#   pip install kivy-ios  (or use Briefcase for packaging)
+#   brew install autoconf automake libtool pkg-config

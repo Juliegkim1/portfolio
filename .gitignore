@@ -1,0 +1,31 @@
+# Environment variables
+.env
+*.env
+
+# Google OAuth tokens (generated at runtime)
+google_token.json
+google_credentials.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# SQLite database
+*.db
+
+# Generated PDFs
+construction_app/output/
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Kivy
+*.pyc
+.kivy/

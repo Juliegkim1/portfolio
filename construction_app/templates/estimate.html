@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 10pt; color: #222; padding: 24px; }
+  .header-company { text-align: center; margin-bottom: 16px; }
+  .header-company h1 { font-size: 18pt; color: #1a3a5c; letter-spacing: 1px; }
+  .header-company p { font-size: 9pt; color: #555; }
+  .title-row { display: flex; justify-content: space-between; margin-bottom: 12px; border-top: 3px solid #1a3a5c; border-bottom: 1px solid #ccc; padding: 6px 0; }
+  .title-row h2 { font-size: 14pt; color: #1a3a5c; }
+  .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+  .meta-table td { padding: 3px 6px; font-size: 9pt; }
+  .meta-table .label { font-weight: bold; color: #1a3a5c; width: 120px; }
+  .bill-block { display: flex; gap: 24px; margin-bottom: 14px; }
+  .bill-section { flex: 1; border: 1px solid #ddd; padding: 8px; border-radius: 4px; }
+  .bill-section h3 { font-size: 9pt; color: #1a3a5c; text-transform: uppercase; margin-bottom: 4px; }
+  .section-header { background: #1a3a5c; color: white; padding: 4px 8px; font-size: 9pt; font-weight: bold; margin-top: 8px; }
+  .line-table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
+  .line-table th { background: #dce6f1; color: #1a3a5c; text-align: left; padding: 4px 6px; font-size: 9pt; }
+  .line-table td { padding: 3px 6px; font-size: 9pt; border-bottom: 1px solid #f0f0f0; }
+  .line-table td.num { text-align: right; }
+  .totals-table { width: 300px; margin-left: auto; border-collapse: collapse; margin-top: 8px; }
+  .totals-table td { padding: 3px 8px; font-size: 9pt; }
+  .totals-table .label { text-align: right; color: #555; }
+  .totals-table .total-row td { font-weight: bold; font-size: 11pt; background: #1a3a5c; color: white; }
+  .payment-section { margin-top: 14px; }
+  .payment-section h3 { background: #1a3a5c; color: white; padding: 4px 8px; font-size: 9pt; font-weight: bold; }
+  .payment-table { width: 100%; border-collapse: collapse; }
+  .payment-table th { background: #dce6f1; color: #1a3a5c; text-align: left; padding: 4px 6px; font-size: 9pt; }
+  .payment-table td { padding: 3px 6px; font-size: 9pt; border-bottom: 1px solid #f0f0f0; }
+  .badge-pending { color: #b57a00; } .badge-paid { color: #1a7a3c; } .badge-overdue { color: #a00; }
+  .terms { margin-top: 12px; background: #f9f9f9; border: 1px solid #ddd; padding: 8px; font-size: 8pt; color: #555; }
+  .acceptance { margin-top: 14px; border-top: 1px solid #ddd; padding-top: 10px; }
+  .sig-row { display: flex; gap: 24px; margin-top: 24px; }
+  .sig-block { flex: 1; border-top: 1px solid #555; padding-top: 4px; font-size: 9pt; color: #555; }
+  .footer { margin-top: 20px; text-align: center; font-size: 8pt; color: #888; border-top: 1px solid #ccc; padding-top: 8px; }
+</style>
+</head>
+<body>
+
+<div class="header-company">
+  <h1>{{ company.name }}</h1>
+  <p>{{ company.license }}</p>
+  <p>{{ company.address }}</p>
+  <p>Tel: {{ company.phone }} &nbsp;·&nbsp; {{ company.email }}</p>
+</div>
+
+<div class="title-row">
+  <div>
+    <h2>PROJECT ESTIMATE</h2>
+    <p style="font-size:9pt;color:#555">{{ project.property_address }} &nbsp;|&nbsp; {{ project.name }}</p>
+  </div>
+  <table class="meta-table" style="width:auto">
+    <tr><td class="label">ESTIMATE #</td><td>{{ estimate.estimate_number }}</td></tr>
+    <tr><td class="label">DATE</td><td>{{ estimate.date_issued }}</td></tr>
+    <tr><td class="label">VALID UNTIL</td><td>{{ estimate.valid_until }}</td></tr>
+    <tr><td class="label">PREPARED BY</td><td>{{ estimate.prepared_by }}</td></tr>
+  </table>
+</div>
+
+<div class="bill-block">
+  <div class="bill-section">
+    <h3>Bill To</h3>
+    <p><strong>{{ project.customer_name }}</strong></p>
+    <p>{{ project.property_address }}</p>
+    <p>{{ project.customer_phone }}</p>
+    <p>{{ project.customer_email }}</p>
+  </div>
+  <div class="bill-section">
+    <h3>Job Site</h3>
+    <p>{{ project.property_address }}</p>
+    <br/>
+    <h3>Project Type</h3>
+    <p>{{ project.project_type }}</p>
+  </div>
+</div>
+
+<!-- Line Items -->
+<table class="line-table">
+  <thead>
+    <tr>
+      <th>#</th><th>Description of Work</th><th>Qty</th><th>Unit</th>
+      <th>Unit Price ($)</th><th>Total ($)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for section, items in line_items_by_section.items() %}
+    <tr><td colspan="6" class="section-header">{{ section }}</td></tr>
+    {% for item in items %}
+    <tr>
+      <td>{{ item.line_number }}</td>
+      <td>{{ item.description }}</td>
+      <td class="num">{{ "%.2f"|format(item.qty) }}</td>
+      <td>{{ item.unit }}</td>
+      <td class="num">{{ "%.2f"|format(item.unit_price) }}</td>
+      <td class="num">{{ "%.2f"|format(item.total) }}</td>
+    </tr>
+    {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<table class="totals-table">
+  <tr><td class="label">Subtotal</td><td class="num">$ {{ "%.2f"|format(estimate.subtotal) }}</td></tr>
+  <tr><td class="label">Tax Rate</td><td class="num">{{ "%.1f"|format(estimate.tax_rate * 100) }}%</td></tr>
+  <tr><td class="label">Tax Amount</td><td class="num">$ {{ "%.2f"|format(estimate.tax_amount) }}</td></tr>
+  <tr><td class="label">Permit / Inspection Fees</td><td class="num">$ {{ "%.2f"|format(estimate.permit_fees) }}</td></tr>
+  <tr><td class="label">Discount</td><td class="num">- $ {{ "%.2f"|format(estimate.discount) }}</td></tr>
+  <tr class="total-row"><td class="label" style="text-align:right">TOTAL ESTIMATE</td><td class="num">$ {{ "%.2f"|format(estimate.total) }}</td></tr>
+</table>
+
+<!-- Payment Schedule -->
+<div class="payment-section">
+  <h3>PAYMENT SCHEDULE</h3>
+  <table class="payment-table">
+    <thead>
+      <tr><th>Payment</th><th>Description</th><th>Due Date</th><th>Amount ($)</th><th>% of Total</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+    {% for ps in estimate.payment_schedule %}
+    <tr>
+      <td>{{ ps.label }}</td>
+      <td>{{ ps.description }}</td>
+      <td>{{ ps.due_date or '—' }}</td>
+      <td class="num">$ {{ "%.2f"|format(ps.amount) }}</td>
+      <td class="num">{% if estimate.total > 0 %}{{ "%.1f"|format(ps.amount / estimate.total * 100) }}%{% else %}—{% endif %}</td>
+      <td class="badge-{{ ps.status|lower }}">{{ ps.status }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Terms -->
+<div class="terms">
+  <strong>TERMS &amp; CONDITIONS</strong><br/>
+  1. This estimate is valid for 30 days from the date issued.&nbsp;
+  2. Any changes to the scope of work will require a written change order and may affect the final price.&nbsp;
+  3. Cabrera Construction is not responsible for delays caused by weather, material availability, or conditions beyond our control.&nbsp;
+  4. A signed copy of this estimate constitutes acceptance of the proposed scope and price.&nbsp;
+  5. All work will be performed in a professional manner in accordance with applicable building codes and regulations.
+</div>
+
+<!-- Acceptance -->
+<div class="acceptance">
+  <p style="font-size:9pt;margin-bottom:12px">By signing below, you authorize Cabrera Construction to proceed with the work described in this estimate under the stated terms.</p>
+  <div class="sig-row">
+    <div class="sig-block">Customer / Authorized Representative<br/><br/>Date: _______________</div>
+    <div class="sig-block">Samuel Cabrera, Cabrera Construction<br/><br/>Date: _______________</div>
+  </div>
+</div>
+
+<div class="footer">
+  Samuel Cabrera &nbsp;|&nbsp; Cabrera Construction &nbsp;|&nbsp; Lic. #1135927 &nbsp;|&nbsp;
+  Tel: (415) 359-5394 &nbsp;|&nbsp; cabr_contsr@yahoo.com &nbsp;|&nbsp; 2752 Capistrano St, Antioch, CA 94509<br/>
+  <em>This document is a binding estimate. All prices are subject to change after the validity date.</em>
+</div>
+
+</body>
+</html>

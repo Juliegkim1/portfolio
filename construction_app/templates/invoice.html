@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 10pt; color: #222; padding: 24px; }
+  .header-company { text-align: center; margin-bottom: 16px; }
+  .header-company h1 { font-size: 18pt; color: #1a3a5c; letter-spacing: 1px; }
+  .header-company p { font-size: 9pt; color: #555; }
+  .title-row { display: flex; justify-content: space-between; align-items: flex-start;
+               border-top: 3px solid #1a3a5c; border-bottom: 1px solid #ccc; padding: 6px 0; margin-bottom: 14px; }
+  .title-row h2 { font-size: 14pt; color: #1a3a5c; }
+  .status-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 9pt; font-weight: bold; }
+  .status-draft { background: #eee; color: #555; }
+  .status-open { background: #fff3cd; color: #856404; }
+  .status-paid { background: #d4edda; color: #155724; }
+  .status-void { background: #f8d7da; color: #721c24; }
+  .bill-block { display: flex; gap: 24px; margin-bottom: 14px; }
+  .bill-section { flex: 1; border: 1px solid #ddd; padding: 8px; border-radius: 4px; }
+  .bill-section h3 { font-size: 9pt; color: #1a3a5c; text-transform: uppercase; margin-bottom: 4px; }
+  .detail-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+  .detail-table th { background: #dce6f1; color: #1a3a5c; text-align: left; padding: 5px 8px; font-size: 9pt; }
+  .detail-table td { padding: 5px 8px; font-size: 9pt; border-bottom: 1px solid #f0f0f0; }
+  .detail-table td.num { text-align: right; }
+  .totals-table { width: 280px; margin-left: auto; border-collapse: collapse; margin-top: 4px; }
+  .totals-table td { padding: 4px 8px; font-size: 9pt; }
+  .totals-table .label { text-align: right; color: #555; }
+  .totals-table .total-row td { font-weight: bold; font-size: 12pt; background: #1a3a5c; color: white; }
+  .stripe-section { margin-top: 14px; background: #f0f7ff; border: 1px solid #b8d4f0; border-radius: 4px; padding: 10px; }
+  .stripe-section h3 { color: #1a3a5c; font-size: 9pt; margin-bottom: 6px; }
+  .notes-section { margin-top: 12px; font-size: 9pt; color: #555; }
+  .footer { margin-top: 20px; text-align: center; font-size: 8pt; color: #888; border-top: 1px solid #ccc; padding-top: 8px; }
+</style>
+</head>
+<body>
+
+<div class="header-company">
+  <h1>{{ company.name }}</h1>
+  <p>{{ company.license }}</p>
+  <p>{{ company.address }}</p>
+  <p>Tel: {{ company.phone }} &nbsp;·&nbsp; {{ company.email }}</p>
+</div>
+
+<div class="title-row">
+  <div>
+    <h2>INVOICE</h2>
+    <p style="font-size:9pt;color:#555">{{ project.property_address }} &nbsp;|&nbsp; {{ project.name }}</p>
+  </div>
+  <div style="text-align:right">
+    <table style="font-size:9pt;border-collapse:collapse">
+      <tr><td style="padding:2px 8px;font-weight:bold;color:#1a3a5c">INVOICE #</td><td>{{ invoice.invoice_number }}</td></tr>
+      <tr><td style="padding:2px 8px;font-weight:bold;color:#1a3a5c">DATE ISSUED</td><td>{{ invoice.date_issued or '—' }}</td></tr>
+      <tr><td style="padding:2px 8px;font-weight:bold;color:#1a3a5c">DUE DATE</td><td>{{ invoice.due_date or '—' }}</td></tr>
+      <tr><td style="padding:2px 8px;font-weight:bold;color:#1a3a5c">STATUS</td>
+          <td><span class="status-badge status-{{ invoice.status }}">{{ invoice.status|upper }}</span></td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="bill-block">
+  <div class="bill-section">
+    <h3>Bill To</h3>
+    <p><strong>{{ invoice.customer_name }}</strong></p>
+    <p>{{ project.property_address }}</p>
+    <p>{{ project.customer_phone }}</p>
+    <p>{{ invoice.customer_email }}</p>
+  </div>
+  <div class="bill-section">
+    <h3>Project</h3>
+    <p><strong>{{ project.name }}</strong></p>
+    <p>Type: {{ project.project_type }}</p>
+    {% if invoice.estimate_id %}
+    <p style="margin-top:4px;font-size:8pt;color:#666">Linked Estimate: #{{ invoice.estimate_id }}</p>
+    {% endif %}
+  </div>
+</div>
+
+<table class="detail-table">
+  <thead>
+    <tr><th>Description</th><th class="num">Amount ($)</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>{{ invoice.description }}</td>
+      <td class="num">$ {{ "%.2f"|format(invoice.amount) }}</td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="totals-table">
+  <tr><td class="label">Subtotal</td><td class="num">$ {{ "%.2f"|format(invoice.amount) }}</td></tr>
+  <tr><td class="label">Tax</td><td class="num">$ {{ "%.2f"|format(invoice.tax_amount) }}</td></tr>
+  <tr class="total-row">
+    <td class="label" style="text-align:right">TOTAL DUE</td>
+    <td class="num">$ {{ "%.2f"|format(invoice.total) }}</td>
+  </tr>
+</table>
+
+{% if invoice.stripe_invoice_url %}
+<div class="stripe-section">
+  <h3>Online Payment</h3>
+  <p style="font-size:9pt">Pay securely online via Stripe:<br/>
+  <a href="{{ invoice.stripe_invoice_url }}" style="color:#1a3a5c">{{ invoice.stripe_invoice_url }}</a></p>
+</div>
+{% endif %}
+
+{% if invoice.status == 'paid' and invoice.payment_date %}
+<div style="margin-top:12px;background:#d4edda;border:1px solid #c3e6cb;border-radius:4px;padding:8px;font-size:9pt;color:#155724">
+  <strong>Payment Received:</strong> {{ invoice.payment_date }}
+</div>
+{% endif %}
+
+{% if invoice.notes %}
+<div class="notes-section">
+  <strong>Notes:</strong> {{ invoice.notes }}
+</div>
+{% endif %}
+
+<div class="footer">
+  Samuel Cabrera &nbsp;|&nbsp; Cabrera Construction &nbsp;|&nbsp; Lic. #1135927 &nbsp;|&nbsp;
+  Tel: (415) 359-5394 &nbsp;|&nbsp; cabr_contsr@yahoo.com &nbsp;|&nbsp; 2752 Capistrano St, Antioch, CA 94509<br/>
+  <em>Thank you for choosing Cabrera Construction — Quality Craftsmanship You Can Trust.</em>
+</div>
+
+</body>
+</html>
