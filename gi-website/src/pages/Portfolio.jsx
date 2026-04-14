@@ -3,6 +3,26 @@ import styles from './Portfolio.module.css'
 const projects = [
   {
     id: 1,
+    title: 'Cabrera Construction',
+    description:
+      'Full business website for a Bay Area residential construction and remodeling company operating since 2012. Features service showcases for custom home builds, kitchen & bath remodels, ADUs, and additions — with contact forms and mobile-responsive design.',
+    tags: ['Web Design', 'Squarespace', 'Responsive Design', 'Small Business'],
+    accent: 'peach',
+    link: 'https://www.cabrera.construction/',
+    github: '#',
+  },
+  {
+    id: 2,
+    title: 'DataNA Solutions',
+    description:
+      'Business website for DataNA Solutions, a data analytics and consulting firm. Built with a modern, professional design to showcase services and drive client engagement.',
+    tags: ['Web Design', 'Wix', 'Responsive Design', 'Analytics'],
+    accent: 'sage',
+    link: 'https://www.datanasolutions.com',
+    github: '#',
+  },
+  {
+    id: 3,
     title: 'iStudy',
     description:
       'An AI-powered study platform that helps students retain information more effectively through spaced repetition and adaptive quizzes.',

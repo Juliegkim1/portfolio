@@ -65,26 +65,21 @@ const experience = [
       'Defined and executed a comprehensive enterprise-wide data asset management strategy, significantly improving data governance, discoverability, and utility across multiple business units.',
       'Led technical teams in implementing cutting-edge cloud analytics solutions for a top-tier banking client, enabling data-driven decision-making and optimizing key business processes.',
     ],
-  },
+  }]
+  const earlier_experience = [,
   {
     company: 'Ernst & Young, LLC',
     title: 'Advisory Data Analytics Senior',
     period: 'April 2018 – January 2019',
     location: 'McLean, VA',
-    bullets: [
-      'Bridged the gap between business and technology by analyzing complex business analytics challenges within the Department of Defense (DoD) enterprise transaction systems and translating them into actionable technical solutions through expertise in data management and visualization.',
-      'Led the Data Team in building business intelligence and analytics solutions to automate reconciliation and compliance testing, significantly supporting the DoD\'s critical audit readiness mission.',
-    ],
+
   },
   {
     company: 'Deloitte Consulting, LLC',
     title: 'Senior Technology Consultant & Data Scientist',
     period: 'March 2015 – April 2018',
     location: 'Arlington, VA',
-    bullets: [
-      'Led enterprise data migration and analytics projects for federal clients (DoD, HHS, DHS), focusing on SQL server migration, advanced data analytics solutions, enterprise resource planning, and contract management.',
-      'Developed NLP classification models for NIH and designed/delivered Tableau and Design Thinking training, empowering data analysis and visualization best practices.',
-    ],
+
   },
   {
     company: 'The Lewin Group',
@@ -100,11 +95,7 @@ const experience = [
     title: 'Multiple Roles',
     period: 'June 2011 – June 2014',
     location: 'Baltimore, MD',
-    bullets: [
-      'Armstrong Institute of Patient Quality and Safety — Visual Analytics Specialist (Dec 2013 – Jun 2014): Coordinated analytical initiatives across Johns Hopkins Medicine and developed effective methods and tools for tracking clinical quality and financial outcomes using SAP Business Objects.',
-      'Sidney Kimmel Comprehensive Cancer Center — Financial Analyst (Jun 2012 – Dec 2013): Served as Medical Oncology Department Financial & Grant Management Lead, managing departmental budget and leading grant application processes.',
-      'Institute of Clinical Translational Research — Interim Financial Manager (Jun 2011 – Dec 2012): Analyzed financial reports across research funding sources, identified budget adjustment opportunities, and partnered with program directors on grant administration.',
-    ],
+
   },
 ]
 
@@ -195,6 +186,29 @@ export default function Resume() {
           <h2 className={styles.sectionTitle}>Experience</h2>
           <div className={styles.timeline}>
             {experience.map((job, i) => (
+              <div key={i} className={styles.job}>
+                <div className={styles.jobMeta}>
+                  <p className={styles.jobPeriod}>{job.period}</p>
+                  <p className={styles.jobLocation}>{job.location}</p>
+                </div>
+                <div className={styles.jobContent}>
+                  <p className={styles.jobCompany}>{job.company}</p>
+                  <p className={styles.jobTitle}>{job.title}</p>
+                  <ul className={styles.jobBullets}>
+                    {job.bullets.map((b, j) => (
+                      <li key={j}>{b}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+        {/* Earlier Experience */}
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Experience</h2>
+          <div className={styles.timeline}>
+            {earlier_experience.map((job, i) => (
               <div key={i} className={styles.job}>
                 <div className={styles.jobMeta}>
                   <p className={styles.jobPeriod}>{job.period}</p>
