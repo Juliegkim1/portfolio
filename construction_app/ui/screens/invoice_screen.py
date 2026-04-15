@@ -10,7 +10,7 @@ from kivy.clock import Clock
 
 from ui.theme import (FONT, BG_SECONDARY, IOS_BLUE, LABEL_PRIMARY,
                        LABEL_SECONDARY, WHITE, CARD_RADIUS, PADDING)
-from ui.widgets import with_bg, ios_label, ios_button, nav_bar, show_toast
+from ui.widgets import with_bg, ios_label, ios_button, nav_bar, show_toast, date_input
 
 
 def _label(text):
@@ -80,12 +80,18 @@ class InvoiceScreen(Screen):
         ]
 
         for lbl_text, key, hint in fields_config:
+            is_date = "date" in key.lower()
+            col_h = dp(74) if is_date else dp(70)
             col = BoxLayout(orientation="vertical", size_hint_y=None,
-                             height=dp(70), spacing=dp(4))
+                             height=col_h, spacing=dp(4))
             col.add_widget(_label(lbl_text))
-            ti = _input(hint=hint)
+            if is_date:
+                container, ti = date_input(hint=hint, height=dp(44))
+                col.add_widget(container)
+            else:
+                ti = _input(hint=hint)
+                col.add_widget(ti)
             self._fields[key] = ti
-            col.add_widget(ti)
             card.add_widget(col)
 
         form.add_widget(card)
@@ -121,6 +127,10 @@ class InvoiceScreen(Screen):
                 notes=self._fields["notes"].text.strip(),
             )
             show_toast(f"Invoice {result['invoice_number']} — ${result['total']:,.2f}")
-            Clock.schedule_once(lambda dt: setattr(self.manager, 'current', 'project'), 1.5)
+            def _back(dt):
+                ps = self.manager.get_screen("project")
+                ps.load_project(self.project_id)
+                self.manager.current = "project"
+            Clock.schedule_once(_back, 1.5)
         except Exception as e:
             show_toast(f"Error: {e}")

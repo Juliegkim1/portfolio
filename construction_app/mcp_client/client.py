@@ -14,12 +14,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from database import Database
 from models import Project, Estimate, EstimateLineItem, PaymentScheduleItem, Invoice, WorkBreakdownItem
-from services import DocumentService, StripeService, GoogleDriveService, QuickenService
+from services import DocumentService, StripeService, CloudStorageService, QuickenService
 
 db = Database()
 doc_svc = DocumentService()
 stripe_svc = StripeService()
-drive_svc = GoogleDriveService()
+storage_svc = CloudStorageService()
 quicken_svc = QuickenService()
 
 
@@ -32,17 +32,20 @@ class DirectClient:
     # ── Projects ──────────────────────────────────────────────────────────────
 
     def create_project(self, name, property_address, customer_name, customer_email,
-                       customer_phone="", project_type="General", start_date="", notes=""):
+                       customer_phone="", project_type="General", start_date="",
+                       duration_days="", notes=""):
         p = Project(
             id=None, name=name, property_address=property_address,
             customer_name=customer_name, customer_phone=customer_phone,
             customer_email=customer_email, project_type=project_type,
             start_date=date.fromisoformat(start_date) if start_date else None,
-            end_date=None, notes=notes,
+            end_date=None,
+            duration_days=int(duration_days) if str(duration_days).strip().isdigit() else None,
+            notes=notes,
         )
         project_id = db.create_project(p)
         try:
-            folders = drive_svc.setup_project_folders(name)
+            folders = storage_svc.setup_project_folders(name)
             db.update_project_drive_folders(
                 project_id, folders["folder_id"],
                 folders["invoices_folder_id"], folders["estimates_folder_id"],
@@ -63,17 +66,26 @@ class DirectClient:
         return {"id": p.id, "name": p.name, "customer_name": p.customer_name,
                 "customer_email": p.customer_email, "customer_phone": p.customer_phone,
                 "property_address": p.property_address, "project_type": p.project_type,
-                "start_date": str(p.start_date or ""), "status": p.status, "notes": p.notes}
+                "start_date": str(p.start_date or ""),
+                "duration_days": p.duration_days,
+                "status": p.status, "notes": p.notes}
 
     def update_project_status(self, project_id, status):
         db.update_project_status(project_id, status)
         return {"message": "Status updated."}
 
     def update_project(self, project_id, name, property_address, customer_name,
-                       customer_phone="", customer_email="", project_type="General", notes=""):
+                       customer_phone="", customer_email="", project_type="General",
+                       notes="", start_date="", duration_days=""):
+        dd = int(duration_days) if str(duration_days).strip().isdigit() else None
         db.update_project(project_id, name, property_address, customer_name,
-                          customer_phone, customer_email, project_type, notes)
+                          customer_phone, customer_email, project_type, notes,
+                          start_date=start_date, duration_days=dd)
         return {"message": "Project updated."}
+
+    def delete_project(self, project_id):
+        db.delete_project(project_id)
+        return {"message": "Project deleted."}
 
     # ── Estimates ─────────────────────────────────────────────────────────────
 
@@ -116,6 +128,10 @@ class DirectClient:
                  "total": e.total, "status": e.status, "date_issued": str(e.date_issued)}
                 for e in db.list_estimates(project_id)]
 
+    def delete_estimate(self, estimate_id):
+        db.delete_estimate(estimate_id)
+        return {"message": "Estimate deleted."}
+
     def generate_estimate_pdf(self, estimate_id):
         est = db.get_estimate(estimate_id)
         project = db.get_project(est.project_id)
@@ -124,10 +140,10 @@ class DirectClient:
         drive_link = None
         if project.drive_estimates_folder_id:
             try:
-                drive_file_id = drive_svc.upload_estimate(
+                drive_file_id = storage_svc.upload_estimate(
                     pdf_path, est.estimate_number, project.drive_estimates_folder_id)
                 db.update_estimate_drive_file(est.id, drive_file_id)
-                drive_link = drive_svc.get_file_link(drive_file_id)
+                drive_link = storage_svc.get_file_link(drive_file_id)
             except Exception:
                 pass
         return {"pdf_path": pdf_path, "drive_link": drive_link}
@@ -154,6 +170,10 @@ class DirectClient:
                  "status": i.status, "due_date": str(i.due_date or "")}
                 for i in db.list_invoices(project_id)]
 
+    def delete_invoice(self, invoice_id):
+        db.delete_invoice(invoice_id)
+        return {"message": "Invoice deleted."}
+
     def generate_invoice_pdf(self, invoice_id):
         inv = db.get_invoice(invoice_id)
         project = db.get_project(inv.project_id)
@@ -161,10 +181,10 @@ class DirectClient:
         drive_link = None
         if project.drive_invoices_folder_id:
             try:
-                fid = drive_svc.upload_invoice(pdf_path, inv.invoice_number,
+                fid = storage_svc.upload_invoice(pdf_path, inv.invoice_number,
                                                project.drive_invoices_folder_id)
                 db.update_invoice_drive_file(inv.id, fid)
-                drive_link = drive_svc.get_file_link(fid)
+                drive_link = storage_svc.get_file_link(fid)
             except Exception:
                 pass
         return {"pdf_path": pdf_path, "drive_link": drive_link}
@@ -227,9 +247,9 @@ class DirectClient:
         drive_link = None
         if project.drive_invoices_folder_id:
             try:
-                fid = drive_svc.upload_reconciliation(pdf_path, project.name,
+                fid = storage_svc.upload_reconciliation(pdf_path, project.name,
                                                       project.drive_invoices_folder_id)
-                drive_link = drive_svc.get_file_link(fid)
+                drive_link = storage_svc.get_file_link(fid)
             except Exception:
                 pass
         return {"pdf_path": pdf_path, "drive_link": drive_link}
@@ -238,25 +258,50 @@ class DirectClient:
         invoices = db.list_invoices(project_id)
         return quicken_svc.reconcile_with_quicken(invoices, qif_filepath)
 
-    # ── Google Drive ──────────────────────────────────────────────────────────
-
-    def setup_drive_folders(self, project_id):
+    def generate_project_summary(self, project_id):
         project = db.get_project(project_id)
-        folders = drive_svc.setup_project_folders(project.name)
+        estimates = db.list_estimates(project_id)
+        invoices = db.list_invoices(project_id)
+        wbs_items = db.list_wbs(project_id)
+        pdf_path = doc_svc.generate_project_summary_pdf(project, estimates, invoices, wbs_items)
+        drive_link = None
+        if project.drive_folder_id:
+            try:
+                fid = storage_svc.upload_file(pdf_path,
+                                             f"ProjectSummary_{project.name.replace(' ', '_')}.pdf",
+                                             project.drive_folder_id)
+                drive_link = storage_svc.get_file_link(fid)
+            except Exception:
+                pass
+        return {"pdf_path": pdf_path, "drive_link": drive_link}
+
+    # ── Cloud Storage ─────────────────────────────────────────────────────────
+
+    def setup_storage_bucket(self, project_id):
+        project = db.get_project(project_id)
+        folders = storage_svc.setup_project_folders(project.name)
         db.update_project_drive_folders(project_id, folders["folder_id"],
                                          folders["invoices_folder_id"],
                                          folders["estimates_folder_id"])
         return folders
 
-    def get_drive_info(self, project_id):
+    # Keep old name as alias
+    def setup_drive_folders(self, project_id):
+        return self.setup_storage_bucket(project_id)
+
+    def get_storage_info(self, project_id):
         project = db.get_project(project_id)
         return {
-            "project_folder_id": project.drive_folder_id,
-            "invoices_folder_id": project.drive_invoices_folder_id,
-            "estimates_folder_id": project.drive_estimates_folder_id,
-            "project_folder_link": drive_svc.get_file_link(project.drive_folder_id)
+            "project_prefix":    project.drive_folder_id,
+            "invoices_prefix":   project.drive_invoices_folder_id,
+            "estimates_prefix":  project.drive_estimates_folder_id,
+            "project_folder_link": storage_svc.get_folder_link(project.drive_folder_id)
                                    if project.drive_folder_id else None,
         }
+
+    # Keep old name as alias so existing callers don't break
+    def get_drive_info(self, project_id):
+        return self.get_storage_info(project_id)
 
     # ── WBS ───────────────────────────────────────────────────────────────────
 
@@ -328,11 +373,12 @@ class HTTPClient:
     # ── Projects ──────────────────────────────────────────────────────────────
 
     def create_project(self, name, property_address, customer_name, customer_email,
-                       customer_phone="", project_type="General", start_date="", notes=""):
+                       customer_phone="", project_type="General", start_date="",
+                       duration_days="", notes=""):
         return self._post("/api/v1/projects", dict(name=name, property_address=property_address,
             customer_name=customer_name, customer_email=customer_email,
             customer_phone=customer_phone, project_type=project_type,
-            start_date=start_date, notes=notes))
+            start_date=start_date, duration_days=str(duration_days), notes=notes))
 
     def list_projects(self):
         return self._get("/api/v1/projects")
@@ -344,11 +390,16 @@ class HTTPClient:
         return self._patch(f"/api/v1/projects/{project_id}/status", {"status": status})
 
     def update_project(self, project_id, name, property_address, customer_name,
-                       customer_phone="", customer_email="", project_type="General", notes=""):
+                       customer_phone="", customer_email="", project_type="General",
+                       notes="", start_date="", duration_days=""):
         return self._put(f"/api/v1/projects/{project_id}", dict(name=name,
             property_address=property_address, customer_name=customer_name,
             customer_email=customer_email, customer_phone=customer_phone,
-            project_type=project_type, notes=notes))
+            project_type=project_type, notes=notes,
+            start_date=start_date, duration_days=str(duration_days)))
+
+    def delete_project(self, project_id):
+        return self._delete(f"/api/v1/projects/{project_id}")
 
     # ── Estimates ─────────────────────────────────────────────────────────────
 
@@ -367,6 +418,9 @@ class HTTPClient:
     def generate_estimate_pdf(self, estimate_id):
         return self._post(f"/api/v1/estimates/{estimate_id}/pdf")
 
+    def delete_estimate(self, estimate_id):
+        return self._delete(f"/api/v1/estimates/{estimate_id}")
+
     # ── Invoices ──────────────────────────────────────────────────────────────
 
     def create_invoice(self, project_id, description, amount, estimate_id=None,
@@ -380,6 +434,9 @@ class HTTPClient:
 
     def generate_invoice_pdf(self, invoice_id):
         return self._post(f"/api/v1/invoices/{invoice_id}/pdf")
+
+    def delete_invoice(self, invoice_id):
+        return self._delete(f"/api/v1/invoices/{invoice_id}")
 
     def update_invoice(self, invoice_id, description, amount, tax_amount=0,
                        due_date="", notes=""):
@@ -412,6 +469,9 @@ class HTTPClient:
     def reconcile_with_quicken(self, project_id, qif_filepath):
         return self._post(f"/api/v1/projects/{project_id}/quicken/reconcile",
                           dict(qif_filepath=qif_filepath))
+
+    def generate_project_summary(self, project_id):
+        return self._post(f"/api/v1/projects/{project_id}/summary")
 
     # ── Google Drive ──────────────────────────────────────────────────────────
 

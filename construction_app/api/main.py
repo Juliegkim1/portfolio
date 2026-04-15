@@ -47,6 +47,7 @@ class ProjectCreate(BaseModel):
     customer_phone: str = ""
     project_type: str = "General"
     start_date: str = ""
+    duration_days: str = ""
     notes: str = ""
 
 class ProjectUpdate(BaseModel):
@@ -57,6 +58,8 @@ class ProjectUpdate(BaseModel):
     customer_phone: str = ""
     project_type: str = "General"
     notes: str = ""
+    start_date: str = ""
+    duration_days: str = ""
 
 class StatusUpdate(BaseModel):
     status: str
@@ -84,6 +87,10 @@ def update_project(project_id: int, body: ProjectUpdate):
 @app.patch("/api/v1/projects/{project_id}/status")
 def update_project_status(project_id: int, body: StatusUpdate):
     return client.update_project_status(project_id, body.status)
+
+@app.delete("/api/v1/projects/{project_id}")
+def delete_project(project_id: int):
+    return client.delete_project(project_id)
 
 
 # ── Estimates ─────────────────────────────────────────────────────────────────
@@ -136,6 +143,10 @@ def get_estimate(estimate_id: int):
 def generate_estimate_pdf(estimate_id: int):
     return client.generate_estimate_pdf(estimate_id)
 
+@app.delete("/api/v1/estimates/{estimate_id}")
+def delete_estimate(estimate_id: int):
+    return client.delete_estimate(estimate_id)
+
 
 # ── Invoices ──────────────────────────────────────────────────────────────────
 
@@ -178,6 +189,10 @@ def update_invoice(invoice_id: int, body: InvoiceUpdate):
 @app.post("/api/v1/invoices/{invoice_id}/pdf")
 def generate_invoice_pdf(invoice_id: int):
     return client.generate_invoice_pdf(invoice_id)
+
+@app.delete("/api/v1/invoices/{invoice_id}")
+def delete_invoice(invoice_id: int):
+    return client.delete_invoice(invoice_id)
 
 @app.post("/api/v1/invoices/{invoice_id}/stripe")
 def push_invoice_to_stripe(invoice_id: int):
@@ -267,3 +282,7 @@ def get_drive_info(project_id: int):
 @app.post("/api/v1/projects/{project_id}/drive/setup")
 def setup_drive_folders(project_id: int):
     return client.setup_drive_folders(project_id)
+
+@app.post("/api/v1/projects/{project_id}/summary")
+def generate_project_summary(project_id: int):
+    return client.generate_project_summary(project_id)

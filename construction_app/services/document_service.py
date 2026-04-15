@@ -370,25 +370,32 @@ class DocumentService:
                                 ParagraphStyle("rec_sub", fontSize=9, textColor=GREY,
                                                 alignment=TA_CENTER, spaceAfter=8)))
 
-        # Summary cards
-        cards = [
-            ["Original Contract", f"${contract_amount:,.2f}"],
-            ["Total Paid", f"${total_paid:,.2f}"],
-            ["Change Orders", f"${net_adjustments:,.2f}"],
-            ["BALANCE DUE", f"${balance_due:,.2f}"],
-        ]
-        cards_table = Table([cards], colWidths=[1.75*inch]*4)
+        # Summary cards — 2-row table: labels on top, values below
+        _lbl_st = ParagraphStyle("cl", fontSize=8, fontName="Helvetica-Bold",
+                                  alignment=TA_CENTER, textColor=GREY)
+        _val_st = ParagraphStyle("cv", fontSize=11, fontName="Helvetica-Bold",
+                                  alignment=TA_CENTER)
+        _val_wh = ParagraphStyle("cvw", fontSize=11, fontName="Helvetica-Bold",
+                                  alignment=TA_CENTER, textColor=WHITE)
+        card_labels = [Paragraph("Original Contract", _lbl_st),
+                       Paragraph("Total Paid", _lbl_st),
+                       Paragraph("Change Orders", _lbl_st),
+                       Paragraph("BALANCE DUE", ParagraphStyle("clw", fontSize=8,
+                           fontName="Helvetica-Bold", alignment=TA_CENTER, textColor=WHITE))]
+        card_values = [Paragraph(f"${contract_amount:,.2f}", _val_st),
+                       Paragraph(f"${total_paid:,.2f}", _val_st),
+                       Paragraph(f"${net_adjustments:,.2f}", _val_st),
+                       Paragraph(f"${balance_due:,.2f}", _val_wh)]
+        cards_table = Table([card_labels, card_values], colWidths=[1.75*inch]*4)
         cards_table.setStyle(TableStyle([
-            ("FONTSIZE", (0,0), (-1,-1), 9),
-            ("FONTNAME", (0,0), (-1,-1), "Helvetica-Bold"),
             ("ALIGN", (0,0), (-1,-1), "CENTER"),
-            ("BACKGROUND", (0,0), (2,0), LIGHT_BLUE),
-            ("BACKGROUND", (3,0), (3,0), BRAND),
-            ("TEXTCOLOR", (3,0), (3,0), WHITE),
+            ("BACKGROUND", (0,0), (2,-1), LIGHT_BLUE),
+            ("BACKGROUND", (3,0), (3,-1), BRAND),
+            ("TEXTCOLOR", (3,0), (3,-1), WHITE),
             ("BOX", (0,0), (-1,-1), 0.5, GREY),
             ("INNERGRID", (0,0), (-1,-1), 0.5, GREY),
-            ("TOPPADDING", (0,0), (-1,-1), 8),
-            ("BOTTOMPADDING", (0,0), (-1,-1), 8),
+            ("TOPPADDING", (0,0), (-1,-1), 6),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 6),
         ]))
         story.append(cards_table)
         story.append(Spacer(1, 8))
@@ -460,6 +467,192 @@ class DocumentService:
         ]
         sig_table = Table(sig_data, colWidths=[3.5*inch, 3.5*inch])
         story.append(sig_table)
+
+        story += _footer_para(s)
+        doc.build(story)
+        return path
+
+    # ── Project Summary PDF ───────────────────────────────────────────────────
+
+    def generate_project_summary_pdf(self, project: Project, estimates: list,
+                                      invoices: list, wbs_items: list) -> str:
+        s = self._styles
+        filename = f"summary_{project.name.replace(' ', '_')}_{date.today()}.pdf"
+        doc, path = self._make_doc(filename)
+        story = []
+        story += _company_header(s)
+
+        # ── Title ─────────────────────────────────────────────────────────────
+        story.append(Paragraph("PROJECT SUMMARY REPORT",
+                                ParagraphStyle("ps_title", fontSize=14,
+                                                fontName="Helvetica-Bold",
+                                                textColor=WHITE, backColor=BRAND,
+                                                alignment=TA_CENTER, spaceAfter=4,
+                                                borderPadding=8)))
+        story.append(Paragraph(f"Generated: {date.today()}",
+                                ParagraphStyle("ps_date", fontSize=8, textColor=GREY,
+                                                alignment=TA_CENTER, spaceAfter=10)))
+
+        # ── Project Information ───────────────────────────────────────────────
+        story.append(Paragraph("  PROJECT INFORMATION", s["section_hdr"]))
+        story.append(Spacer(1, 4))
+
+        dur_str = f"{project.duration_days} days" if project.duration_days else "—"
+        info_data = [
+            ["Project Name",    project.name,           "Status",        project.status.replace("_", " ").title()],
+            ["Customer",        project.customer_name,  "Type",          project.project_type or "—"],
+            ["Email",           project.customer_email, "Est. Start",    str(project.start_date or "—")],
+            ["Phone",           project.customer_phone or "—", "Est. Duration", dur_str],
+            ["Address",         project.property_address, "", ""],
+        ]
+        info_table = Table(info_data, colWidths=[1.2*inch, 2.3*inch, 1.1*inch, 2.1*inch])
+        info_table.setStyle(TableStyle([
+            ("FONTSIZE", (0,0), (-1,-1), 8),
+            ("FONTNAME", (0,0), (0,-1), "Helvetica-Bold"),
+            ("FONTNAME", (2,0), (2,-1), "Helvetica-Bold"),
+            ("TEXTCOLOR", (0,0), (0,-1), BRAND),
+            ("TEXTCOLOR", (2,0), (2,-1), BRAND),
+            ("ROWBACKGROUNDS", (0,0), (-1,-1), [colors.white, colors.HexColor("#f8f8f8")]),
+            ("GRID", (0,0), (-1,-1), 0.25, colors.HexColor("#e0e0e0")),
+            ("TOPPADDING", (0,0), (-1,-1), 3),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+            ("LEFTPADDING", (0,0), (-1,-1), 4),
+        ]))
+        story.append(info_table)
+        story.append(Spacer(1, 10))
+
+        # ── Financial Summary ─────────────────────────────────────────────────
+        story.append(Paragraph("  FINANCIAL SUMMARY", s["section_hdr"]))
+        story.append(Spacer(1, 4))
+
+        total_estimated = sum(getattr(e, "total", 0) for e in estimates)
+        total_invoiced = sum(getattr(i, "total", 0) for i in invoices)
+        total_paid = sum(getattr(i, "total", 0) for i in invoices
+                         if getattr(i, "status", "") == "paid")
+        balance_due = total_invoiced - total_paid
+
+        _lbl_st = ParagraphStyle("fs_lbl", fontSize=8, fontName="Helvetica-Bold",
+                                  alignment=TA_CENTER, textColor=GREY)
+        _val_st = ParagraphStyle("fs_val", fontSize=11, fontName="Helvetica-Bold",
+                                  alignment=TA_CENTER)
+        _val_wh = ParagraphStyle("fs_val_w", fontSize=11, fontName="Helvetica-Bold",
+                                  alignment=TA_CENTER, textColor=WHITE)
+        fin_labels = [Paragraph("Total Estimated", _lbl_st),
+                      Paragraph("Total Invoiced", _lbl_st),
+                      Paragraph("Total Paid", _lbl_st),
+                      Paragraph("BALANCE DUE", ParagraphStyle("bd_lbl", fontSize=8,
+                                                                fontName="Helvetica-Bold",
+                                                                alignment=TA_CENTER,
+                                                                textColor=WHITE))]
+        fin_values = [Paragraph(f"${total_estimated:,.2f}", _val_st),
+                      Paragraph(f"${total_invoiced:,.2f}", _val_st),
+                      Paragraph(f"${total_paid:,.2f}", _val_st),
+                      Paragraph(f"${balance_due:,.2f}", _val_wh)]
+        fin_table = Table([fin_labels, fin_values], colWidths=[1.75*inch]*4)
+        fin_table.setStyle(TableStyle([
+            ("ALIGN", (0,0), (-1,-1), "CENTER"),
+            ("BACKGROUND", (0,0), (2,-1), LIGHT_BLUE),
+            ("BACKGROUND", (3,0), (3,-1), BRAND),
+            ("BOX", (0,0), (-1,-1), 0.5, GREY),
+            ("INNERGRID", (0,0), (-1,-1), 0.5, GREY),
+            ("TOPPADDING", (0,0), (-1,-1), 6),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 6),
+        ]))
+        story.append(fin_table)
+        story.append(Spacer(1, 8))
+
+        # ── Estimates Table ───────────────────────────────────────────────────
+        if estimates:
+            story.append(Paragraph("  ESTIMATES", s["section_hdr"]))
+            story.append(Spacer(1, 4))
+            est_data = [[
+                Paragraph("<b>Estimate #</b>", s["small"]),
+                Paragraph("<b>Date Issued</b>", s["small"]),
+                Paragraph("<b>Status</b>", s["small"]),
+                Paragraph("<b>Total ($)</b>", s["small"]),
+            ]]
+            for e in estimates:
+                est_data.append([
+                    e.estimate_number,
+                    str(e.date_issued),
+                    e.status.title(),
+                    f"${e.total:,.2f}",
+                ])
+            est_table = Table(est_data, colWidths=[1.8*inch, 1.3*inch, 1.2*inch, 1.2*inch])
+            est_table.setStyle(TableStyle([
+                ("BACKGROUND", (0,0), (-1,0), LIGHT_BLUE),
+                ("FONTSIZE", (0,0), (-1,-1), 8),
+                ("ALIGN", (3,0), (3,-1), "RIGHT"),
+                ("GRID", (0,0), (-1,-1), 0.25, colors.HexColor("#dddddd")),
+                ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.white, colors.HexColor("#f8f8f8")]),
+            ]))
+            story.append(est_table)
+            story.append(Spacer(1, 8))
+
+        # ── Invoices Table ────────────────────────────────────────────────────
+        if invoices:
+            story.append(Paragraph("  INVOICES", s["section_hdr"]))
+            story.append(Spacer(1, 4))
+            inv_data = [[
+                Paragraph("<b>Invoice #</b>", s["small"]),
+                Paragraph("<b>Description</b>", s["small"]),
+                Paragraph("<b>Due Date</b>", s["small"]),
+                Paragraph("<b>Status</b>", s["small"]),
+                Paragraph("<b>Amount ($)</b>", s["small"]),
+            ]]
+            for i in invoices:
+                inv_data.append([
+                    i.invoice_number,
+                    Paragraph(i.description, s["small"]),
+                    str(i.due_date or "—"),
+                    i.status.upper(),
+                    f"${i.total:,.2f}",
+                ])
+            inv_table = Table(inv_data, colWidths=[1.0*inch, 2.2*inch, 0.9*inch, 0.7*inch, 1.0*inch])
+            inv_table.setStyle(TableStyle([
+                ("BACKGROUND", (0,0), (-1,0), LIGHT_BLUE),
+                ("FONTSIZE", (0,0), (-1,-1), 8),
+                ("ALIGN", (4,0), (4,-1), "RIGHT"),
+                ("GRID", (0,0), (-1,-1), 0.25, colors.HexColor("#dddddd")),
+                ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.white, colors.HexColor("#f8f8f8")]),
+            ]))
+            story.append(inv_table)
+            story.append(Spacer(1, 8))
+
+        # ── Work Plan ─────────────────────────────────────────────────────────
+        if wbs_items:
+            story.append(Paragraph("  WORK PLAN", s["section_hdr"]))
+            story.append(Spacer(1, 4))
+            wbs_data = [[
+                Paragraph("<b>Phase</b>", s["small"]),
+                Paragraph("<b>Task</b>", s["small"]),
+                Paragraph("<b>Assigned To</b>", s["small"]),
+                Paragraph("<b>Est. Hours</b>", s["small"]),
+                Paragraph("<b>Status</b>", s["small"]),
+            ]]
+            for item in wbs_items:
+                wbs_data.append([
+                    Paragraph(item.phase, s["small"]),
+                    Paragraph(item.task, s["small"]),
+                    item.assigned_to or "—",
+                    str(item.estimated_hours or "—"),
+                    item.status.replace("_", " ").title(),
+                ])
+            total_est_hours = sum(item.estimated_hours or 0 for item in wbs_items)
+            wbs_data.append([
+                Paragraph("<b>TOTAL</b>", s["small"]), "", "",
+                Paragraph(f"<b>{total_est_hours:.1f}h</b>", s["small"]), "",
+            ])
+            wbs_table = Table(wbs_data,
+                               colWidths=[1.4*inch, 2.1*inch, 1.2*inch, 0.8*inch, 1.0*inch])
+            wbs_table.setStyle(TableStyle([
+                ("BACKGROUND", (0,0), (-1,0), LIGHT_BLUE),
+                ("FONTSIZE", (0,0), (-1,-1), 8),
+                ("GRID", (0,0), (-1,-1), 0.25, colors.HexColor("#dddddd")),
+                ("ROWBACKGROUNDS", (0,1), (-1,-2), [colors.white, colors.HexColor("#f8f8f8")]),
+                ("BACKGROUND", (0,-1), (-1,-1), colors.HexColor("#f0f0f0")),
+            ]))
+            story.append(wbs_table)
 
         story += _footer_para(s)
         doc.build(story)

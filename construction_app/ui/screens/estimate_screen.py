@@ -12,7 +12,7 @@ from kivy.clock import Clock
 from ui.theme import (FONT, BG_SECONDARY, IOS_BLUE, IOS_GREEN, IOS_RED,
                        LABEL_PRIMARY, LABEL_SECONDARY, WHITE,
                        CARD_RADIUS, PADDING, SMALL_PAD)
-from ui.widgets import with_bg, ios_label, ios_button, nav_bar, show_toast
+from ui.widgets import with_bg, ios_label, ios_button, nav_bar, show_toast, date_input
 
 SECTIONS = ["DEMOLITION/PREPARATION", "MATERIALS", "LABOR", "ADDITIONAL WORK"]
 
@@ -127,10 +127,10 @@ class EstimateScreen(Screen):
             amt_col.add_widget(amt_ti)
             row1.add_widget(amt_col)
 
-            date_col = BoxLayout(orientation="vertical", spacing=dp(4), size_hint_x=0.20)
+            date_col = BoxLayout(orientation="vertical", spacing=dp(4), size_hint_x=0.25)
             date_col.add_widget(_field_label("Due Date"))
-            date_ti = _field_input(hint="YYYY-MM-DD")
-            date_col.add_widget(date_ti)
+            date_container, date_ti = date_input(hint="YYYY-MM-DD", height=INPUT_H)
+            date_col.add_widget(date_container)
             row1.add_widget(date_col)
 
             ps_card.add_widget(row1)
@@ -212,8 +212,7 @@ class EstimateScreen(Screen):
         total_col.add_widget(_field_label("Total $"))
         total_lbl = Label(text="$0.00", font_name=FONT, font_size=dp(15),
                            bold=True, color=IOS_BLUE, halign="center",
-                           size_hint_y=None, height=INPUT_H,
-                           background_color=(0, 0, 0, 0))
+                           size_hint_y=None, height=INPUT_H)
         total_lbl_ref[0] = total_lbl
         row_data["total_lbl"] = total_lbl
         total_col.add_widget(total_lbl)
@@ -281,6 +280,10 @@ class EstimateScreen(Screen):
                 discount=float(self._discount_input.text or 0),
             )
             show_toast(f"Estimate {result['estimate_number']} — ${result['total']:,.2f}")
-            Clock.schedule_once(lambda dt: setattr(self.manager, 'current', 'project'), 1.5)
+            def _back(dt):
+                ps = self.manager.get_screen("project")
+                ps.load_project(self.project_id)
+                self.manager.current = "project"
+            Clock.schedule_once(_back, 1.5)
         except Exception as e:
             show_toast(f"Error: {e}")

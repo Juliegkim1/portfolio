@@ -16,6 +16,7 @@ class Project:
     end_date: Optional[date]
     status: str = "active"             # active | completed | on_hold
     notes: str = ""
+    duration_days: Optional[int] = None   # estimated project duration in days
     # Google Drive folder IDs populated after creation
     drive_folder_id: Optional[str] = None
     drive_invoices_folder_id: Optional[str] = None

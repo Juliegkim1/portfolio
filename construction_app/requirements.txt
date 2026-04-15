@@ -12,14 +12,14 @@ reportlab>=4.0.4
 # Stripe payments
 stripe>=8.0.0
 
-# Google Drive
-google-api-python-client>=2.120.0
-google-auth>=2.28.0
-google-auth-oauthlib>=1.2.0
-google-auth-httplib2>=0.2.0
+# Google Cloud Storage
+google-cloud-storage>=2.16.0
 
 # HTTP client (used by HTTPClient when connecting to Cloud Run backend)
 requests>=2.31.0
+
+# Env var loading from .env file
+python-dotenv>=1.0.0
 
 # Database — SQLite is stdlib; psycopg2 for PostgreSQL (Cloud Run / local Docker)
 psycopg2-binary>=2.9.9

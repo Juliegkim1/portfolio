@@ -11,6 +11,7 @@ class Database:
     def __init__(self, db_path: str = DATABASE_URL):
         self.db_path = db_path
         self._init_schema()
+        self._migrate()
 
     @property
     def _is_pg(self) -> bool:
@@ -69,6 +70,7 @@ class Database:
                     project_type TEXT,
                     start_date TEXT,
                     end_date TEXT,
+                    duration_days INTEGER DEFAULT NULL,
                     status TEXT DEFAULT 'active',
                     notes TEXT DEFAULT '',
                     drive_folder_id TEXT,
@@ -161,6 +163,7 @@ class Database:
                         project_type TEXT,
                         start_date TEXT,
                         end_date TEXT,
+                        duration_days INTEGER DEFAULT NULL,
                         status TEXT DEFAULT 'active',
                         notes TEXT DEFAULT '',
                         drive_folder_id TEXT,
@@ -242,14 +245,27 @@ class Database:
                     );
                 """)
 
+    def _migrate(self):
+        """Add columns that didn't exist in earlier schema versions."""
+        migrations = [
+            "ALTER TABLE projects ADD COLUMN duration_days INTEGER DEFAULT NULL",
+        ]
+        with self._conn() as conn:
+            cur = conn.cursor()
+            for sql in migrations:
+                try:
+                    cur.execute(sql)
+                except Exception:
+                    pass  # column already exists
+
     # ── Projects ─────────────────────────────────────────────────────────────
 
     def create_project(self, p: Project) -> int:
         sql = self._q(
             """INSERT INTO projects
                (name, property_address, customer_name, customer_phone, customer_email,
-                project_type, start_date, end_date, status, notes)
-               VALUES (?,?,?,?,?,?,?,?,?,?)"""
+                project_type, start_date, end_date, duration_days, status, notes)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?)"""
             + (" RETURNING id" if self._is_pg else "")
         )
         with self._conn() as conn:
@@ -258,7 +274,7 @@ class Database:
                               p.customer_email, p.project_type,
                               p.start_date.isoformat() if p.start_date else None,
                               p.end_date.isoformat() if p.end_date else None,
-                              p.status, p.notes))
+                              p.duration_days, p.status, p.notes))
             return self._lastid(cur)
 
     def update_project_drive_folders(self, project_id: int, folder_id: str,
@@ -290,14 +306,21 @@ class Database:
 
     def update_project(self, project_id: int, name: str, property_address: str,
                        customer_name: str, customer_phone: str, customer_email: str,
-                       project_type: str, notes: str):
+                       project_type: str, notes: str,
+                       start_date: str = "", duration_days: int = None):
         with self._conn() as conn:
             conn.cursor().execute(
                 self._q("""UPDATE projects SET name=?, property_address=?, customer_name=?,
-                   customer_phone=?, customer_email=?, project_type=?, notes=? WHERE id=?"""),
+                   customer_phone=?, customer_email=?, project_type=?, notes=?,
+                   start_date=?, duration_days=? WHERE id=?"""),
                 (name, property_address, customer_name, customer_phone,
-                 customer_email, project_type, notes, project_id),
+                 customer_email, project_type, notes,
+                 start_date or None, duration_days, project_id),
             )
+
+    def delete_project(self, project_id: int):
+        with self._conn() as conn:
+            conn.cursor().execute(self._q("DELETE FROM projects WHERE id=?"), (project_id,))
 
     def _row_to_project(self, row) -> Project:
         return Project(
@@ -306,6 +329,7 @@ class Database:
             customer_email=row["customer_email"], project_type=row["project_type"],
             start_date=date.fromisoformat(row["start_date"]) if row["start_date"] else None,
             end_date=date.fromisoformat(row["end_date"]) if row["end_date"] else None,
+            duration_days=row["duration_days"],
             status=row["status"], notes=row["notes"],
             drive_folder_id=row["drive_folder_id"],
             drive_invoices_folder_id=row["drive_invoices_folder_id"],
@@ -375,6 +399,10 @@ class Database:
                 schedule = cur.fetchall()
                 result.append(self._row_to_estimate(row, items, schedule))
             return result
+
+    def delete_estimate(self, estimate_id: int):
+        with self._conn() as conn:
+            conn.cursor().execute(self._q("DELETE FROM estimates WHERE id=?"), (estimate_id,))
 
     def update_estimate_drive_file(self, estimate_id: int, file_id: str):
         with self._conn() as conn:
@@ -472,6 +500,10 @@ class Database:
                    due_date=?, notes=? WHERE id=?"""),
                 (description, amount, tax_amount, due_date, notes, invoice_id),
             )
+
+    def delete_invoice(self, invoice_id: int):
+        with self._conn() as conn:
+            conn.cursor().execute(self._q("DELETE FROM invoices WHERE id=?"), (invoice_id,))
 
     def update_invoice_drive_file(self, invoice_id: int, file_id: str):
         with self._conn() as conn:

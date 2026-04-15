@@ -5,7 +5,7 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.image import Image
-from kivy.graphics import Color, RoundedRectangle, Rectangle
+from kivy.graphics import Color, RoundedRectangle, Rectangle, Line
 from kivy.metrics import dp
 from kivy.clock import Clock
 import os
@@ -14,8 +14,8 @@ from ui.theme import (FONT, BG_PRIMARY, BG_SECONDARY, IOS_BLUE, IOS_GREEN,
                        IOS_ORANGE, IOS_RED, LABEL_PRIMARY, LABEL_SECONDARY,
                        WHITE, CARD_RADIUS, NAV_HEIGHT, PADDING, SMALL_PAD,
                        STATUS_COLOR, SEPARATOR)
-from ui.widgets import (with_bg, ios_label, ios_button, ios_input,
-                         nav_bar, show_toast, edit_form_popup)
+from ui.widgets import (with_bg, ios_label, ios_button, ios_input, outline_button,
+                         shadow_card, status_badge, nav_bar, show_toast, edit_form_popup)
 
 _LOGO_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "images", "Cabrera Construction logo.png"))
 
@@ -26,6 +26,8 @@ PROJECT_FIELDS = [
     ("Customer Email", "customer_email", "email@example.com", True),
     ("Customer Phone", "customer_phone", "(415) 000-0000", False),
     ("Project Type", "project_type", "e.g. Bathroom Remodel", False),
+    ("Estimated Start Date", "start_date", "YYYY-MM-DD", False),
+    ("Estimated Duration (days)", "duration_days", "e.g. 30", False),
     ("Notes", "notes", "Optional notes", False),
 ]
 
@@ -104,40 +106,55 @@ class HomeScreen(Screen):
             self._grid.add_widget(self._project_row(p))
 
     def _project_row(self, p: dict):
-        row = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(72),
-                         padding=[PADDING, dp(10)], spacing=SMALL_PAD)
-        with_bg(row, WHITE)
+        sc = STATUS_COLOR.get(p["status"], LABEL_SECONDARY)
 
-        info = BoxLayout(orientation="vertical", spacing=dp(3))
-        info.add_widget(ios_label(p["name"], size=16, bold=True, color=LABEL_PRIMARY))
-        info.add_widget(ios_label(p["customer"], size=13, color=LABEL_SECONDARY))
-        info.add_widget(ios_label(p["address"], size=12, color=LABEL_SECONDARY))
-        row.add_widget(info)
+        # Shadow card wrapper
+        card = shadow_card(padding=0, spacing=0)
+        card.height = dp(86)
 
-        right = BoxLayout(orientation="vertical", size_hint_x=None, width=dp(100),
-                           spacing=dp(6))
-        status_c = STATUS_COLOR.get(p["status"], LABEL_SECONDARY)
-        right.add_widget(ios_label(p["status"].replace("_", " ").title(),
-                                    size=11, bold=True, color=status_c, halign="right"))
-        open_btn = ios_button("Open  ›", height=dp(30), font_size=13, radius=dp(15),
-                               size_hint_x=None, width=dp(80))
+        inner = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(86))
+
+        # Left status strip
+        strip = BoxLayout(size_hint=(None, 1), width=dp(5))
+        with strip.canvas.before:
+            Color(*sc)
+            _sr = RoundedRectangle(radius=[CARD_RADIUS, 0, 0, CARD_RADIUS],
+                                    pos=strip.pos, size=strip.size)
+        strip.bind(pos=lambda *a: setattr(_sr, "pos", strip.pos),
+                   size=lambda *a: setattr(_sr, "size", strip.size))
+        inner.add_widget(strip)
+
+        # Info section
+        info = BoxLayout(orientation="vertical", padding=[dp(12), dp(12)],
+                          spacing=dp(3))
+        info.add_widget(ios_label(p["name"], size=15, bold=True, color=LABEL_PRIMARY,
+                                   size_hint_y=None, height=dp(22)))
+        info.add_widget(ios_label(p["customer"], size=13, color=LABEL_SECONDARY,
+                                   size_hint_y=None, height=dp(18)))
+        info.add_widget(ios_label(p["address"], size=11, color=LABEL_SECONDARY,
+                                   size_hint_y=None, height=dp(16)))
+        inner.add_widget(info)
+
+        # Right: badge + buttons
+        right = BoxLayout(orientation="vertical", size_hint_x=None, width=dp(108),
+                           padding=[0, dp(10), dp(10), dp(10)], spacing=dp(6))
+        right.add_widget(status_badge(p["status"].replace("_", " ").title(), sc))
+
+        open_btn = ios_button("Open  ›", height=dp(30), font_size=12,
+                               radius=dp(15), bold=False,
+                               size_hint_x=None, width=dp(88))
         open_btn.bind(on_press=lambda *a: self._open_project(p["id"]))
         right.add_widget(open_btn)
 
-        edit_btn = Button(text="Edit", font_name=FONT, font_size=dp(12),
-                           color=IOS_BLUE, background_color=(0,0,0,0),
-                           background_normal='', size_hint_x=None, width=dp(30))
+        edit_btn = outline_button("Edit", color=IOS_BLUE, height=dp(26),
+                                   font_size=11, radius=dp(13),
+                                   size_hint_x=None, width=dp(58))
         edit_btn.bind(on_press=lambda *a: self._show_edit_form(p["id"]))
         right.add_widget(edit_btn)
-        row.add_widget(right)
+        inner.add_widget(right)
 
-        # Separator line
-        sep = BoxLayout(size_hint_y=None, height=dp(0.5))
-        with_bg(sep, SEPARATOR)
-
-        wrapper = BoxLayout(orientation="vertical", size_hint_y=None, height=dp(72))
-        wrapper.add_widget(row)
-        return wrapper
+        card.add_widget(inner)
+        return card
 
     def _open_project(self, project_id):
         self.manager.get_screen("project").load_project(project_id)
@@ -175,6 +192,8 @@ class HomeScreen(Screen):
                     customer_email=data.get("customer_email", project["customer_email"]),
                     project_type=data.get("project_type", project["project_type"]),
                     notes=data.get("notes", project["notes"]),
+                    start_date=data.get("start_date", project.get("start_date", "")),
+                    duration_days=data.get("duration_days", project.get("duration_days", "")),
                 )
                 show_toast("Project updated.")
                 Clock.schedule_once(lambda dt: self._refresh(), 0.3)

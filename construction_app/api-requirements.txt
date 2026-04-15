@@ -13,11 +13,8 @@ psycopg2-binary>=2.9.9
 # Stripe
 stripe>=8.0.0
 
-# Google Drive
-google-api-python-client>=2.120.0
-google-auth>=2.28.0
-google-auth-oauthlib>=1.2.0
-google-auth-httplib2>=0.2.0
+# Google Cloud Storage
+google-cloud-storage>=2.16.0
 
 # HTTP client (used by HTTPClient in client.py on the Kivy side)
 requests>=2.31.0
