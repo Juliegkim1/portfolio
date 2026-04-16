@@ -286,3 +286,11 @@ def setup_drive_folders(project_id: int):
 @app.post("/api/v1/projects/{project_id}/summary")
 def generate_project_summary(project_id: int):
     return client.generate_project_summary(project_id)
+
+@app.post("/api/v1/projects/{project_id}/contract")
+def generate_contract(project_id: int):
+    return client.generate_contract(project_id)
+
+@app.get("/api/v1/projects/{project_id}/pdfs")
+def list_project_pdfs(project_id: int):
+    return client.list_project_pdfs(project_id)

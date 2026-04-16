@@ -15,6 +15,9 @@ stripe>=8.0.0
 # Google Cloud Storage
 google-cloud-storage>=2.16.0
 
+# Google Sheets (reconciliation export)
+gspread>=6.0.0
+
 # HTTP client (used by HTTPClient when connecting to Cloud Run backend)
 requests>=2.31.0
 

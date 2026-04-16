@@ -16,5 +16,8 @@ stripe>=8.0.0
 # Google Cloud Storage
 google-cloud-storage>=2.16.0
 
+# Google Sheets (reconciliation export)
+gspread>=6.0.0
+
 # HTTP client (used by HTTPClient in client.py on the Kivy side)
 requests>=2.31.0

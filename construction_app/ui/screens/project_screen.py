@@ -1,4 +1,6 @@
 """Project detail screen — custom iOS-style tab bar, shadow cards, status badges."""
+import subprocess
+import sys
 import threading
 
 from kivy.uix.screenmanager import Screen
@@ -536,26 +538,86 @@ class ProjectScreen(Screen):
                             size_hint_y=None)
         layout.bind(minimum_height=layout.setter("height"))
 
+        # ── Generate / Cloud Storage actions ─────────────────────────────────
         layout.add_widget(section_header("Documents & Integrations"))
 
         actions = [
-            ("Generate Project Summary PDF",  IOS_BLUE,             self._gen_project_summary),
-            ("Setup Cloud Storage Bucket",    IOS_TEAL,             self._setup_drive),
-            ("View Files in Cloud Storage",   (0.24, 0.55, 0.87, 1), self._show_drive_info),
-            ("Export to Quicken (QIF)",       IOS_BLUE,             self._export_quicken),
-            ("Generate Reconciliation PDF",   IOS_INDIGO,           self._gen_reconciliation),
+            ("Generate Project Summary PDF",  IOS_BLUE,   self._gen_project_summary),
+            ("Generate Contract PDF",         IOS_INDIGO, self._gen_contract),
+            ("Generate Reconciliation PDF",   IOS_INDIGO, self._gen_reconciliation),
+            ("Export to Quicken (QIF)",       IOS_BLUE,   self._export_quicken),
+            ("Setup Cloud Storage Bucket",    IOS_TEAL,   self._setup_drive),
         ]
         for label, color, fn in actions:
-            btn = ios_button(label, color=color, height=dp(50), font_size=14, bold=False)
+            btn = ios_button(label, color=color, height=dp(48), font_size=13, bold=False)
             btn.bind(on_press=lambda _, f=fn: f())
             layout.add_widget(btn)
 
-        self._finance_label = ios_label("", size=13, color=LABEL_SECONDARY,
-                                         size_hint_y=None, height=dp(80),
+        self._finance_label = ios_label("", size=12, color=LABEL_SECONDARY,
+                                         size_hint_y=None, height=dp(52),
                                          halign="center")
         layout.add_widget(self._finance_label)
+
+        # ── Generated Files ───────────────────────────────────────────────────
+        layout.add_widget(section_header("Generated Files"))
+        self._files_layout = BoxLayout(orientation="vertical", size_hint_y=None,
+                                        spacing=dp(6))
+        self._files_layout.bind(minimum_height=self._files_layout.setter("height"))
+        layout.add_widget(self._files_layout)
+        self._refresh_file_list()
+
         sv.add_widget(layout)
         self._content.add_widget(sv)
+
+    def _refresh_file_list(self):
+        self._files_layout.clear_widgets()
+        try:
+            files = self.client.list_project_pdfs(self.project_id)
+        except Exception:
+            files = []
+
+        if not files:
+            self._files_layout.add_widget(
+                ios_label("No PDFs generated yet.", size=12, color=LABEL_SECONDARY,
+                           halign="center", size_hint_y=None, height=dp(32)))
+            return
+
+        for f in files:
+            self._files_layout.add_widget(self._file_row(f["name"], f["path"]))
+
+    def _file_row(self, name, path):
+        from ui.widgets import shadow_card, outline_button, ios_label
+        card = shadow_card(padding=[dp(10), dp(8)], spacing=dp(6))
+        card.height = dp(68)
+
+        inner = BoxLayout(orientation="horizontal", size_hint_y=None, height=dp(52),
+                          spacing=dp(8))
+
+        # File icon + name
+        info = BoxLayout(orientation="vertical", spacing=dp(2))
+        # Shorten name for display
+        display = name.replace("_", " ").replace(".pdf", "")
+        if len(display) > 32:
+            display = display[:30] + "…"
+        info.add_widget(ios_label("📄 " + display, size=12, bold=True,
+                                   color=LABEL_PRIMARY, size_hint_y=None, height=dp(20)))
+        import os as _os
+        try:
+            size_kb = _os.path.getsize(path) // 1024
+            info.add_widget(ios_label(f"{size_kb} KB  ·  PDF",
+                                       size=11, color=LABEL_SECONDARY,
+                                       size_hint_y=None, height=dp(16)))
+        except Exception:
+            pass
+        inner.add_widget(info)
+
+        open_btn = ios_button("Open", height=dp(36), font_size=12,
+                               radius=dp(8), size_hint_x=None, width=dp(64))
+        open_btn.bind(on_press=lambda _, p=path: self._open_pdf(p))
+        inner.add_widget(open_btn)
+
+        card.add_widget(inner)
+        return card
 
     def _setup_drive(self):
         self._finance_label.text = "Connecting to Cloud Storage…"
@@ -583,13 +645,18 @@ class ProjectScreen(Screen):
         threading.Thread(target=_run, daemon=True).start()
 
     def _show_drive_info(self):
+        pass  # replaced by inline file list — no longer needed
+
+    def _open_pdf(self, path):
         try:
-            info = self.client.get_drive_info(self.project_id)
-            link = info.get("project_folder_link")
-            self._finance_label.text = (f"Drive:\n{link}" if link else
-                "Drive not configured.\nTap 'Setup Google Drive Folders' first.")
+            if sys.platform == "darwin":
+                subprocess.Popen(["open", path])
+            elif sys.platform.startswith("linux"):
+                subprocess.Popen(["xdg-open", path])
+            else:
+                subprocess.Popen(["start", path], shell=True)
         except Exception as e:
-            self._finance_label.text = f"Error: {e}"
+            show_toast(f"Cannot open: {e}")
 
     def _export_quicken(self):
         try:
@@ -599,12 +666,49 @@ class ProjectScreen(Screen):
             self._finance_label.text = f"Error: {e}"
 
     def _gen_reconciliation(self):
-        try:
-            result = self.client.generate_reconciliation_report(self.project_id)
-            link = result.get("drive_link") or result.get("pdf_path", "")
-            self._finance_label.text = f"Report ready:\n{link}"
-        except Exception as e:
-            self._finance_label.text = f"Error: {e}"
+        self._finance_label.text = "Generating reconciliation report…"
+
+        def _run():
+            try:
+                result = self.client.generate_reconciliation_report(self.project_id)
+                sheet_url = result.get("sheet_url") or ""
+                msg = "Reconciliation PDF ready."
+                if sheet_url:
+                    msg += f"\n\nGoogle Sheet:\n{sheet_url}"
+                def _ok(dt, m=msg):
+                    self._finance_label.text = m
+                    show_toast("Reconciliation complete.")
+                    Clock.schedule_once(lambda dt2: self._refresh_file_list(), 0.3)
+                Clock.schedule_once(_ok, 0)
+            except Exception as e:
+                err = str(e)
+                def _err(dt, m=err):
+                    self._finance_label.text = f"Error: {m}"
+                Clock.schedule_once(_err, 0)
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _gen_contract(self):
+        self._finance_label.text = "Generating contract PDF…"
+
+        def _run():
+            try:
+                result = self.client.generate_contract(self.project_id)
+                pdf_path = result.get("pdf_path", "")
+                def _ok(dt, p=pdf_path):
+                    self._finance_label.text = ""
+                    show_toast("Contract PDF ready.")
+                    Clock.schedule_once(lambda dt2: self._refresh_file_list(), 0.3)
+                    if p:
+                        Clock.schedule_once(lambda dt2, _p=p: self._open_pdf(_p), 0.5)
+                Clock.schedule_once(_ok, 0)
+            except Exception as e:
+                err = str(e)
+                def _err(dt, m=err):
+                    self._finance_label.text = f"Error: {m}"
+                Clock.schedule_once(_err, 0)
+
+        threading.Thread(target=_run, daemon=True).start()
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -632,23 +736,27 @@ class ProjectScreen(Screen):
         try:
             self._finance_label.text = "Generating project summary…"
             result = self.client.generate_project_summary(self.project_id)
-            link = result.get("drive_link") or result.get("pdf_path", "")
-            self._finance_label.text = f"Summary saved:\n{link}"
+            self._finance_label.text = ""
             show_toast("Project summary PDF ready.")
+            Clock.schedule_once(lambda dt: self._refresh_file_list(), 0.3)
         except Exception as e:
             self._finance_label.text = f"Error: {e}"
 
     def _gen_estimate_pdf(self, estimate_id):
         try:
-            self.client.generate_estimate_pdf(estimate_id)
+            result = self.client.generate_estimate_pdf(estimate_id)
+            path = result.get("pdf_path", "")
             show_toast("PDF saved.")
+            self._open_pdf(path)
         except Exception as e:
             show_toast(f"PDF error: {e}")
 
     def _gen_invoice_pdf(self, invoice_id):
         try:
-            self.client.generate_invoice_pdf(invoice_id)
+            result = self.client.generate_invoice_pdf(invoice_id)
+            path = result.get("pdf_path", "")
             show_toast("PDF saved.")
+            self._open_pdf(path)
         except Exception as e:
             show_toast(f"PDF error: {e}")
 

@@ -27,7 +27,7 @@ else:
     from mcp_client.client import DirectClient as _Client
     _client_factory = _Client
 
-from ui.screens import HomeScreen, ProjectScreen, EstimateScreen, InvoiceScreen, FinanceScreen
+from ui.screens import CoverScreen, HomeScreen, ProjectScreen, EstimateScreen, InvoiceScreen, FinanceScreen
 
 
 class ConstructionApp(App):
@@ -37,19 +37,14 @@ class ConstructionApp(App):
         client = _client_factory()
         sm = ScreenManager(transition=SlideTransition())
 
-        home = HomeScreen(client=client, name="home")
-        project = ProjectScreen(client=client, name="project")
-        estimate = EstimateScreen(client=client, name="estimate")
-        invoice = InvoiceScreen(client=client, name="invoice")
-        finance = FinanceScreen(client=client, name="finance")
+        sm.add_widget(CoverScreen(name="cover"))
+        sm.add_widget(HomeScreen(client=client, name="home"))
+        sm.add_widget(ProjectScreen(client=client, name="project"))
+        sm.add_widget(EstimateScreen(client=client, name="estimate"))
+        sm.add_widget(InvoiceScreen(client=client, name="invoice"))
+        sm.add_widget(FinanceScreen(client=client, name="finance"))
 
-        sm.add_widget(home)
-        sm.add_widget(project)
-        sm.add_widget(estimate)
-        sm.add_widget(invoice)
-        sm.add_widget(finance)
-
-        sm.current = "home"
+        sm.current = "cover"
         return sm
 
 

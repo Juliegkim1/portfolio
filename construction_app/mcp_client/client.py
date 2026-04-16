@@ -14,13 +14,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from database import Database
 from models import Project, Estimate, EstimateLineItem, PaymentScheduleItem, Invoice, WorkBreakdownItem
-from services import DocumentService, StripeService, CloudStorageService, QuickenService
+from services import DocumentService, StripeService, CloudStorageService, QuickenService, GoogleSheetsService
 
 db = Database()
 doc_svc = DocumentService()
 stripe_svc = StripeService()
 storage_svc = CloudStorageService()
 quicken_svc = QuickenService()
+sheets_svc = GoogleSheetsService()
 
 
 class DirectClient:
@@ -244,19 +245,50 @@ class DirectClient:
             if accepted:
                 contract_amount = accepted[0].total
         pdf_path = doc_svc.generate_reconciliation_pdf(project, invoices, contract_amount, notes)
+
         drive_link = None
         if project.drive_invoices_folder_id:
             try:
                 fid = storage_svc.upload_reconciliation(pdf_path, project.name,
-                                                      project.drive_invoices_folder_id)
+                                                       project.drive_invoices_folder_id)
                 drive_link = storage_svc.get_file_link(fid)
             except Exception:
                 pass
-        return {"pdf_path": pdf_path, "drive_link": drive_link}
+
+        sheet_url = None
+        try:
+            sheet_url = sheets_svc.create_reconciliation_sheet(
+                project, invoices, contract_amount, notes)
+        except Exception:
+            pass
+
+        return {"pdf_path": pdf_path, "drive_link": drive_link, "sheet_url": sheet_url}
 
     def reconcile_with_quicken(self, project_id, qif_filepath):
         invoices = db.list_invoices(project_id)
         return quicken_svc.reconcile_with_quicken(invoices, qif_filepath)
+
+    def list_project_pdfs(self, project_id):
+        """Return list of {name, path} dicts for PDFs generated for this project."""
+        import glob as _glob
+        from config import PDF_OUTPUT_DIR
+        project = db.get_project(project_id)
+        safe_name = project.name.replace(" ", "_") if project else ""
+        pid_prefix = f"{project_id:03d}"
+        patterns = [
+            f"*EST-{pid_prefix}-*.pdf",
+            f"*INV-{pid_prefix}-*.pdf",
+            f"*{safe_name}*.pdf",
+        ]
+        seen = set()
+        results = []
+        for pat in patterns:
+            for path in _glob.glob(os.path.join(PDF_OUTPUT_DIR, pat)):
+                if path not in seen:
+                    seen.add(path)
+                    results.append({"name": os.path.basename(path), "path": path})
+        results.sort(key=lambda f: os.path.getmtime(f["path"]), reverse=True)
+        return results
 
     def generate_project_summary(self, project_id):
         project = db.get_project(project_id)
@@ -270,6 +302,27 @@ class DirectClient:
                 fid = storage_svc.upload_file(pdf_path,
                                              f"ProjectSummary_{project.name.replace(' ', '_')}.pdf",
                                              project.drive_folder_id)
+                drive_link = storage_svc.get_file_link(fid)
+            except Exception:
+                pass
+        return {"pdf_path": pdf_path, "drive_link": drive_link}
+
+    def generate_contract(self, project_id):
+        """Generate a contract PDF from project overview, estimates, and work plan."""
+        project = db.get_project(project_id)
+        estimates = db.list_estimates(project_id)
+        wbs_items = db.list_wbs(project_id)
+        # Prefer accepted estimate; fall back to first estimate
+        accepted = [e for e in estimates if e.status == "accepted"]
+        estimate = accepted[0] if accepted else (estimates[0] if estimates else None)
+        pdf_path = doc_svc.generate_contract_pdf(project, estimate, wbs_items)
+        drive_link = None
+        if project.drive_folder_id:
+            try:
+                fid = storage_svc.upload_file(
+                    pdf_path,
+                    f"Contract_{project.name.replace(' ', '_')}.pdf",
+                    project.drive_folder_id)
                 drive_link = storage_svc.get_file_link(fid)
             except Exception:
                 pass
@@ -472,6 +525,12 @@ class HTTPClient:
 
     def generate_project_summary(self, project_id):
         return self._post(f"/api/v1/projects/{project_id}/summary")
+
+    def generate_contract(self, project_id):
+        return self._post(f"/api/v1/projects/{project_id}/contract")
+
+    def list_project_pdfs(self, project_id):
+        return self._get(f"/api/v1/projects/{project_id}/pdfs")
 
     # ── Google Drive ──────────────────────────────────────────────────────────
 
