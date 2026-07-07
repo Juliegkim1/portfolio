@@ -8,6 +8,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.label import Label
 from kivy.uix.button import Button
+from kivy.uix.dropdown import DropDown
 from kivy.graphics import Color, RoundedRectangle, Rectangle
 from kivy.metrics import dp
 from kivy.clock import Clock
@@ -25,6 +26,7 @@ TABS = [
     ("Estimates", "estimates"),
     ("Invoices",  "invoices"),
     ("Work Plan", "wbs"),
+    ("Contract",  "contract"),
     ("Finance",   "finance"),
 ]
 
@@ -66,66 +68,131 @@ class ProjectScreen(Screen):
         self.add_widget(root)
 
     def _build_tab_bar(self):
-        outer = BoxLayout(orientation="vertical", size_hint_y=None, height=dp(45))
-        with_bg(outer, WHITE)
+        """Single-row bar: current section label on left, ☰ menu button on right."""
+        bar = BoxLayout(orientation="vertical", size_hint_y=None, height=dp(46))
+        with_bg(bar, WHITE)
 
-        scroll = ScrollView(do_scroll_y=False, do_scroll_x=True,
-                            bar_width=0, size_hint=(1, None), height=dp(43))
-        inner = BoxLayout(size_hint=(None, 1))
-        inner.bind(minimum_width=inner.setter("width"))
+        row = BoxLayout(size_hint_y=None, height=dp(44),
+                         padding=[dp(14), dp(4), dp(10), dp(4)], spacing=dp(8))
 
-        self._tab_btns = {}
-        self._tab_indicators = {}
+        # Current section label
+        self._section_label = Label(
+            text="Overview", font_name=FONT, font_size=dp(13),
+            color=IOS_BLUE, bold=True,
+            halign="left", valign="middle",
+        )
+        self._section_label.bind(size=self._section_label.setter("text_size"))
+        row.add_widget(self._section_label)
 
-        for label, key in TABS:
-            w = max(dp(84), len(label) * dp(10) + dp(24))
-            cell = BoxLayout(orientation="vertical", size_hint=(None, 1), width=w)
+        # ☰ Menu button
+        menu_btn = Button(
+            text="☰  Menu", font_name=FONT, font_size=dp(13),
+            background_normal="", background_color=(0, 0, 0, 0),
+            color=IOS_BLUE, bold=False,
+            size_hint=(None, None), width=dp(96), height=dp(36),
+        )
+        with menu_btn.canvas.before:
+            Color(*IOS_BLUE[:3], 0.12)
+            _r = RoundedRectangle(radius=[dp(8)], pos=menu_btn.pos, size=menu_btn.size)
+        menu_btn.bind(
+            pos=lambda w, *a: setattr(_r, "pos", w.pos),
+            size=lambda w, *a: setattr(_r, "size", w.size),
+        )
+        menu_btn.bind(on_release=self._open_menu)
+        self._menu_btn = menu_btn
+        row.add_widget(menu_btn)
 
-            btn = Button(
-                text=label, font_name=FONT, font_size=dp(12),
-                background_normal="", background_color=(0, 0, 0, 0),
-                color=LABEL_SECONDARY, bold=False,
-                size_hint=(None, None), width=w, height=dp(41),
-            )
-            btn.bind(on_press=lambda b, k=key: self._switch_tab(k))
-            self._tab_btns[key] = btn
-
-            ind = BoxLayout(size_hint=(None, None), width=w, height=dp(2))
-            with ind.canvas.before:
-                ind._ind_color = Color(0, 0, 0, 0)
-                ind._ind_rect = Rectangle(pos=ind.pos, size=ind.size)
-            ind.bind(
-                pos=lambda w, *a: setattr(w._ind_rect, "pos", w.pos),
-                size=lambda w, *a: setattr(w._ind_rect, "size", w.size),
-            )
-            self._tab_indicators[key] = ind
-
-            cell.add_widget(btn)
-            cell.add_widget(ind)
-            inner.add_widget(cell)
-
-        scroll.add_widget(inner)
-        outer.add_widget(scroll)
+        bar.add_widget(row)
 
         sep = BoxLayout(size_hint_y=None, height=dp(1))
         with_bg(sep, SEPARATOR)
-        outer.add_widget(sep)
-        return outer
+        bar.add_widget(sep)
+        return bar
+
+    def _open_menu(self, widget):
+        """Build and open the dropdown menu with a solid white background."""
+        dd = DropDown(auto_width=False, width=dp(230))
+
+        # White background + subtle shadow border on the container
+        with dd.canvas.before:
+            Color(1, 1, 1, 1)
+            dd._bg_rect = Rectangle(pos=dd.pos, size=dd.size)
+            Color(0.82, 0.82, 0.82, 1)
+            dd._border = Rectangle(pos=dd.pos, size=dd.size)
+        dd.bind(
+            pos=lambda w, *a: (
+                setattr(w._bg_rect, "pos", w.pos),
+                setattr(w._border,  "pos", w.pos),
+            ),
+            size=lambda w, *a: (
+                setattr(w._bg_rect, "size", w.size),
+                setattr(w._border,  "size", w.size),
+            ),
+        )
+
+        TAB_ICONS = {
+            "overview":  "🏠",
+            "estimates": "📋",
+            "invoices":  "💵",
+            "wbs":       "🗓️",
+            "contract":  "📄",
+            "finance":   "📈",
+        }
+
+        for i, (label, key) in enumerate(TABS):
+            is_active = (key == self._active_tab)
+            icon = TAB_ICONS.get(key, "•")
+            is_last = (i == len(TABS) - 1)
+
+            # Outer wrapper so we can draw a bottom separator
+            row = BoxLayout(
+                orientation="vertical",
+                size_hint_y=None,
+                height=dp(52) if is_last else dp(53),
+            )
+            with row.canvas.before:
+                Color(*(IOS_BLUE[:3] + (0.08,)) if is_active else (1, 1, 1, 1))
+                row._bg = Rectangle(pos=row.pos, size=row.size)
+            row.bind(
+                pos=lambda w, *a: setattr(w._bg, "pos", w.pos),
+                size=lambda w, *a: setattr(w._bg, "size", w.size),
+            )
+
+            item_btn = Button(
+                text=f"   {icon}   {label}",
+                font_name=FONT, font_size=dp(14),
+                halign="left",
+                background_normal="", background_color=(0, 0, 0, 0),
+                color=IOS_BLUE if is_active else LABEL_PRIMARY,
+                bold=is_active,
+                size_hint_y=None, height=dp(52),
+            )
+            item_btn.bind(on_release=lambda b, k=key: (dd.dismiss(), self._switch_tab(k)))
+            row.add_widget(item_btn)
+
+            # Separator line (skip on last item)
+            if not is_last:
+                sep = BoxLayout(size_hint_y=None, height=dp(1))
+                with sep.canvas.before:
+                    Color(0.88, 0.88, 0.88, 1)
+                    Rectangle(pos=sep.pos, size=sep.size)
+                sep.bind(
+                    pos=lambda w, *a: None,
+                    size=lambda w, *a: None,
+                )
+                with_bg(sep, (0.88, 0.88, 0.88, 1))
+                row.add_widget(sep)
+
+            dd.add_widget(row)
+
+        dd.open(widget)
 
     # ── Tab switching ─────────────────────────────────────────────────────────
 
     def _switch_tab(self, key):
         self._active_tab = key
-        for k, btn in self._tab_btns.items():
-            ind = self._tab_indicators[k]
-            if k == key:
-                btn.color = IOS_BLUE
-                btn.bold = True
-                ind._ind_color.rgba = IOS_BLUE
-            else:
-                btn.color = LABEL_SECONDARY
-                btn.bold = False
-                ind._ind_color.rgba = (0, 0, 0, 0)
+        label = next(lbl for lbl, k in TABS if k == key)
+        self._section_label.text = label
 
         if not self._project_data:
             return
@@ -136,6 +203,7 @@ class ProjectScreen(Screen):
             "estimates": self._load_estimates_tab,
             "invoices":  self._load_invoices_tab,
             "wbs":       self._load_wbs_tab,
+            "contract":  self._load_contract_tab,
             "finance":   self._load_finance_tab,
         }[key]()
 
@@ -325,7 +393,11 @@ class ProjectScreen(Screen):
                                 color=LABEL_SECONDARY, size_hint_y=None, height=dp(18)))
 
         btn_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(8))
-        pdf_btn = outline_button("Generate PDF", color=IOS_BLUE,
+        edit_btn = outline_button("Edit", color=IOS_BLUE,
+                                   height=dp(34), font_size=12, radius=dp(8))
+        edit_btn.bind(on_press=lambda _, eid=est["id"]: self._show_edit_estimate(eid))
+        btn_row.add_widget(edit_btn)
+        pdf_btn = outline_button("PDF", color=IOS_INDIGO,
                                   height=dp(34), font_size=12, radius=dp(8))
         pdf_btn.bind(on_press=lambda _, eid=est["id"]: self._gen_estimate_pdf(eid))
         btn_row.add_widget(pdf_btn)
@@ -358,6 +430,26 @@ class ProjectScreen(Screen):
         sv.add_widget(layout)
         self._content.add_widget(sv)
 
+        # Auto-sync any open Stripe invoices in background
+        open_ids = [
+            inv["id"] for inv in invoices
+            if inv.get("stripe_invoice_id") and inv.get("status") == "open"
+        ]
+        if open_ids:
+            import threading
+            def _bg_sync():
+                changed = False
+                for iid in open_ids:
+                    try:
+                        self.client.sync_invoice_status(iid)
+                        changed = True
+                    except Exception:
+                        pass
+                if changed:
+                    from kivy.clock import Clock
+                    Clock.schedule_once(lambda dt: self._switch_tab("invoices"), 0)
+            threading.Thread(target=_bg_sync, daemon=True).start()
+
     def _invoice_card(self, inv):
         sc = STATUS_COLOR.get(inv["status"], LABEL_SECONDARY)
         c = shadow_card(padding=[PADDING, dp(14)], spacing=dp(8))
@@ -366,6 +458,12 @@ class ProjectScreen(Screen):
         top.add_widget(ios_label(inv["invoice_number"], size=14, bold=True))
         top.add_widget(status_badge(inv["status"].upper(), sc))
         c.add_widget(top)
+
+        # Show Stripe invoice number if available
+        stripe_num = inv.get("stripe_invoice_number", "")
+        if stripe_num:
+            c.add_widget(ios_label(f"Stripe: {stripe_num}", size=11,
+                                    color=IOS_PURPLE, size_hint_y=None, height=dp(16)))
 
         c.add_widget(ios_label(f"${inv['total']:,.2f}", size=22, bold=True,
                                 color=sc, size_hint_y=None, height=dp(30)))
@@ -387,41 +485,160 @@ class ProjectScreen(Screen):
             b.bind(on_press=lambda _, f=fn: f())
             btn_row.add_widget(b)
         c.add_widget(btn_row)
+
+        # "Open in Chrome" button — only shown when a Stripe URL exists
+        stripe_url = inv.get("stripe_invoice_url", "")
+        if stripe_url:
+            open_btn = ios_button("Open Stripe Invoice in Chrome →",
+                                   color=IOS_PURPLE, height=dp(38), font_size=12)
+            open_btn.bind(on_press=lambda _, u=stripe_url: self._open_in_chrome(u))
+            c.add_widget(open_btn)
+
         return c
 
     def _show_edit_invoice(self, invoice_id):
+        from kivy.uix.popup import Popup
+        from kivy.uix.textinput import TextInput
+        from kivy.uix.spinner import Spinner as KvSpinner
+
         inv = self.client.get_invoice(invoice_id)
         if not inv or "error" in inv:
             return
-        fields = [
-            ("Description",    "description", "Invoice description", True),
-            ("Amount ($)",     "amount",      "0.00",                True),
-            ("Tax Amount ($)", "tax_amount",  "0.00",                False),
-            ("Due Date",       "due_date",    "YYYY-MM-DD",          False),
-            ("Notes",          "notes",       "Optional notes",      False),
-        ]
-        prefill = {
-            "description": inv["description"],
-            "amount":      str(inv["amount"]),
-            "tax_amount":  str(inv["tax_amount"]),
-            "due_date":    inv["due_date"],
-            "notes":       inv["notes"],
-        }
-        def _save(data):
+
+        # Build estimate options for this project
+        estimates = []
+        estimate_map = {"None (no linked estimate)": None}
+        try:
+            estimates = self.client.list_estimates(self.project_id)
+            for e in estimates:
+                key = f"{e['estimate_number']}  ${e['total']:,.2f}"
+                estimate_map[key] = e["id"]
+        except Exception:
+            pass
+
+        spinner_options = list(estimate_map.keys())
+        # Pre-select the currently linked estimate
+        current_est_id = inv.get("estimate_id")
+        current_sel = "None (no linked estimate)"
+        for k, v in estimate_map.items():
+            if v == current_est_id:
+                current_sel = k
+                break
+
+        # ── Popup layout ──────────────────────────────────────────────────────
+        wrapper = BoxLayout(orientation="vertical", spacing=0)
+        with_bg(wrapper, (1, 1, 1, 1))
+
+        # Title bar
+        title_bar = BoxLayout(size_hint_y=None, height=dp(50),
+                               padding=[dp(16), dp(8)])
+        with_bg(title_bar, (0.12, 0.29, 0.53, 1))
+        title_bar.add_widget(ios_label("Edit Invoice", size=16, bold=True,
+                                        color=(1, 1, 1, 1), halign="center"))
+        wrapper.add_widget(title_bar)
+
+        scroll = ScrollView(do_scroll_x=False, size_hint_y=1)
+        form = BoxLayout(orientation="vertical", size_hint_y=None,
+                          padding=[dp(16), dp(12)], spacing=dp(10))
+        form.bind(minimum_height=form.setter("height"))
+
+        def _ti(hint="", text="", required=False):
+            return TextInput(
+                hint_text=hint, text=text, multiline=False,
+                font_name=FONT, font_size=dp(14),
+                foreground_color=(0, 0, 0, 1),
+                hint_text_color=(0.6, 0.6, 0.6, 1),
+                background_color=(0.94, 0.94, 0.96, 1),
+                cursor_color=IOS_BLUE,
+                size_hint_y=None, height=dp(44),
+                padding=[dp(10), dp(10)],
+            )
+
+        def _row(label_text, widget):
+            col = BoxLayout(orientation="vertical", size_hint_y=None,
+                             height=dp(68), spacing=dp(4))
+            col.add_widget(ios_label(label_text, size=12, bold=True,
+                                      color=LABEL_SECONDARY,
+                                      size_hint_y=None, height=dp(20)))
+            col.add_widget(widget)
+            return col
+
+        desc_ti   = _ti(hint="Invoice description", text=inv["description"])
+        amt_ti    = _ti(hint="0.00", text=str(inv["amount"]))
+        tax_ti    = _ti(hint="0.00", text=str(inv["tax_amount"]))
+        notes_ti  = _ti(hint="Optional notes", text=inv["notes"] or "")
+
+        from ui.widgets import date_input as _date_input
+        due_container, due_ti = _date_input(hint="YYYY-MM-DD",
+                                             text=inv["due_date"] or "",
+                                             height=dp(44))
+
+        est_spinner = KvSpinner(
+            text=current_sel,
+            values=spinner_options,
+            font_name=FONT, font_size=dp(13),
+            background_color=(0.94, 0.94, 0.96, 1),
+            background_normal="", color=(0, 0, 0, 1),
+            size_hint_y=None, height=dp(44),
+        )
+
+        form.add_widget(_row("Description *", desc_ti))
+        form.add_widget(_row("Amount ($) *",   amt_ti))
+        form.add_widget(_row("Tax Amount ($)", tax_ti))
+
+        due_col = BoxLayout(orientation="vertical", size_hint_y=None,
+                             height=dp(68), spacing=dp(4))
+        due_col.add_widget(ios_label("Due Date", size=12, bold=True,
+                                      color=LABEL_SECONDARY,
+                                      size_hint_y=None, height=dp(20)))
+        due_col.add_widget(due_container)
+        form.add_widget(due_col)
+
+        form.add_widget(_row("Linked Estimate", est_spinner))
+        form.add_widget(_row("Notes",           notes_ti))
+
+        scroll.add_widget(form)
+        wrapper.add_widget(scroll)
+
+        # Button row
+        btn_row = BoxLayout(size_hint_y=None, height=dp(56), spacing=dp(12),
+                             padding=[dp(16), dp(6)])
+        with_bg(btn_row, (1, 1, 1, 1))
+
+        popup = Popup(title="", content=wrapper,
+                       size_hint=(0.92, 0.82),
+                       background="", background_color=(0, 0, 0, 0),
+                       separator_height=0, title_size=0)
+
+        cancel_btn = outline_button("Cancel", color=LABEL_SECONDARY, height=dp(44))
+        cancel_btn.bind(on_press=popup.dismiss)
+
+        def _save(*a):
             try:
+                selected_est = est_spinner.text
+                eid = estimate_map.get(selected_est)
                 self.client.update_invoice(
                     invoice_id,
-                    description=data["description"],
-                    amount=float(data["amount"] or 0),
-                    tax_amount=float(data["tax_amount"] or 0),
-                    due_date=data["due_date"],
-                    notes=data["notes"],
+                    description=desc_ti.text.strip(),
+                    amount=float(amt_ti.text or 0),
+                    tax_amount=float(tax_ti.text or 0),
+                    due_date=due_ti.text.strip(),
+                    notes=notes_ti.text.strip(),
+                    estimate_id=eid,
                 )
+                popup.dismiss()
                 show_toast("Invoice updated.")
                 Clock.schedule_once(lambda dt: self._switch_tab("invoices"), 0.2)
             except Exception as e:
                 show_toast(f"Error: {e}")
-        edit_form_popup("Edit Invoice", fields, _save, prefill=prefill).open()
+
+        save_btn = ios_button("Save", color=IOS_BLUE, height=dp(44))
+        save_btn.bind(on_press=_save)
+
+        btn_row.add_widget(cancel_btn)
+        btn_row.add_widget(save_btn)
+        wrapper.add_widget(btn_row)
+        popup.open()
 
     # ── Work Plan ─────────────────────────────────────────────────────────────
 
@@ -530,6 +747,157 @@ class ProjectScreen(Screen):
         show_toast("Task deleted.")
         Clock.schedule_once(lambda dt: self._switch_tab("wbs"), 0.2)
 
+    # ── Contract ──────────────────────────────────────────────────────────────
+
+    def _load_contract_tab(self):
+        from kivy.uix.textinput import TextInput
+        from kivy.uix.spinner import Spinner as KvSpinner
+
+        sv = ScrollView(do_scroll_x=False)
+        layout = BoxLayout(orientation="vertical", padding=PADDING, spacing=dp(10),
+                            size_hint_y=None)
+        layout.bind(minimum_height=layout.setter("height"))
+
+        layout.add_widget(section_header("Contract Details"))
+
+        # ── Estimate picker ───────────────────────────────────────────────────
+        layout.add_widget(ios_label("Linked Estimate (sets contract price & scope):",
+                                     size=12, color=LABEL_SECONDARY,
+                                     size_hint_y=None, height=dp(20)))
+        estimates = []
+        self._contract_estimate_map = {"None": None}
+        try:
+            estimates = self.client.list_estimates(self.project_id)
+            for e in estimates:
+                key = f"{e['estimate_number']}  ${e['total']:,.2f}"
+                self._contract_estimate_map[key] = e["id"]
+        except Exception:
+            pass
+
+        spinner_vals = list(self._contract_estimate_map.keys())
+        self._contract_estimate_spinner = KvSpinner(
+            text=spinner_vals[0] if spinner_vals else "None",
+            values=spinner_vals,
+            size_hint_y=None, height=dp(40),
+            font_name=FONT, font_size=dp(13),
+        )
+        layout.add_widget(self._contract_estimate_spinner)
+
+        # ── Project Site ──────────────────────────────────────────────────────
+        layout.add_widget(ios_label("Project Site Address:", size=12,
+                                     color=LABEL_SECONDARY, size_hint_y=None, height=dp(20)))
+        self._contract_site = TextInput(
+            hint_text="Leave blank to use project property address",
+            font_name=FONT, font_size=dp(13),
+            size_hint_y=None, height=dp(40),
+            multiline=False,
+        )
+        layout.add_widget(self._contract_site)
+
+        # ── Dates ─────────────────────────────────────────────────────────────
+        date_row = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(8))
+        self._contract_start = TextInput(
+            hint_text="Start Date (YYYY-MM-DD)",
+            font_name=FONT, font_size=dp(12),
+            multiline=False,
+        )
+        self._contract_end = TextInput(
+            hint_text="Completion Date (YYYY-MM-DD)",
+            font_name=FONT, font_size=dp(12),
+            multiline=False,
+        )
+        date_row.add_widget(self._contract_start)
+        date_row.add_widget(self._contract_end)
+        layout.add_widget(ios_label("Approximate Start / Completion Dates:", size=12,
+                                     color=LABEL_SECONDARY, size_hint_y=None, height=dp(20)))
+        layout.add_widget(date_row)
+
+        # ── Subcontractors ────────────────────────────────────────────────────
+        layout.add_widget(section_header("Subcontractors  (AB 1327)"))
+        self._contract_sub_rows = []   # list of (name_ti, lic_ti, class_ti, scope_ti)
+        self._contract_subs_layout = BoxLayout(
+            orientation="vertical", size_hint_y=None, spacing=dp(6))
+        self._contract_subs_layout.bind(
+            minimum_height=self._contract_subs_layout.setter("height"))
+        layout.add_widget(self._contract_subs_layout)
+
+        add_sub_btn = outline_button("+ Add Subcontractor", color=IOS_TEAL,
+                                      height=dp(36), font_size=12)
+        add_sub_btn.bind(on_press=lambda *a: self._add_sub_row())
+        layout.add_widget(add_sub_btn)
+
+        # ── Generate button ───────────────────────────────────────────────────
+        layout.add_widget(ios_label("", size_hint_y=None, height=dp(6)))  # spacer
+        gen_btn = ios_button("Generate Contract PDF", color=IOS_INDIGO,
+                              height=dp(50), font_size=15)
+        gen_btn.bind(on_press=lambda *a: self._gen_contract_from_form())
+        layout.add_widget(gen_btn)
+
+        self._contract_status_label = ios_label("", size=12, color=LABEL_SECONDARY,
+                                                  size_hint_y=None, height=dp(40),
+                                                  halign="center")
+        layout.add_widget(self._contract_status_label)
+
+        sv.add_widget(layout)
+        self._content.add_widget(sv)
+
+    def _add_sub_row(self, name="", license="", classification="", scope=""):
+        from kivy.uix.textinput import TextInput
+        row = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(4))
+        name_ti  = TextInput(hint_text="Name",           text=name,           font_name=FONT, font_size=dp(11), multiline=False)
+        lic_ti   = TextInput(hint_text="License #",      text=license,        font_name=FONT, font_size=dp(11), multiline=False, size_hint_x=0.35)
+        class_ti = TextInput(hint_text="Classification", text=classification, font_name=FONT, font_size=dp(11), multiline=False, size_hint_x=0.4)
+        scope_ti = TextInput(hint_text="Scope",          text=scope,          font_name=FONT, font_size=dp(11), multiline=False)
+        for ti in (name_ti, lic_ti, class_ti, scope_ti):
+            row.add_widget(ti)
+        del_btn = outline_button("✕", color=IOS_RED, height=dp(34), font_size=12, size_hint_x=None, width=dp(32))
+        del_btn.bind(on_press=lambda _, r=row: self._remove_sub_row(r))
+        row.add_widget(del_btn)
+        self._contract_sub_rows.append((name_ti, lic_ti, class_ti, scope_ti, row))
+        self._contract_subs_layout.add_widget(row)
+
+    def _remove_sub_row(self, row_widget):
+        self._contract_sub_rows = [t for t in self._contract_sub_rows if t[4] is not row_widget]
+        self._contract_subs_layout.remove_widget(row_widget)
+
+    def _gen_contract_from_form(self):
+        self._contract_status_label.text = "Generating contract PDF…"
+        estimate_key = self._contract_estimate_spinner.text
+        estimate_id  = self._contract_estimate_map.get(estimate_key)
+        start_date   = self._contract_start.text.strip() or None
+        end_date     = self._contract_end.text.strip() or None
+        site         = self._contract_site.text.strip() or None
+        subcontractors = [
+            {"name": t[0].text.strip(), "license": t[1].text.strip(),
+             "classification": t[2].text.strip(), "scope": t[3].text.strip()}
+            for t in self._contract_sub_rows
+            if t[0].text.strip()  # only rows with a name filled in
+        ]
+
+        def _run():
+            try:
+                result = self.client.generate_contract(
+                    self.project_id,
+                    estimate_id=estimate_id,
+                    start_date=start_date,
+                    completion_date=end_date,
+                    subcontractors=subcontractors or None,
+                    project_site=site,
+                )
+                pdf_path = result.get("pdf_path", "")
+                def _ok(dt, p=pdf_path):
+                    self._contract_status_label.text = ""
+                    show_toast("Contract PDF ready.")
+                    if p:
+                        Clock.schedule_once(lambda dt2, _p=p: self._open_pdf(_p), 0.3)
+                Clock.schedule_once(_ok, 0)
+            except Exception as e:
+                err = str(e)
+                Clock.schedule_once(lambda dt, m=err: setattr(
+                    self._contract_status_label, "text", f"Error: {m}"), 0)
+
+        threading.Thread(target=_run, daemon=True).start()
+
     # ── Finance ───────────────────────────────────────────────────────────────
 
     def _load_finance_tab(self):
@@ -543,7 +911,6 @@ class ProjectScreen(Screen):
 
         actions = [
             ("Generate Project Summary PDF",  IOS_BLUE,   self._gen_project_summary),
-            ("Generate Contract PDF",         IOS_INDIGO, self._gen_contract),
             ("Generate Reconciliation PDF",   IOS_INDIGO, self._gen_reconciliation),
             ("Export to Quicken (QIF)",       IOS_BLUE,   self._export_quicken),
             ("Setup Cloud Storage Bucket",    IOS_TEAL,   self._setup_drive),
@@ -658,6 +1025,24 @@ class ProjectScreen(Screen):
         except Exception as e:
             show_toast(f"Cannot open: {e}")
 
+    def _open_in_chrome(self, url):
+        if not url:
+            show_toast("No Stripe URL — push to Stripe first.")
+            return
+        try:
+            if sys.platform == "darwin":
+                subprocess.Popen(["open", "-a", "Google Chrome", url])
+            elif sys.platform.startswith("linux"):
+                subprocess.Popen(["google-chrome", url])
+            else:
+                subprocess.Popen(["start", "chrome", url], shell=True)
+        except Exception as e:
+            # Fallback: open with default browser
+            try:
+                subprocess.Popen(["open", url])
+            except Exception:
+                show_toast(f"Cannot open browser: {e}")
+
     def _export_quicken(self):
         try:
             result = self.client.export_to_quicken(self.project_id)
@@ -716,6 +1101,12 @@ class ProjectScreen(Screen):
         self.manager.get_screen(screen).set_project(self.project_id)
         self.manager.current = screen
 
+    def _show_edit_estimate(self, estimate_id):
+        screen = self.manager.get_screen("estimate")
+        screen.project_id = self.project_id
+        screen.set_estimate(estimate_id)
+        self.manager.current = "estimate"
+
     def _delete_estimate(self, estimate_id):
         try:
             self.client.delete_estimate(estimate_id)
@@ -764,7 +1155,11 @@ class ProjectScreen(Screen):
         try:
             result = self.client.push_invoice_to_stripe(invoice_id)
             show_toast(f"Stripe: {result.get('status', 'created')}")
+            url = result.get("stripe_invoice_url", "")
+            # Refresh invoices tab so "Open in Chrome" button appears
             Clock.schedule_once(lambda dt: self._switch_tab("invoices"), 0.2)
+            if url:
+                Clock.schedule_once(lambda dt, u=url: self._open_in_chrome(u), 0.5)
         except Exception as e:
             show_toast(f"Stripe error: {e}")
 

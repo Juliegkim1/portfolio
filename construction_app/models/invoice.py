@@ -9,13 +9,14 @@ class Invoice:
     project_id: int
     estimate_id: Optional[int]        # linked estimate if any
     invoice_number: str
-    stripe_invoice_id: Optional[str]  # Stripe invoice ID after creation
-    stripe_invoice_url: Optional[str] # Stripe hosted invoice URL
+    stripe_invoice_id: Optional[str]      # Stripe invoice ID after creation
+    stripe_invoice_url: Optional[str]     # Stripe hosted invoice URL
     customer_name: str
     customer_email: str
     description: str
     amount: float
     tax_amount: float = 0.0
+    stripe_invoice_number: Optional[str] = None  # Stripe-assigned display number (e.g. "INV-0001")
     date_issued: Optional[date] = None
     due_date: Optional[date] = None
     status: str = "draft"             # draft | open | paid | void | uncollectible

@@ -4,6 +4,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
+from kivy.uix.spinner import Spinner
 from kivy.graphics import Color, RoundedRectangle
 from kivy.metrics import dp
 from kivy.clock import Clock
@@ -40,12 +41,30 @@ class InvoiceScreen(Screen):
         self.client = client
         self.project_id = None
         self._fields = {}
+        self._estimate_spinner = None
+        self._estimate_map = {}   # display label → estimate_id
         self._build()
 
     def set_project(self, project_id):
         self.project_id = project_id
         for ti in self._fields.values():
             ti.text = ""
+        # Populate estimate spinner with this project's estimates
+        try:
+            estimates = self.client.list_estimates(project_id)
+            options = ["None (no linked estimate)"] + [
+                f"{e['estimate_number']}  ${e['total']:,.2f}"
+                for e in estimates
+            ]
+            self._estimate_map = {"None (no linked estimate)": None}
+            for e in estimates:
+                key = f"{e['estimate_number']}  ${e['total']:,.2f}"
+                self._estimate_map[key] = e["id"]
+            if self._estimate_spinner:
+                self._estimate_spinner.values = options
+                self._estimate_spinner.text   = options[0]
+        except Exception:
+            pass
 
     def _build(self):
         root = BoxLayout(orientation="vertical")
@@ -75,7 +94,6 @@ class InvoiceScreen(Screen):
             ("Amount ($) *",  "amount",      "e.g. 5000.00"),
             ("Tax Amount ($)", "tax_amount", "e.g. 412.50"),
             ("Due Date",       "due_date",   "YYYY-MM-DD"),
-            ("Linked Estimate ID", "estimate_id", "optional"),
             ("Notes",          "notes",      "optional"),
         ]
 
@@ -93,6 +111,21 @@ class InvoiceScreen(Screen):
                 col.add_widget(ti)
             self._fields[key] = ti
             card.add_widget(col)
+
+        # ── Linked Estimate (Spinner) ─────────────────────────────────────────
+        est_col = BoxLayout(orientation="vertical", size_hint_y=None,
+                             height=dp(70), spacing=dp(4))
+        est_col.add_widget(_label("Linked Estimate"))
+        self._estimate_spinner = Spinner(
+            text="None (no linked estimate)",
+            values=["None (no linked estimate)"],
+            font_name=FONT, font_size=dp(13),
+            background_color=(0.94, 0.94, 0.96, 1),
+            background_normal="", color=(0, 0, 0, 1),
+            size_hint_y=None, height=dp(44),
+        )
+        est_col.add_widget(self._estimate_spinner)
+        card.add_widget(est_col)
 
         form.add_widget(card)
 
@@ -116,13 +149,14 @@ class InvoiceScreen(Screen):
             return
 
         try:
-            estimate_id_text = self._fields["estimate_id"].text.strip()
+            selected = self._estimate_spinner.text if self._estimate_spinner else ""
+            estimate_id = self._estimate_map.get(selected) if self._estimate_map else None
             result = self.client.create_invoice(
                 project_id=self.project_id,
                 description=desc,
                 amount=float(amt_text),
                 tax_amount=float(self._fields["tax_amount"].text or 0),
-                estimate_id=int(estimate_id_text) if estimate_id_text else None,
+                estimate_id=estimate_id,
                 due_date=self._fields["due_date"].text.strip(),
                 notes=self._fields["notes"].text.strip(),
             )

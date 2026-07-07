@@ -48,21 +48,73 @@ class EstimateScreen(Screen):
         super().__init__(**kwargs)
         self.client = client
         self.project_id = None
+        self._edit_mode = False
+        self._edit_id = None
         self._line_items = []
         self._ps_rows = []
         self._build()
 
     def set_project(self, project_id):
+        """Called when creating a new estimate."""
         self.project_id = project_id
+        self._edit_mode = False
+        self._edit_id = None
+        self._nav_title.text = "New Estimate"
+        self._tax_input.text = ""
+        self._permit_input.text = ""
+        self._discount_input.text = ""
         self._line_items = []
         self._items_layout.clear_widgets()
+        for _, desc_w, amt_w, date_w in self._ps_rows:
+            desc_w.text = ""
+            amt_w.text = ""
+            date_w.text = ""
+
+    def set_estimate(self, estimate_id):
+        """Called when editing an existing estimate — pre-fills all fields."""
+        data = self.client.get_estimate(estimate_id)
+        if not data or "error" in data:
+            show_toast("Could not load estimate.")
+            return
+        self._edit_mode = True
+        self._edit_id = estimate_id
+        self._nav_title.text = f"Edit {data['estimate_number']}"
+
+        # Pricing options
+        self._tax_input.text    = str(round(data.get("tax_rate", 0) * 100, 4)).rstrip("0").rstrip(".")
+        self._permit_input.text = str(data.get("permit_fees", 0) or "")
+        self._discount_input.text = str(data.get("discount", 0) or "")
+
+        # Line items
+        self._line_items = []
+        self._items_layout.clear_widgets()
+        for it in data.get("line_items", []):
+            self._add_line_item(
+                section=it.get("section", SECTIONS[0]),
+                description=it.get("description", ""),
+                qty=str(it.get("qty", 1)),
+                unit=it.get("unit", "ea"),
+                unit_price=str(it.get("unit_price", 0)),
+            )
+
+        # Payment schedule (fill up to 3 rows)
+        ps_list = data.get("payment_schedule", [])
+        for idx, (lbl, desc_w, amt_w, date_w) in enumerate(self._ps_rows):
+            if idx < len(ps_list):
+                desc_w.text  = ps_list[idx].get("description", "")
+                amt_w.text   = str(ps_list[idx].get("amount", ""))
+                date_w.text  = ps_list[idx].get("due_date", "") or ""
+            else:
+                desc_w.text = ""
+                amt_w.text  = ""
+                date_w.text = ""
 
     def _build(self):
         root = BoxLayout(orientation="vertical")
         with_bg(root, BG_SECONDARY)
 
-        bar, _ = nav_bar("New Estimate", back_label="Project",
-                          on_back=lambda *a: setattr(self.manager, 'current', 'project'))
+        bar, self._nav_title = nav_bar("New Estimate", back_label="Project",
+                                        on_back=lambda *a: setattr(self.manager, 'current', 'project'))
         root.add_widget(bar)
 
         scroll = ScrollView(do_scroll_x=False)
@@ -138,9 +190,9 @@ class EstimateScreen(Screen):
             form.add_widget(ps_card)
 
         # ── Save ─────────────────────────────────────────────────────────────
-        save_btn = ios_button("Save Estimate", height=dp(54), font_size=16, bold=True)
-        save_btn.bind(on_press=self._save_estimate)
-        form.add_widget(save_btn)
+        self._save_btn = ios_button("Save Estimate", height=dp(54), font_size=16, bold=True)
+        self._save_btn.bind(on_press=self._save_estimate)
+        form.add_widget(self._save_btn)
 
         scroll.add_widget(form)
         root.add_widget(scroll)
@@ -158,7 +210,7 @@ class EstimateScreen(Screen):
                   minimum_height=card.setter('height'))
         return card
 
-    def _add_line_item(self):
+    def _add_line_item(self, section=None, description="", qty="", unit="", unit_price=""):
         item_num = len(self._line_items) + 1
         card = self._white_card()
         row_data = {"card": card}
@@ -168,8 +220,9 @@ class EstimateScreen(Screen):
         header.add_widget(ios_label(f"Item {item_num}", size=13, bold=True,
                                      color=LABEL_PRIMARY, size_hint_x=None, width=dp(55)))
 
+        default_section = section if section in SECTIONS else SECTIONS[2]
         spinner = Spinner(
-            text=SECTIONS[2], values=SECTIONS,
+            text=default_section, values=SECTIONS,
             font_name=FONT, font_size=dp(12),
             background_color=(0.94, 0.94, 0.96, 1),
             background_normal='', color=(0, 0, 0, 1),
@@ -187,7 +240,7 @@ class EstimateScreen(Screen):
 
         # Description — full width
         card.add_widget(_field_label("Description"))
-        desc_ti = _field_input(hint="e.g. Demo existing tile flooring")
+        desc_ti = _field_input(hint="e.g. Demo existing tile flooring", text=description)
         row_data["description"] = desc_ti
         card.add_widget(desc_ti)
 
@@ -197,12 +250,14 @@ class EstimateScreen(Screen):
 
         total_lbl_ref = [None]
 
-        for label, key, hint, flex in [("Qty", "qty", "1", 0.2),
-                                        ("Unit", "unit", "ea", 0.2),
-                                        ("Unit Price $", "unit_price", "0.00", 0.35)]:
+        for label, key, hint, flex, prefill in [
+            ("Qty",          "qty",        "1",    0.2,  qty),
+            ("Unit",         "unit",       "ea",   0.2,  unit),
+            ("Unit Price $", "unit_price", "0.00", 0.35, unit_price),
+        ]:
             col = BoxLayout(orientation="vertical", spacing=dp(4), size_hint_x=flex)
             col.add_widget(_field_label(label))
-            ti = _field_input(hint=hint)
+            ti = _field_input(hint=hint, text=prefill)
             row_data[key] = ti
             col.add_widget(ti)
             nums_row.add_widget(col)
@@ -270,16 +325,31 @@ class EstimateScreen(Screen):
             except ValueError:
                 continue
 
+        tax_rate    = float(self._tax_input.text or 0) / 100
+        permit_fees = float(self._permit_input.text or 0)
+        discount    = float(self._discount_input.text or 0)
+
         try:
-            result = self.client.create_estimate(
-                project_id=self.project_id,
-                line_items=line_items,
-                payment_schedule=payment_schedule,
-                tax_rate=float(self._tax_input.text or 0) / 100,
-                permit_fees=float(self._permit_input.text or 0),
-                discount=float(self._discount_input.text or 0),
-            )
-            show_toast(f"Estimate {result['estimate_number']} — ${result['total']:,.2f}")
+            if self._edit_mode and self._edit_id:
+                result = self.client.update_estimate(
+                    self._edit_id,
+                    line_items=line_items,
+                    payment_schedule=payment_schedule,
+                    tax_rate=tax_rate,
+                    permit_fees=permit_fees,
+                    discount=discount,
+                )
+                show_toast(f"Estimate updated — ${result['total']:,.2f}")
+            else:
+                result = self.client.create_estimate(
+                    project_id=self.project_id,
+                    line_items=line_items,
+                    payment_schedule=payment_schedule,
+                    tax_rate=tax_rate,
+                    permit_fees=permit_fees,
+                    discount=discount,
+                )
+                show_toast(f"Estimate {result['estimate_number']} — ${result['total']:,.2f}")
             def _back(dt):
                 ps = self.manager.get_screen("project")
                 ps.load_project(self.project_id)

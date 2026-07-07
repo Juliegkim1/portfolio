@@ -661,10 +661,15 @@ class DocumentService:
     # ── Contract PDF (California B&P Code §7159) ──────────────────────────────
 
     def generate_contract_pdf(self, project: Project, estimate=None,
-                               wbs_items: list = None) -> str:
+                               wbs_items: list = None,
+                               start_date=None, completion_date=None,
+                               subcontractors: list = None,
+                               project_site: str = None) -> str:
         """
         Generate a California Home Improvement Contract PDF (B&P Code §7159).
         Scope and payment schedule drawn from estimate; timeline from WBS items.
+        Optional overrides: start_date, completion_date, subcontractors (list of
+        dicts with keys name/license/classification/scope), project_site.
         """
         from collections import defaultdict
         s = self._styles
@@ -742,12 +747,14 @@ class DocumentService:
         story.append(Spacer(1, 6))
 
         # Agreement date / contract number row
+        est_ref = (f"Est. {estimate.estimate_number}" if estimate and estimate.estimate_number
+                   else "____")
         ag_t = Table([[
             Paragraph("<b>Agreement Date:</b>", lbl_st),
             Paragraph(str(date.today()), body_st),
-            Paragraph("<b>Contract Number:</b>", lbl_st),
-            Paragraph(f"{project.id or '____'}", body_st),
-        ]], colWidths=[1.3*inch, 2.2*inch, 1.3*inch, 2.2*inch])
+            Paragraph("<b>Contract / Estimate #:</b>", lbl_st),
+            Paragraph(f"{project.id or '____'}  /  {est_ref}", body_st),
+        ]], colWidths=[1.3*inch, 2.2*inch, 1.5*inch, 2.0*inch])
         ag_t.setStyle(TableStyle([
             ("FONTSIZE", (0,0), (-1,-1), 8),
             ("GRID", (0,0), (-1,-1), 0.25, colors.HexColor("#dddddd")),
@@ -807,8 +814,10 @@ class DocumentService:
 
         # ── Project Information ───────────────────────────────────────────────
         _sec("PROJECT INFORMATION")
+        # _site set below near subcontractor disclosure; define early here
+        _site = project_site or project.property_address
         story.append(_field_table([
-            ("Project Site Address:", project.property_address),
+            ("Project Site Address:", _site),
         ], [1.6*inch, 5.4*inch]))
         story.append(Spacer(1, 4))
 
@@ -838,9 +847,11 @@ class DocumentService:
             small_st))
         story.append(Spacer(1, 4))
 
-        start_str = str(project.start_date) if project.start_date else "To be determined"
-        completion_str = (f"Approx. {dur_str} from start"
-                          if project.duration_days else "To be determined")
+        start_str = (str(start_date) if start_date
+                     else (str(project.start_date) if project.start_date else "To be determined"))
+        completion_str = (str(completion_date) if completion_date
+                          else (f"Approx. {dur_str} from start"
+                                if project.duration_days else "To be determined"))
         dates_t = Table([[
             Paragraph("<b>Approximate Start Date:</b>", lbl_st),
             Paragraph(start_str, body_st),
@@ -858,9 +869,13 @@ class DocumentService:
 
         # ── Subcontractor Disclosure ──────────────────────────────────────────
         _sec("SUBCONTRACTOR DISCLOSURE  (Required — AB 1327, Eff. Jan 1, 2026)")
+        subs = subcontractors or []
+        has_subs = bool(subs)
         story.append(Paragraph(
-            "☐  No subcontractors will be used on this project.<br/>"
-            "☐  One or more subcontractors will be used on this project. See list below:",
+            ("☑" if not has_subs else "☐") +
+            "  No subcontractors will be used on this project.<br/>" +
+            ("☑" if has_subs else "☐") +
+            "  One or more subcontractors will be used on this project. See list below:",
             body_st))
         sub_data = [[
             Paragraph("<b>Subcontractor Name</b>", lbl_st),
@@ -868,7 +883,16 @@ class DocumentService:
             Paragraph("<b>Classification</b>", lbl_st),
             Paragraph("<b>Scope of Work</b>", lbl_st),
         ]]
-        for _ in range(3):
+        for s_row in subs:
+            sub_data.append([
+                Paragraph(s_row.get("name", ""), body_st),
+                Paragraph(s_row.get("license", ""), body_st),
+                Paragraph(s_row.get("classification", ""), body_st),
+                Paragraph(s_row.get("scope", ""), body_st),
+            ])
+        # Always add at least 3 blank rows (pad if fewer)
+        blank_rows_needed = max(3 - len(subs), 1 if not subs else 0)
+        for _ in range(blank_rows_needed):
             sub_data.append(["", "", "", ""])
         sub_t = Table(sub_data, colWidths=[2.0*inch, 1.0*inch, 1.2*inch, 2.8*inch])
         sub_t.setStyle(TableStyle([

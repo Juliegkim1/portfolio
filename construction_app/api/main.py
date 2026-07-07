@@ -116,6 +116,13 @@ class EstimateCreate(BaseModel):
     permit_fees: float = 0
     discount: float = 0
 
+class EstimateUpdate(BaseModel):
+    line_items: List[LineItem]
+    payment_schedule: List[PaymentScheduleItem] = []
+    tax_rate: float = 0
+    permit_fees: float = 0
+    discount: float = 0
+
 
 @app.get("/api/v1/projects/{project_id}/estimates")
 def list_estimates(project_id: int):
@@ -143,6 +150,17 @@ def get_estimate(estimate_id: int):
 def generate_estimate_pdf(estimate_id: int):
     return client.generate_estimate_pdf(estimate_id)
 
+@app.put("/api/v1/estimates/{estimate_id}")
+def update_estimate(estimate_id: int, body: EstimateUpdate):
+    return client.update_estimate(
+        estimate_id,
+        line_items=[li.model_dump() for li in body.line_items],
+        payment_schedule=[ps.model_dump() for ps in body.payment_schedule],
+        tax_rate=body.tax_rate,
+        permit_fees=body.permit_fees,
+        discount=body.discount,
+    )
+
 @app.delete("/api/v1/estimates/{estimate_id}")
 def delete_estimate(estimate_id: int):
     return client.delete_estimate(estimate_id)
@@ -165,6 +183,7 @@ class InvoiceUpdate(BaseModel):
     tax_amount: float = 0
     due_date: str = ""
     notes: str = ""
+    estimate_id: Optional[int] = None
 
 
 @app.get("/api/v1/projects/{project_id}/invoices")
@@ -287,9 +306,24 @@ def setup_drive_folders(project_id: int):
 def generate_project_summary(project_id: int):
     return client.generate_project_summary(project_id)
 
+class ContractRequest(BaseModel):
+    estimate_id: Optional[int] = None
+    start_date: Optional[str] = None
+    completion_date: Optional[str] = None
+    subcontractors: Optional[List[Any]] = None
+    project_site: Optional[str] = None
+
 @app.post("/api/v1/projects/{project_id}/contract")
-def generate_contract(project_id: int):
-    return client.generate_contract(project_id)
+def generate_contract(project_id: int, body: Optional[ContractRequest] = None):
+    b = body or ContractRequest()
+    return client.generate_contract(
+        project_id,
+        estimate_id=b.estimate_id,
+        start_date=b.start_date,
+        completion_date=b.completion_date,
+        subcontractors=b.subcontractors,
+        project_site=b.project_site,
+    )
 
 @app.get("/api/v1/projects/{project_id}/pdfs")
 def list_project_pdfs(project_id: int):

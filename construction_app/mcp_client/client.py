@@ -121,13 +121,57 @@ class DirectClient:
         est = db.get_estimate(estimate_id)
         if not est:
             return {"error": "Estimate not found"}
-        return {"id": est.id, "estimate_number": est.estimate_number, "total": est.total,
-                "status": est.status, "date_issued": str(est.date_issued)}
+        return {
+            "id": est.id, "estimate_number": est.estimate_number,
+            "total": est.total, "subtotal": est.subtotal,
+            "tax_rate": est.tax_rate, "permit_fees": est.permit_fees,
+            "discount": est.discount, "status": est.status,
+            "date_issued": str(est.date_issued),
+            "line_items": [
+                {"section": i.section, "description": i.description,
+                 "qty": i.qty, "unit": i.unit, "unit_price": i.unit_price}
+                for i in est.line_items
+            ],
+            "payment_schedule": [
+                {"label": ps.label, "description": ps.description,
+                 "amount": ps.amount, "due_date": str(ps.due_date or "")}
+                for ps in est.payment_schedule
+            ],
+        }
 
     def list_estimates(self, project_id):
         return [{"id": e.id, "estimate_number": e.estimate_number,
                  "total": e.total, "status": e.status, "date_issued": str(e.date_issued)}
                 for e in db.list_estimates(project_id)]
+
+    def update_estimate(self, estimate_id, line_items, payment_schedule=None,
+                        tax_rate=0, permit_fees=0, discount=0):
+        est = db.get_estimate(estimate_id)
+        if not est:
+            return {"error": "Estimate not found"}
+        from datetime import date as _date
+        est.tax_rate    = tax_rate
+        est.permit_fees = permit_fees
+        est.discount    = discount
+        est.line_items  = [
+            EstimateLineItem(id=None, estimate_id=estimate_id, line_number=i + 1,
+                             section=it["section"], description=it["description"],
+                             qty=float(it.get("qty", 1)),
+                             unit=it.get("unit", "ea"),
+                             unit_price=float(it.get("unit_price", 0)))
+            for i, it in enumerate(line_items)
+        ]
+        est.payment_schedule = [
+            PaymentScheduleItem(id=None, estimate_id=estimate_id, payment_number=i + 1,
+                                label=ps["label"], description=ps.get("description", ""),
+                                amount=float(ps["amount"]),
+                                due_date=(_date.fromisoformat(ps["due_date"])
+                                          if ps.get("due_date") else None))
+            for i, ps in enumerate(payment_schedule or [])
+        ]
+        db.update_estimate(est)
+        return {"message": "Estimate updated.", "estimate_number": est.estimate_number,
+                "total": est.total}
 
     def delete_estimate(self, estimate_id):
         db.delete_estimate(estimate_id)
@@ -168,7 +212,10 @@ class DirectClient:
 
     def list_invoices(self, project_id):
         return [{"id": i.id, "invoice_number": i.invoice_number, "total": i.total,
-                 "status": i.status, "due_date": str(i.due_date or "")}
+                 "status": i.status, "due_date": str(i.due_date or ""),
+                 "stripe_invoice_url": i.stripe_invoice_url or "",
+                 "stripe_invoice_id":  i.stripe_invoice_id or "",
+                 "stripe_invoice_number": i.stripe_invoice_number or ""}
                 for i in db.list_invoices(project_id)]
 
     def delete_invoice(self, invoice_id):
@@ -191,9 +238,10 @@ class DirectClient:
         return {"pdf_path": pdf_path, "drive_link": drive_link}
 
     def update_invoice(self, invoice_id, description, amount, tax_amount=0,
-                       due_date="", notes=""):
+                       due_date="", notes="", estimate_id=None):
         db.update_invoice(invoice_id, description, float(amount), float(tax_amount),
-                          due_date or None, notes)
+                          due_date or None, notes,
+                          estimate_id=int(estimate_id) if estimate_id else None)
         return {"message": "Invoice updated."}
 
     def get_invoice(self, invoice_id):
@@ -201,6 +249,7 @@ class DirectClient:
         if not inv:
             return {"error": "Invoice not found"}
         return {"id": inv.id, "invoice_number": inv.invoice_number,
+                "estimate_id": inv.estimate_id,
                 "description": inv.description, "amount": inv.amount,
                 "tax_amount": inv.tax_amount, "total": inv.total,
                 "due_date": str(inv.due_date or ""), "status": inv.status,
@@ -212,8 +261,13 @@ class DirectClient:
         inv = db.get_invoice(invoice_id)
         project = db.get_project(inv.project_id)
         result = stripe_svc.create_invoice(project, inv, days_until_due=days_until_due)
-        db.update_invoice_stripe(inv.id, result["stripe_invoice_id"],
-                                  result["stripe_invoice_url"], result["status"])
+        db.update_invoice_stripe(
+            inv.id,
+            result["stripe_invoice_id"],
+            result["stripe_invoice_url"],
+            result["status"],
+            stripe_invoice_number=result.get("stripe_invoice_number", ""),
+        )
         return result
 
     def sync_invoice_status(self, invoice_id):
@@ -307,15 +361,23 @@ class DirectClient:
                 pass
         return {"pdf_path": pdf_path, "drive_link": drive_link}
 
-    def generate_contract(self, project_id):
+    def generate_contract(self, project_id, estimate_id=None,
+                           start_date=None, completion_date=None,
+                           subcontractors=None, project_site=None):
         """Generate a contract PDF from project overview, estimates, and work plan."""
         project = db.get_project(project_id)
         estimates = db.list_estimates(project_id)
         wbs_items = db.list_wbs(project_id)
-        # Prefer accepted estimate; fall back to first estimate
-        accepted = [e for e in estimates if e.status == "accepted"]
-        estimate = accepted[0] if accepted else (estimates[0] if estimates else None)
-        pdf_path = doc_svc.generate_contract_pdf(project, estimate, wbs_items)
+        if estimate_id:
+            estimate = next((e for e in estimates if e.id == estimate_id), None)
+        else:
+            accepted = [e for e in estimates if e.status == "accepted"]
+            estimate = accepted[0] if accepted else (estimates[0] if estimates else None)
+        pdf_path = doc_svc.generate_contract_pdf(
+            project, estimate, wbs_items,
+            start_date=start_date, completion_date=completion_date,
+            subcontractors=subcontractors, project_site=project_site,
+        )
         drive_link = None
         if project.drive_folder_id:
             try:
@@ -471,6 +533,12 @@ class HTTPClient:
     def generate_estimate_pdf(self, estimate_id):
         return self._post(f"/api/v1/estimates/{estimate_id}/pdf")
 
+    def update_estimate(self, estimate_id, line_items, payment_schedule=None,
+                        tax_rate=0, permit_fees=0, discount=0):
+        return self._put(f"/api/v1/estimates/{estimate_id}", dict(
+            line_items=line_items, payment_schedule=payment_schedule or [],
+            tax_rate=tax_rate, permit_fees=permit_fees, discount=discount))
+
     def delete_estimate(self, estimate_id):
         return self._delete(f"/api/v1/estimates/{estimate_id}")
 
@@ -492,9 +560,10 @@ class HTTPClient:
         return self._delete(f"/api/v1/invoices/{invoice_id}")
 
     def update_invoice(self, invoice_id, description, amount, tax_amount=0,
-                       due_date="", notes=""):
+                       due_date="", notes="", estimate_id=None):
         return self._put(f"/api/v1/invoices/{invoice_id}", dict(description=description,
-            amount=amount, tax_amount=tax_amount, due_date=due_date, notes=notes))
+            amount=amount, tax_amount=tax_amount, due_date=due_date, notes=notes,
+            estimate_id=estimate_id))
 
     def get_invoice(self, invoice_id):
         return self._get(f"/api/v1/invoices/{invoice_id}")
@@ -526,8 +595,21 @@ class HTTPClient:
     def generate_project_summary(self, project_id):
         return self._post(f"/api/v1/projects/{project_id}/summary")
 
-    def generate_contract(self, project_id):
-        return self._post(f"/api/v1/projects/{project_id}/contract")
+    def generate_contract(self, project_id, estimate_id=None,
+                           start_date=None, completion_date=None,
+                           subcontractors=None, project_site=None):
+        payload = {}
+        if estimate_id is not None:
+            payload["estimate_id"] = estimate_id
+        if start_date:
+            payload["start_date"] = start_date
+        if completion_date:
+            payload["completion_date"] = completion_date
+        if subcontractors:
+            payload["subcontractors"] = subcontractors
+        if project_site:
+            payload["project_site"] = project_site
+        return self._post(f"/api/v1/projects/{project_id}/contract", payload or None)
 
     def list_project_pdfs(self, project_id):
         return self._get(f"/api/v1/projects/{project_id}/pdfs")

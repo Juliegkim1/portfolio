@@ -249,6 +249,7 @@ class Database:
         """Add columns that didn't exist in earlier schema versions."""
         migrations = [
             "ALTER TABLE projects ADD COLUMN duration_days INTEGER DEFAULT NULL",
+            "ALTER TABLE invoices ADD COLUMN stripe_invoice_number TEXT DEFAULT NULL",
         ]
         with self._conn() as conn:
             cur = conn.cursor()
@@ -404,6 +405,33 @@ class Database:
         with self._conn() as conn:
             conn.cursor().execute(self._q("DELETE FROM estimates WHERE id=?"), (estimate_id,))
 
+    def update_estimate(self, est: Estimate):
+        """Replace all line items and payment schedule; update pricing fields."""
+        upd = self._q(
+            "UPDATE estimates SET tax_rate=?, permit_fees=?, discount=? WHERE id=?")
+        del_items = self._q("DELETE FROM estimate_line_items WHERE estimate_id=?")
+        del_ps    = self._q("DELETE FROM payment_schedule WHERE estimate_id=?")
+        ins_item  = self._q(
+            """INSERT INTO estimate_line_items
+               (estimate_id, section, line_number, description, qty, unit, unit_price)
+               VALUES (?,?,?,?,?,?,?)""")
+        ins_ps    = self._q(
+            """INSERT INTO payment_schedule
+               (estimate_id, payment_number, label, description, due_date, amount, status)
+               VALUES (?,?,?,?,?,?,?)""")
+        with self._conn() as conn:
+            cur = conn.cursor()
+            cur.execute(upd, (est.tax_rate, est.permit_fees, est.discount, est.id))
+            cur.execute(del_items, (est.id,))
+            cur.execute(del_ps, (est.id,))
+            for item in est.line_items:
+                cur.execute(ins_item, (est.id, item.section, item.line_number,
+                                       item.description, item.qty, item.unit, item.unit_price))
+            for ps in est.payment_schedule:
+                cur.execute(ins_ps, (est.id, ps.payment_number, ps.label, ps.description,
+                                     ps.due_date.isoformat() if ps.due_date else None,
+                                     ps.amount, ps.status))
+
     def update_estimate_drive_file(self, estimate_id: int, file_id: str):
         with self._conn() as conn:
             conn.cursor().execute(self._q("UPDATE estimates SET drive_file_id=? WHERE id=?"), (file_id, estimate_id))
@@ -478,11 +506,15 @@ class Database:
             cur.execute(self._q("SELECT * FROM invoices WHERE project_id=? ORDER BY created_at DESC"), (project_id,))
             return [self._row_to_invoice(r) for r in cur.fetchall()]
 
-    def update_invoice_stripe(self, invoice_id: int, stripe_id: str, stripe_url: str, status: str):
+    def update_invoice_stripe(self, invoice_id: int, stripe_id: str, stripe_url: str,
+                               status: str, stripe_invoice_number: str = ""):
         with self._conn() as conn:
             conn.cursor().execute(
-                self._q("UPDATE invoices SET stripe_invoice_id=?, stripe_invoice_url=?, status=? WHERE id=?"),
-                (stripe_id, stripe_url, status, invoice_id),
+                self._q("""UPDATE invoices
+                           SET stripe_invoice_id=?, stripe_invoice_url=?,
+                               status=?, stripe_invoice_number=?
+                           WHERE id=?"""),
+                (stripe_id, stripe_url, status, stripe_invoice_number or None, invoice_id),
             )
 
     def update_invoice_status(self, invoice_id: int, status: str, payment_date: Optional[str] = None):
@@ -493,12 +525,13 @@ class Database:
             )
 
     def update_invoice(self, invoice_id: int, description: str, amount: float,
-                       tax_amount: float, due_date: Optional[str], notes: str):
+                       tax_amount: float, due_date: Optional[str], notes: str,
+                       estimate_id: Optional[int] = None):
         with self._conn() as conn:
             conn.cursor().execute(
                 self._q("""UPDATE invoices SET description=?, amount=?, tax_amount=?,
-                   due_date=?, notes=? WHERE id=?"""),
-                (description, amount, tax_amount, due_date, notes, invoice_id),
+                   due_date=?, notes=?, estimate_id=? WHERE id=?"""),
+                (description, amount, tax_amount, due_date, notes, estimate_id, invoice_id),
             )
 
     def delete_invoice(self, invoice_id: int):
@@ -514,6 +547,7 @@ class Database:
             id=row["id"], project_id=row["project_id"], estimate_id=row["estimate_id"],
             invoice_number=row["invoice_number"], stripe_invoice_id=row["stripe_invoice_id"],
             stripe_invoice_url=row["stripe_invoice_url"],
+            stripe_invoice_number=row["stripe_invoice_number"] if "stripe_invoice_number" in row.keys() else None,
             customer_name=row["customer_name"], customer_email=row["customer_email"],
             description=row["description"], amount=row["amount"], tax_amount=row["tax_amount"],
             date_issued=date.fromisoformat(row["date_issued"]) if row["date_issued"] else None,
