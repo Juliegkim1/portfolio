@@ -47,6 +47,9 @@ class Estimate:
     payment_schedule: List[PaymentScheduleItem] = field(default_factory=list)
     # Google Drive file ID after upload
     drive_file_id: Optional[str] = None
+    # Local path to the originally-uploaded QuickBooks estimate PDF, if this
+    # estimate was created from an upload rather than entered manually.
+    source_pdf_path: Optional[str] = None
     created_at: Optional[str] = None
 
     @property

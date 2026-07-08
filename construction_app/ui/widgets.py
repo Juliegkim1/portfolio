@@ -6,6 +6,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.textinput import TextInput
+from kivy.uix.spinner import Spinner
 from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
 from kivy.graphics import Color, RoundedRectangle, Rectangle, Line
@@ -368,6 +369,88 @@ def date_input(hint="YYYY-MM-DD", text="", height=INPUT_HEIGHT):
     container.add_widget(ti)
     container.add_widget(cal_btn)
     return container, ti
+
+
+# ── Line item row ─────────────────────────────────────────────────────────────
+
+def line_item_row(index, description="", qty="", unit="", unit_price="",
+                   section_options=None, section_default=None, on_remove=None):
+    """
+    A card with description / qty / unit / unit-price inputs and a live total,
+    for building line-item forms (change orders, and similar screens).
+    If section_options is given, a section Spinner is included and the result
+    is available under row_data["section"].
+    Returns (card, row_data) — row_data holds the input widgets (and "card").
+    """
+    card = shadow_card()
+    row_data = {"card": card}
+
+    header = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(8))
+    header.add_widget(ios_label(f"Item {index}", size=13, bold=True,
+                                 color=LABEL_PRIMARY, size_hint_x=None, width=dp(55)))
+
+    if section_options:
+        default = section_default if section_default in section_options else section_options[0]
+        spinner = Spinner(
+            text=default, values=section_options,
+            font_name=FONT, font_size=dp(12),
+            background_color=(0.94, 0.94, 0.96, 1),
+            background_normal='', color=(0, 0, 0, 1),
+            size_hint_y=None, height=dp(34),
+        )
+        row_data["section"] = spinner
+        header.add_widget(spinner)
+    else:
+        header.add_widget(BoxLayout())
+
+    del_btn = ios_button("✕ Remove", color=IOS_RED, height=dp(32),
+                          font_size=12, radius=dp(8),
+                          size_hint_x=None, width=dp(90))
+    if on_remove:
+        del_btn.bind(on_press=lambda *a: on_remove(card, row_data))
+    header.add_widget(del_btn)
+    card.add_widget(header)
+
+    card.add_widget(ios_label("Description", size=12, color=LABEL_SECONDARY,
+                               size_hint_y=None, height=dp(20)))
+    desc_ti = ios_input(hint="e.g. Add tile backsplash", text=description)
+    row_data["description"] = desc_ti
+    card.add_widget(desc_ti)
+
+    nums_row = BoxLayout(size_hint_y=None, height=dp(68), spacing=dp(8))
+    for label, key, hint, flex, prefill in [
+        ("Qty",          "qty",        "1",    0.2,  qty),
+        ("Unit",         "unit",       "ea",   0.2,  unit),
+        ("Unit Price $", "unit_price", "0.00", 0.35, unit_price),
+    ]:
+        col = BoxLayout(orientation="vertical", spacing=dp(4), size_hint_x=flex)
+        col.add_widget(ios_label(label, size=11, color=LABEL_SECONDARY,
+                                  size_hint_y=None, height=dp(18)))
+        ti = ios_input(hint=hint, text=str(prefill) if prefill else "")
+        row_data[key] = ti
+        col.add_widget(ti)
+        nums_row.add_widget(col)
+
+    total_col = BoxLayout(orientation="vertical", spacing=dp(4), size_hint_x=0.25)
+    total_col.add_widget(ios_label("Total $", size=11, color=LABEL_SECONDARY,
+                                    size_hint_y=None, height=dp(18)))
+    total_lbl = ios_label("$0.00", size=15, bold=True, color=IOS_BLUE,
+                           halign="center", size_hint_y=None, height=INPUT_HEIGHT)
+    row_data["total_lbl"] = total_lbl
+    total_col.add_widget(total_lbl)
+    nums_row.add_widget(total_col)
+    card.add_widget(nums_row)
+
+    def _update(*a):
+        try:
+            t = float(row_data["qty"].text or 0) * float(row_data["unit_price"].text or 0)
+            total_lbl.text = f"${t:,.2f}"
+        except ValueError:
+            pass
+    row_data["qty"].bind(text=_update)
+    row_data["unit_price"].bind(text=_update)
+
+    return card, row_data
 
 
 # ── Edit popup ────────────────────────────────────────────────────────────────

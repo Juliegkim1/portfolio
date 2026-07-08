@@ -1,10 +1,12 @@
+import json
 import sqlite3
 from contextlib import contextmanager
 from datetime import date
 from typing import List, Optional
 
 from config import DATABASE_URL
-from models import Project, Estimate, EstimateLineItem, PaymentScheduleItem, Invoice, WorkBreakdownItem
+from models import (Project, Estimate, EstimateLineItem, PaymentScheduleItem, Invoice,
+                     WorkBreakdownItem, Contract, ChangeOrder)
 
 
 class Database:
@@ -145,6 +147,42 @@ class Database:
                     status TEXT DEFAULT 'not_started',
                     notes TEXT DEFAULT ''
                 )""",
+                """CREATE TABLE IF NOT EXISTS contracts (
+                    id SERIAL PRIMARY KEY,
+                    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                    estimate_id INTEGER REFERENCES estimates(id),
+                    contract_number TEXT NOT NULL,
+                    pdf_path TEXT,
+                    drive_file_id TEXT,
+                    start_date TEXT,
+                    completion_date TEXT,
+                    project_site TEXT,
+                    subcontractors TEXT DEFAULT '[]',
+                    status TEXT DEFAULT 'draft',
+                    adobe_agreement_id TEXT,
+                    adobe_agreement_status TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )""",
+                """CREATE TABLE IF NOT EXISTS change_orders (
+                    id SERIAL PRIMARY KEY,
+                    contract_id INTEGER NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
+                    change_order_number TEXT NOT NULL,
+                    description TEXT DEFAULT '',
+                    line_items TEXT DEFAULT '[]',
+                    price_delta REAL DEFAULT 0,
+                    days_delta INTEGER DEFAULT 0,
+                    status TEXT DEFAULT 'draft',
+                    pdf_path TEXT,
+                    drive_file_id TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )""",
+                """CREATE TABLE IF NOT EXISTS adobe_tokens (
+                    id SERIAL PRIMARY KEY,
+                    access_token TEXT,
+                    refresh_token TEXT,
+                    expires_at TEXT,
+                    api_access_point TEXT
+                )""",
             ]
             with self._conn() as conn:
                 cur = conn.cursor()
@@ -243,6 +281,45 @@ class Database:
                         status TEXT DEFAULT 'not_started',
                         notes TEXT DEFAULT ''
                     );
+
+                    CREATE TABLE IF NOT EXISTS contracts (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                        estimate_id INTEGER REFERENCES estimates(id),
+                        contract_number TEXT NOT NULL,
+                        pdf_path TEXT,
+                        drive_file_id TEXT,
+                        start_date TEXT,
+                        completion_date TEXT,
+                        project_site TEXT,
+                        subcontractors TEXT DEFAULT '[]',
+                        status TEXT DEFAULT 'draft',
+                        adobe_agreement_id TEXT,
+                        adobe_agreement_status TEXT,
+                        created_at TEXT DEFAULT (datetime('now'))
+                    );
+
+                    CREATE TABLE IF NOT EXISTS change_orders (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        contract_id INTEGER NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
+                        change_order_number TEXT NOT NULL,
+                        description TEXT DEFAULT '',
+                        line_items TEXT DEFAULT '[]',
+                        price_delta REAL DEFAULT 0,
+                        days_delta INTEGER DEFAULT 0,
+                        status TEXT DEFAULT 'draft',
+                        pdf_path TEXT,
+                        drive_file_id TEXT,
+                        created_at TEXT DEFAULT (datetime('now'))
+                    );
+
+                    CREATE TABLE IF NOT EXISTS adobe_tokens (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        access_token TEXT,
+                        refresh_token TEXT,
+                        expires_at TEXT,
+                        api_access_point TEXT
+                    );
                 """)
 
     def _migrate(self):
@@ -250,6 +327,7 @@ class Database:
         migrations = [
             "ALTER TABLE projects ADD COLUMN duration_days INTEGER DEFAULT NULL",
             "ALTER TABLE invoices ADD COLUMN stripe_invoice_number TEXT DEFAULT NULL",
+            "ALTER TABLE estimates ADD COLUMN source_pdf_path TEXT DEFAULT NULL",
         ]
         with self._conn() as conn:
             cur = conn.cursor()
@@ -344,8 +422,8 @@ class Database:
         ins_est = self._q(
             """INSERT INTO estimates
                (project_id, estimate_number, date_issued, valid_until, prepared_by,
-                tax_rate, permit_fees, discount, status)
-               VALUES (?,?,?,?,?,?,?,?,?)"""
+                tax_rate, permit_fees, discount, status, source_pdf_path)
+               VALUES (?,?,?,?,?,?,?,?,?,?)"""
             + (" RETURNING id" if self._is_pg else "")
         )
         ins_item = self._q(
@@ -363,7 +441,7 @@ class Database:
             cur.execute(ins_est, (est.project_id, est.estimate_number,
                                   est.date_issued.isoformat(), est.valid_until.isoformat(),
                                   est.prepared_by, est.tax_rate, est.permit_fees,
-                                  est.discount, est.status))
+                                  est.discount, est.status, est.source_pdf_path))
             est_id = self._lastid(cur)
             for item in est.line_items:
                 cur.execute(ins_item, (est_id, item.section, item.line_number,
@@ -468,7 +546,9 @@ class Database:
             tax_rate=row["tax_rate"], permit_fees=row["permit_fees"],
             discount=row["discount"], status=row["status"],
             line_items=items, payment_schedule=schedule,
-            drive_file_id=row["drive_file_id"], created_at=row["created_at"],
+            drive_file_id=row["drive_file_id"],
+            source_pdf_path=row["source_pdf_path"] if "source_pdf_path" in row.keys() else None,
+            created_at=row["created_at"],
         )
 
     # ── Invoices ──────────────────────────────────────────────────────────────
@@ -610,3 +690,149 @@ class Database:
     def delete_wbs_item(self, item_id: int):
         with self._conn() as conn:
             conn.cursor().execute(self._q("DELETE FROM work_breakdown WHERE id=?"), (item_id,))
+
+    # ── Contracts ────────────────────────────────────────────────────────────
+
+    def create_contract(self, c: Contract) -> int:
+        sql = self._q(
+            """INSERT INTO contracts
+               (project_id, estimate_id, contract_number, pdf_path, drive_file_id,
+                start_date, completion_date, project_site, subcontractors, status)
+               VALUES (?,?,?,?,?,?,?,?,?,?)"""
+            + (" RETURNING id" if self._is_pg else "")
+        )
+        with self._conn() as conn:
+            cur = conn.cursor()
+            cur.execute(sql, (c.project_id, c.estimate_id, c.contract_number, c.pdf_path,
+                              c.drive_file_id, c.start_date, c.completion_date, c.project_site,
+                              json.dumps(c.subcontractors or []), c.status))
+            return self._lastid(cur)
+
+    def get_contract(self, contract_id: int) -> Optional[Contract]:
+        with self._conn() as conn:
+            cur = conn.cursor()
+            cur.execute(self._q("SELECT * FROM contracts WHERE id=?"), (contract_id,))
+            row = cur.fetchone()
+            return self._row_to_contract(row) if row else None
+
+    def get_contract_by_project(self, project_id: int) -> Optional[Contract]:
+        """Most recently created contract for a project, or None if none exists yet."""
+        with self._conn() as conn:
+            cur = conn.cursor()
+            cur.execute(self._q(
+                "SELECT * FROM contracts WHERE project_id=? ORDER BY id DESC"), (project_id,))
+            row = cur.fetchone()
+            return self._row_to_contract(row) if row else None
+
+    def list_contracts(self, project_id: int) -> List[Contract]:
+        with self._conn() as conn:
+            cur = conn.cursor()
+            cur.execute(self._q(
+                "SELECT * FROM contracts WHERE project_id=? ORDER BY id DESC"), (project_id,))
+            return [self._row_to_contract(r) for r in cur.fetchall()]
+
+    def update_contract_pdf(self, contract_id: int, pdf_path: str, drive_file_id: Optional[str] = None):
+        with self._conn() as conn:
+            conn.cursor().execute(
+                self._q("UPDATE contracts SET pdf_path=?, drive_file_id=? WHERE id=?"),
+                (pdf_path, drive_file_id, contract_id),
+            )
+
+    def update_contract(self, contract_id: int, estimate_id: Optional[int], pdf_path: str,
+                         drive_file_id: Optional[str], start_date: Optional[str],
+                         completion_date: Optional[str], project_site: Optional[str],
+                         subcontractors: list):
+        """Full-field update, used when re-generating a still-draft contract in place."""
+        with self._conn() as conn:
+            conn.cursor().execute(
+                self._q("""UPDATE contracts SET estimate_id=?, pdf_path=?, drive_file_id=?,
+                   start_date=?, completion_date=?, project_site=?, subcontractors=?
+                   WHERE id=?"""),
+                (estimate_id, pdf_path, drive_file_id, start_date, completion_date,
+                 project_site, json.dumps(subcontractors or []), contract_id),
+            )
+
+    def update_contract_adobe_status(self, contract_id: int, status: str,
+                                      adobe_agreement_id: Optional[str] = None,
+                                      adobe_agreement_status: Optional[str] = None):
+        with self._conn() as conn:
+            conn.cursor().execute(
+                self._q("""UPDATE contracts
+                           SET status=?,
+                               adobe_agreement_id=COALESCE(?, adobe_agreement_id),
+                               adobe_agreement_status=?
+                           WHERE id=?"""),
+                (status, adobe_agreement_id, adobe_agreement_status, contract_id),
+            )
+
+    def _row_to_contract(self, row) -> Contract:
+        return Contract(
+            id=row["id"], project_id=row["project_id"], estimate_id=row["estimate_id"],
+            contract_number=row["contract_number"], pdf_path=row["pdf_path"],
+            drive_file_id=row["drive_file_id"], start_date=row["start_date"],
+            completion_date=row["completion_date"], project_site=row["project_site"],
+            subcontractors=json.loads(row["subcontractors"] or "[]"),
+            status=row["status"], adobe_agreement_id=row["adobe_agreement_id"],
+            adobe_agreement_status=row["adobe_agreement_status"], created_at=row["created_at"],
+        )
+
+    # ── Change Orders ────────────────────────────────────────────────────────
+
+    def create_change_order(self, co: ChangeOrder) -> int:
+        sql = self._q(
+            """INSERT INTO change_orders
+               (contract_id, change_order_number, description, line_items,
+                price_delta, days_delta, status, pdf_path, drive_file_id)
+               VALUES (?,?,?,?,?,?,?,?,?)"""
+            + (" RETURNING id" if self._is_pg else "")
+        )
+        with self._conn() as conn:
+            cur = conn.cursor()
+            cur.execute(sql, (co.contract_id, co.change_order_number, co.description,
+                              json.dumps(co.line_items or []), co.price_delta, co.days_delta,
+                              co.status, co.pdf_path, co.drive_file_id))
+            return self._lastid(cur)
+
+    def list_change_orders(self, contract_id: int) -> List[ChangeOrder]:
+        with self._conn() as conn:
+            cur = conn.cursor()
+            cur.execute(self._q(
+                "SELECT * FROM change_orders WHERE contract_id=? ORDER BY created_at DESC"),
+                (contract_id,))
+            return [self._row_to_change_order(r) for r in cur.fetchall()]
+
+    def _row_to_change_order(self, row) -> ChangeOrder:
+        return ChangeOrder(
+            id=row["id"], contract_id=row["contract_id"],
+            change_order_number=row["change_order_number"], description=row["description"],
+            line_items=json.loads(row["line_items"] or "[]"),
+            price_delta=row["price_delta"], days_delta=row["days_delta"],
+            status=row["status"], pdf_path=row["pdf_path"], drive_file_id=row["drive_file_id"],
+            created_at=row["created_at"],
+        )
+
+    # ── Adobe Tokens ─────────────────────────────────────────────────────────
+    # Single-tenant app (one Adobe Acrobat Sign account for Cabrera Construction),
+    # so a single stored token row is sufficient — no per-user token table.
+
+    def get_adobe_token(self) -> Optional[dict]:
+        with self._conn() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM adobe_tokens ORDER BY id DESC LIMIT 1")
+            row = cur.fetchone()
+            if not row:
+                return None
+            return {"access_token": row["access_token"], "refresh_token": row["refresh_token"],
+                    "expires_at": row["expires_at"], "api_access_point": row["api_access_point"]}
+
+    def save_adobe_token(self, access_token: str, refresh_token: str, expires_at: str,
+                          api_access_point: str):
+        with self._conn() as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM adobe_tokens")
+            cur.execute(
+                self._q("INSERT INTO adobe_tokens "
+                        "(access_token, refresh_token, expires_at, api_access_point) "
+                        "VALUES (?,?,?,?)"),
+                (access_token, refresh_token, expires_at, api_access_point),
+            )

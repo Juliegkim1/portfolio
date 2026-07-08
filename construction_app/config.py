@@ -29,6 +29,15 @@ GCS_CREDENTIALS_FILE = os.getenv("GCS_CREDENTIALS_FILE", "")
 # Quicken — file-based integration (QIF/OFX)
 QUICKEN_EXPORT_DIR = os.getenv("QUICKEN_EXPORT_DIR", str(Path.home() / "Documents" / "Quicken"))
 
+# Adobe Acrobat Sign — OAuth + agreement API
+ADOBE_CLIENT_ID = os.getenv("ADOBE_CLIENT_ID", "")
+ADOBE_CLIENT_SECRET = os.getenv("ADOBE_CLIENT_SECRET", "")
+ADOBE_REDIRECT_URI = os.getenv("ADOBE_REDIRECT_URI", "http://localhost:8000/api/v1/adobe/oauth/callback")
+
 # PDF output (local cache before uploading)
 PDF_OUTPUT_DIR = str(BASE_DIR / "output")
 os.makedirs(PDF_OUTPUT_DIR, exist_ok=True)
+
+# Uploaded estimate PDFs (local cache before parsing/cloud upload)
+UPLOAD_DIR = str(BASE_DIR / "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)

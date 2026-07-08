@@ -2,12 +2,15 @@
 Cabrera Construction — FastAPI backend for GCP Cloud Run.
 All business logic lives in DirectClient; this file is the HTTP layer.
 """
+import os
 import sys
+import tempfile
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from typing import Optional, List, Any
 
@@ -115,6 +118,7 @@ class EstimateCreate(BaseModel):
     tax_rate: float = 0
     permit_fees: float = 0
     discount: float = 0
+    source_pdf_path: Optional[str] = None
 
 class EstimateUpdate(BaseModel):
     line_items: List[LineItem]
@@ -137,7 +141,19 @@ def create_estimate(body: EstimateCreate):
         tax_rate=body.tax_rate,
         permit_fees=body.permit_fees,
         discount=body.discount,
+        source_pdf_path=body.source_pdf_path,
     )
+
+@app.post("/api/v1/estimates/parse")
+def parse_estimate(file: UploadFile = File(...)):
+    """Best-effort scope-of-work extraction from an uploaded estimate PDF."""
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        tmp.write(file.file.read())
+        tmp_path = tmp.name
+    try:
+        return client.parse_estimate_pdf(tmp_path)
+    finally:
+        os.remove(tmp_path)
 
 @app.get("/api/v1/estimates/{estimate_id}")
 def get_estimate(estimate_id: int):
@@ -328,3 +344,62 @@ def generate_contract(project_id: int, body: Optional[ContractRequest] = None):
 @app.get("/api/v1/projects/{project_id}/pdfs")
 def list_project_pdfs(project_id: int):
     return client.list_project_pdfs(project_id)
+
+@app.get("/api/v1/projects/{project_id}/contract")
+def get_contract(project_id: int):
+    """The most recently generated contract for this project, or null if none yet."""
+    return client.get_contract(project_id)
+
+
+# ── Adobe Acrobat Sign ──────────────────────────────────────────────────────
+
+@app.get("/api/v1/adobe/authorize")
+def adobe_authorize():
+    return client.get_adobe_auth_url()
+
+@app.get("/api/v1/adobe/oauth/callback", include_in_schema=False)
+def adobe_oauth_callback(code: str):
+    client.exchange_adobe_code(code)
+    return HTMLResponse(
+        "<html><body style='font-family: sans-serif; text-align:center; padding:60px;'>"
+        "<h2>Adobe Acrobat Sign authorized.</h2>"
+        "<p>You can close this window and return to the app.</p>"
+        "</body></html>")
+
+@app.get("/api/v1/adobe/status")
+def adobe_status():
+    return client.get_adobe_status()
+
+@app.post("/api/v1/contracts/{contract_id}/adobe/send")
+def send_contract_for_signature(contract_id: int):
+    return client.send_contract_for_signature(contract_id)
+
+@app.post("/api/v1/contracts/{contract_id}/adobe/sync")
+def sync_contract_status(contract_id: int):
+    return client.sync_contract_status(contract_id)
+
+
+# ── Change Orders ────────────────────────────────────────────────────────────
+
+class ChangeOrderLineItem(BaseModel):
+    description: str
+    qty: float = 1
+    unit: str = "ea"
+    unit_price: float = 0
+
+class ChangeOrderCreate(BaseModel):
+    description: str = ""
+    line_items: List[ChangeOrderLineItem] = []
+    days_delta: int = 0
+
+@app.post("/api/v1/contracts/{contract_id}/change-orders")
+def create_change_order(contract_id: int, body: ChangeOrderCreate):
+    return client.create_change_order(
+        contract_id, description=body.description,
+        line_items=[li.model_dump() for li in body.line_items],
+        days_delta=body.days_delta,
+    )
+
+@app.get("/api/v1/contracts/{contract_id}/change-orders")
+def list_change_orders(contract_id: int):
+    return client.list_change_orders(contract_id)

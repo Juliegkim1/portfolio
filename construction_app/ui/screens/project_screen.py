@@ -364,6 +364,8 @@ class ProjectScreen(Screen):
                             size_hint_y=None)
         layout.bind(minimum_height=layout.setter("height"))
 
+        layout.add_widget(self._upload_card())
+
         new_btn = ios_button("+ New Estimate", height=dp(50), font_size=15)
         new_btn.bind(on_press=lambda *a: self._go_to("estimate"))
         layout.add_widget(new_btn)
@@ -377,6 +379,104 @@ class ProjectScreen(Screen):
 
         sv.add_widget(layout)
         self._content.add_widget(sv)
+
+    def _upload_card(self):
+        """Approved-estimate gate + upload. QuickBooks estimates are built
+        outside the app; this turns an approved upload into a scope-of-work
+        review (EstimateScreen) rather than the app authoring scope itself."""
+        c = shadow_card()
+        c.add_widget(ios_label("Approved Estimate Upload", size=14, bold=True,
+                                size_hint_y=None, height=dp(22)))
+
+        approved = getattr(self, "_estimate_upload_approved", False)
+
+        if not approved:
+            c.add_widget(ios_label(
+                "Do you have an approved estimate for this project?",
+                size=13, color=LABEL_SECONDARY, size_hint_y=None, height=dp(36)))
+            row = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(8))
+            yes_btn = ios_button("Yes", color=IOS_GREEN, height=dp(40), font_size=13)
+            yes_btn.bind(on_press=lambda *a: self._set_estimate_upload_approved(True))
+            no_btn = outline_button("No", color=LABEL_SECONDARY, height=dp(40), font_size=13)
+            no_btn.bind(on_press=lambda *a: self._set_estimate_upload_approved(False))
+            row.add_widget(yes_btn)
+            row.add_widget(no_btn)
+            c.add_widget(row)
+            c.add_widget(ios_label(
+                "Waiting for an approved estimate — upload it here once it's approved.",
+                size=12, color=LABEL_TERTIARY, size_hint_y=None, height=dp(32)))
+        else:
+            upload_btn = ios_button("Upload Estimate PDF", color=IOS_INDIGO,
+                                     height=dp(46), font_size=14)
+            upload_btn.bind(on_press=lambda *a: self._pick_estimate_pdf())
+            c.add_widget(upload_btn)
+            self._upload_status_label = ios_label("", size=12, color=LABEL_SECONDARY,
+                                                    size_hint_y=None, height=dp(20))
+            c.add_widget(self._upload_status_label)
+            back_btn = outline_button("Not approved yet", color=LABEL_SECONDARY,
+                                       height=dp(32), font_size=11)
+            back_btn.bind(on_press=lambda *a: self._set_estimate_upload_approved(False))
+            c.add_widget(back_btn)
+
+        return c
+
+    def _set_estimate_upload_approved(self, val):
+        self._estimate_upload_approved = val
+        self._switch_tab("estimates")
+
+    def _pick_estimate_pdf(self):
+        try:
+            from plyer import filechooser
+            filechooser.open_file(
+                title="Select approved estimate PDF",
+                filters=[("PDF files", "*.pdf")],
+                on_selection=self._on_estimate_pdf_selected,
+            )
+        except (ImportError, NotImplementedError):
+            # plyer has no native file-chooser backend registered for this
+            # platform/build — surface that clearly rather than crashing.
+            show_toast("File picker unavailable on this platform/build.")
+
+    def _on_estimate_pdf_selected(self, selection):
+        if not selection:
+            return
+        path = selection[0]
+        self._upload_status_label.text = "Parsing estimate…"
+
+        def _run():
+            try:
+                parsed = self.client.parse_estimate_pdf(path)
+                line_items = parsed.get("line_items", [])
+                client_info = parsed.get("client_info", {})
+                stored = self.client.save_estimate_upload(self.project_id, path)
+                stored_path = stored.get("stored_path") or path
+            except Exception as e:
+                def _err(dt, m=str(e)):
+                    self._upload_status_label.text = f"Error: {m}"
+                Clock.schedule_once(_err, 0)
+                return
+
+            def _ok(dt):
+                self._go_to_estimate_with_prefill(line_items, client_info, stored_path)
+            Clock.schedule_once(_ok, 0)
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _go_to_estimate_with_prefill(self, line_items, client_info, source_pdf_path):
+        # Fill any field the parser didn't find with the project's current value,
+        # so the review card never shows blanks the project already has answers for.
+        current = self.client.get_project(self.project_id) or {}
+        merged_client_info = {
+            "name": client_info.get("name") or current.get("customer_name", ""),
+            "address": client_info.get("address") or current.get("property_address", ""),
+            "phone": client_info.get("phone") or current.get("customer_phone", ""),
+            "email": client_info.get("email") or current.get("customer_email", ""),
+        }
+        screen = self.manager.get_screen("estimate")
+        screen.set_project(self.project_id, prefill_line_items=line_items,
+                            prefill_client_info=merged_client_info,
+                            source_pdf_path=source_pdf_path)
+        self.manager.current = "estimate"
 
     def _estimate_card(self, est):
         c = shadow_card(padding=[PADDING, dp(14)], spacing=dp(8))
@@ -758,7 +858,15 @@ class ProjectScreen(Screen):
                             size_hint_y=None)
         layout.bind(minimum_height=layout.setter("height"))
 
-        layout.add_widget(section_header("Contract Details"))
+        # ── Current contract status (persisted — shows "Not available" until
+        # one has been generated below) ──────────────────────────────────────
+        try:
+            self._contract_data = self.client.get_contract(self.project_id)
+        except Exception:
+            self._contract_data = None
+        layout.add_widget(self._contract_status_card())
+
+        layout.add_widget(section_header("Generate / Update Contract"))
 
         # ── Estimate picker ───────────────────────────────────────────────────
         layout.add_widget(ios_label("Linked Estimate (sets contract price & scope):",
@@ -886,10 +994,10 @@ class ProjectScreen(Screen):
                 )
                 pdf_path = result.get("pdf_path", "")
                 def _ok(dt, p=pdf_path):
-                    self._contract_status_label.text = ""
                     show_toast("Contract PDF ready.")
                     if p:
                         Clock.schedule_once(lambda dt2, _p=p: self._open_pdf(_p), 0.3)
+                    self._switch_tab("contract")
                 Clock.schedule_once(_ok, 0)
             except Exception as e:
                 err = str(e)
@@ -897,6 +1005,237 @@ class ProjectScreen(Screen):
                     self._contract_status_label, "text", f"Error: {m}"), 0)
 
         threading.Thread(target=_run, daemon=True).start()
+
+    def _contract_status_card(self):
+        """Shows 'Not available' until a contract has been generated below,
+        otherwise the persisted contract's status, Adobe Sign actions, and
+        its change orders."""
+        c = shadow_card()
+        contract = self._contract_data
+
+        if not contract:
+            c.add_widget(ios_label("Contract", size=14, bold=True,
+                                    size_hint_y=None, height=dp(22)))
+            c.add_widget(ios_label(
+                "Not available — generate one below from an approved estimate.",
+                size=13, color=LABEL_SECONDARY, size_hint_y=None, height=dp(36)))
+            return c
+
+        top = BoxLayout(size_hint_y=None, height=dp(24))
+        top.add_widget(ios_label(contract["contract_number"], size=14, bold=True))
+        sc = STATUS_COLOR.get(contract["status"], LABEL_SECONDARY)
+        top.add_widget(status_badge(contract["status"].replace("_", " ").title(), sc))
+        c.add_widget(top)
+
+        if contract.get("adobe_agreement_status"):
+            c.add_widget(ios_label(f"Adobe: {contract['adobe_agreement_status']}",
+                                    size=11, color=IOS_PURPLE,
+                                    size_hint_y=None, height=dp(16)))
+
+        btn_row = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(8))
+        pdf_btn = outline_button("Open PDF", color=IOS_BLUE,
+                                  height=dp(34), font_size=12, radius=dp(8))
+        pdf_btn.bind(on_press=lambda *a, p=contract["pdf_path"]: self._open_pdf(p))
+        btn_row.add_widget(pdf_btn)
+
+        if contract["status"] == "draft":
+            send_btn = outline_button("Send for Signature", color=IOS_TEAL,
+                                       height=dp(34), font_size=12, radius=dp(8))
+            send_btn.bind(on_press=lambda *a, cid=contract["id"]:
+                          self._send_contract_for_signature(cid))
+            btn_row.add_widget(send_btn)
+        else:
+            sync_btn = outline_button("Refresh Status", color=IOS_TEAL,
+                                       height=dp(34), font_size=12, radius=dp(8))
+            sync_btn.bind(on_press=lambda *a, cid=contract["id"]:
+                          self._sync_contract_status(cid))
+            btn_row.add_widget(sync_btn)
+        c.add_widget(btn_row)
+
+        self._contract_adobe_status_label = ios_label(
+            "", size=11, color=LABEL_SECONDARY, size_hint_y=None, height=dp(18))
+        c.add_widget(self._contract_adobe_status_label)
+
+        c.add_widget(section_header("Change Orders"))
+        try:
+            change_orders = self.client.list_change_orders(contract["id"])
+        except Exception:
+            change_orders = []
+        if not change_orders:
+            c.add_widget(ios_label("No change orders yet.", size=12,
+                                    color=LABEL_TERTIARY, size_hint_y=None, height=dp(20)))
+        for co in change_orders:
+            c.add_widget(self._change_order_row(co))
+
+        new_co_btn = outline_button("+ New Change Order", color=IOS_ORANGE,
+                                     height=dp(36), font_size=12)
+        new_co_btn.bind(on_press=lambda *a, cid=contract["id"]:
+                        self._show_change_order_form(cid))
+        c.add_widget(new_co_btn)
+
+        return c
+
+    def _change_order_row(self, co):
+        row = BoxLayout(size_hint_y=None, height=dp(36), spacing=dp(8))
+        sign = "+" if co["price_delta"] >= 0 else "-"
+        row.add_widget(ios_label(
+            f"{co['change_order_number']}   {sign}${abs(co['price_delta']):,.2f}   "
+            f"{co['days_delta']:+d}d",
+            size=12, size_hint_x=0.7))
+        open_btn = outline_button("Open", color=IOS_BLUE, height=dp(32), font_size=11,
+                                   size_hint_x=None, width=dp(70))
+        open_btn.bind(on_press=lambda *a, p=co["pdf_path"]: self._open_pdf(p))
+        row.add_widget(open_btn)
+        return row
+
+    def _send_contract_for_signature(self, contract_id):
+        self._contract_adobe_status_label.text = "Checking Adobe authorization…"
+
+        def _run():
+            try:
+                status = self.client.get_adobe_status()
+            except Exception as e:
+                Clock.schedule_once(lambda dt, m=str(e): setattr(
+                    self._contract_adobe_status_label, "text", f"Error: {m}"), 0)
+                return
+
+            if not status.get("authorized"):
+                try:
+                    auth = self.client.get_adobe_auth_url()
+                except Exception as e:
+                    Clock.schedule_once(lambda dt, m=str(e): setattr(
+                        self._contract_adobe_status_label, "text", f"Error: {m}"), 0)
+                    return
+
+                def _open_browser(dt, url=auth["url"]):
+                    import webbrowser
+                    webbrowser.open(url)
+                    self._contract_adobe_status_label.text = (
+                        "Complete sign-in on the Adobe page that just opened, "
+                        "then tap 'Send for Signature' again.")
+                Clock.schedule_once(_open_browser, 0)
+                return
+
+            try:
+                self.client.send_contract_for_signature(contract_id)
+            except Exception as e:
+                Clock.schedule_once(lambda dt, m=str(e): setattr(
+                    self._contract_adobe_status_label, "text", f"Error: {m}"), 0)
+                return
+
+            def _ok(dt):
+                show_toast("Contract sent for signature via Adobe.")
+                self._switch_tab("contract")
+            Clock.schedule_once(_ok, 0)
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _sync_contract_status(self, contract_id):
+        def _run():
+            try:
+                self.client.sync_contract_status(contract_id)
+            except Exception as e:
+                Clock.schedule_once(lambda dt, m=str(e): setattr(
+                    self._contract_adobe_status_label, "text", f"Error: {m}"), 0)
+                return
+            Clock.schedule_once(lambda dt: self._switch_tab("contract"), 0)
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _show_change_order_form(self, contract_id):
+        from kivy.uix.popup import Popup
+        from kivy.uix.textinput import TextInput
+        from ui.widgets import line_item_row
+
+        wrapper = BoxLayout(orientation="vertical")
+        with_bg(wrapper, WHITE)
+        wrapper.add_widget(ios_label("New Change Order", size=16, bold=True,
+                                      halign="center", size_hint_y=None, height=dp(48)))
+
+        sv2 = ScrollView(do_scroll_x=False)
+        form = BoxLayout(orientation="vertical", padding=PADDING, spacing=dp(10),
+                          size_hint_y=None)
+        form.bind(minimum_height=form.setter("height"))
+
+        form.add_widget(ios_label("Description", size=12, color=LABEL_SECONDARY,
+                                   size_hint_y=None, height=dp(18)))
+        desc_input = TextInput(hint_text="Description of the change", font_name=FONT,
+                                font_size=dp(13), size_hint_y=None, height=dp(60),
+                                multiline=True)
+        form.add_widget(desc_input)
+
+        items_layout = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(8))
+        items_layout.bind(minimum_height=items_layout.setter("height"))
+        form.add_widget(items_layout)
+        co_items = []
+
+        def _remove_item(card, row_data):
+            items_layout.remove_widget(card)
+            if row_data in co_items:
+                co_items.remove(row_data)
+
+        def _add_item(*a):
+            card, row_data = line_item_row(len(co_items) + 1, on_remove=_remove_item)
+            co_items.append(row_data)
+            items_layout.add_widget(card)
+
+        add_btn = outline_button("+ Add Item", color=IOS_GREEN, height=dp(36), font_size=12)
+        add_btn.bind(on_press=_add_item)
+        form.add_widget(add_btn)
+        _add_item()
+
+        form.add_widget(ios_label("Change in Contract Time (days)", size=12,
+                                   color=LABEL_SECONDARY, size_hint_y=None, height=dp(18)))
+        days_input = TextInput(hint_text="0", font_name=FONT, font_size=dp(13),
+                                size_hint_y=None, height=dp(40), multiline=False)
+        form.add_widget(days_input)
+
+        sv2.add_widget(form)
+        wrapper.add_widget(sv2)
+
+        btn_row = BoxLayout(size_hint_y=None, height=dp(52), spacing=dp(10),
+                             padding=[PADDING, dp(4)])
+        popup = Popup(title="", content=wrapper, size_hint=(0.92, 0.88),
+                      background="", background_color=(0, 0, 0, 0),
+                      separator_height=0, title_size=0)
+        cancel_btn = outline_button("Cancel", color=LABEL_SECONDARY, height=dp(44))
+        cancel_btn.bind(on_press=popup.dismiss)
+        save_btn = ios_button("Create", color=IOS_ORANGE, height=dp(44))
+
+        def _save(*a):
+            line_items = []
+            for rd in co_items:
+                desc = rd["description"].text.strip()
+                if not desc:
+                    continue
+                try:
+                    line_items.append({
+                        "description": desc,
+                        "qty": float(rd["qty"].text or 1),
+                        "unit": rd["unit"].text.strip() or "ea",
+                        "unit_price": float(rd["unit_price"].text or 0),
+                    })
+                except ValueError:
+                    continue
+            try:
+                days_delta = int(days_input.text.strip() or 0)
+            except ValueError:
+                days_delta = 0
+            try:
+                self.client.create_change_order(
+                    contract_id, description=desc_input.text.strip(),
+                    line_items=line_items, days_delta=days_delta)
+                popup.dismiss()
+                show_toast("Change order created.")
+                self._switch_tab("contract")
+            except Exception as e:
+                show_toast(f"Error: {e}")
+
+        save_btn.bind(on_press=_save)
+        btn_row.add_widget(cancel_btn)
+        btn_row.add_widget(save_btn)
+        wrapper.add_widget(btn_row)
+        popup.open()
 
     # ── Finance ───────────────────────────────────────────────────────────────
 

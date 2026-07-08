@@ -5,6 +5,7 @@ MCP Client — two implementations:
 """
 import asyncio
 import json
+import os
 import sys
 from datetime import date, timedelta
 from pathlib import Path
@@ -12,9 +13,12 @@ from typing import Any, Optional
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from config import COMPANY
 from database import Database
-from models import Project, Estimate, EstimateLineItem, PaymentScheduleItem, Invoice, WorkBreakdownItem
-from services import DocumentService, StripeService, CloudStorageService, QuickenService, GoogleSheetsService
+from models import (Project, Estimate, EstimateLineItem, PaymentScheduleItem, Invoice,
+                     WorkBreakdownItem, Contract, ChangeOrder)
+from services import (DocumentService, StripeService, CloudStorageService, QuickenService,
+                      GoogleSheetsService, EstimateParserService, AdobeSignService)
 
 db = Database()
 doc_svc = DocumentService()
@@ -22,6 +26,8 @@ stripe_svc = StripeService()
 storage_svc = CloudStorageService()
 quicken_svc = QuickenService()
 sheets_svc = GoogleSheetsService()
+parser_svc = EstimateParserService()
+adobe_svc = AdobeSignService(db)
 
 
 class DirectClient:
@@ -91,7 +97,7 @@ class DirectClient:
     # ── Estimates ─────────────────────────────────────────────────────────────
 
     def create_estimate(self, project_id, line_items, payment_schedule=None,
-                        tax_rate=0, permit_fees=0, discount=0):
+                        tax_rate=0, permit_fees=0, discount=0, source_pdf_path=None):
         today = date.today()
         existing = db.list_estimates(project_id)
         est_num = f"EST-{project_id:03d}-{len(existing)+1:02d}"
@@ -113,9 +119,27 @@ class DirectClient:
                        date_issued=today, valid_until=today + timedelta(days=30),
                        prepared_by="Samuel Cabrera", tax_rate=tax_rate,
                        permit_fees=permit_fees, discount=discount,
-                       line_items=items, payment_schedule=schedule)
+                       line_items=items, payment_schedule=schedule,
+                       source_pdf_path=source_pdf_path)
         est_id = db.create_estimate(est)
         return {"estimate_id": est_id, "estimate_number": est_num, "total": est.total}
+
+    # ── Estimate Upload / Parsing ────────────────────────────────────────────
+
+    def parse_estimate_pdf(self, local_path):
+        """Best-effort scope-of-work extraction from an uploaded estimate PDF —
+        always reviewed/edited in EstimateScreen before anything is saved."""
+        return parser_svc.parse(local_path)
+
+    def save_estimate_upload(self, project_id, local_path):
+        """Copy the raw uploaded estimate PDF into UPLOAD_DIR for traceability.
+        Returns the stored path to pass through as create_estimate(source_pdf_path=...)."""
+        import shutil
+        from config import UPLOAD_DIR
+        filename = f"project{project_id}_{os.path.basename(local_path)}"
+        dest = os.path.join(UPLOAD_DIR, filename)
+        shutil.copy(local_path, dest)
+        return {"stored_path": dest}
 
     def get_estimate(self, estimate_id):
         est = db.get_estimate(estimate_id)
@@ -361,10 +385,37 @@ class DirectClient:
                 pass
         return {"pdf_path": pdf_path, "drive_link": drive_link}
 
+    def _build_contract_packet(self, project, estimate, wbs_items, start_date, completion_date,
+                                subcontractors, project_site, adobe_tags=False):
+        """Assembles the full contract packet: the filled contract, the payment-
+        schedule attachment, the Notice of Cancellation, the blank Change Order
+        form, and the Required Attachments Checklist — matching the contract's
+        own "List of Documents Attached and Incorporated" section. Returns the
+        merged PDF path."""
+        contract_pdf = doc_svc.generate_contract_pdf(
+            project, estimate, wbs_items,
+            start_date=start_date, completion_date=completion_date,
+            subcontractors=subcontractors, project_site=project_site,
+            adobe_tags=adobe_tags,
+        )
+        attachment_pdf = doc_svc.generate_payment_schedule_attachment_pdf(project, estimate)
+        notice_pdf = doc_svc.generate_notice_of_cancellation_pdf(project)
+        blank_co_pdf = doc_svc.generate_blank_change_order_form_pdf(project)
+        checklist_pdf = doc_svc.generate_required_attachments_checklist_pdf(project)
+        packet_filename = f"Contract_Packet_{project.name.replace(' ', '_')}_{date.today()}.pdf"
+        return doc_svc.merge_pdfs(
+            [contract_pdf, attachment_pdf, notice_pdf, blank_co_pdf, checklist_pdf],
+            packet_filename,
+        )
+
     def generate_contract(self, project_id, estimate_id=None,
                            start_date=None, completion_date=None,
                            subcontractors=None, project_site=None):
-        """Generate a contract PDF from project overview, estimates, and work plan."""
+        """Generate the contract packet from project overview, estimates, and work
+        plan, and persist a Contract row so the Contract tab can show it later.
+        Updates the existing contract in place while it's still a draft (repeated
+        clicks while tweaking the form); once sent for signature, a new one is
+        created."""
         project = db.get_project(project_id)
         estimates = db.list_estimates(project_id)
         wbs_items = db.list_wbs(project_id)
@@ -373,22 +424,132 @@ class DirectClient:
         else:
             accepted = [e for e in estimates if e.status == "accepted"]
             estimate = accepted[0] if accepted else (estimates[0] if estimates else None)
-        pdf_path = doc_svc.generate_contract_pdf(
-            project, estimate, wbs_items,
-            start_date=start_date, completion_date=completion_date,
-            subcontractors=subcontractors, project_site=project_site,
+        pdf_path = self._build_contract_packet(
+            project, estimate, wbs_items, start_date, completion_date,
+            subcontractors, project_site,
         )
         drive_link = None
+        drive_file_id = None
         if project.drive_folder_id:
             try:
-                fid = storage_svc.upload_file(
+                drive_file_id = storage_svc.upload_file(
                     pdf_path,
-                    f"Contract_{project.name.replace(' ', '_')}.pdf",
+                    f"Contract_Packet_{project.name.replace(' ', '_')}.pdf",
                     project.drive_folder_id)
-                drive_link = storage_svc.get_file_link(fid)
+                drive_link = storage_svc.get_file_link(drive_file_id)
             except Exception:
                 pass
+
+        resolved_estimate_id = estimate_id or (estimate.id if estimate else None)
+        existing = db.get_contract_by_project(project_id)
+        if existing and existing.status == "draft":
+            db.update_contract(existing.id, resolved_estimate_id, pdf_path, drive_file_id,
+                                start_date, completion_date, project_site, subcontractors or [])
+        else:
+            contract_number = f"C-{project_id:03d}-{len(db.list_contracts(project_id))+1:02d}"
+            contract = Contract(
+                id=None, project_id=project_id, estimate_id=resolved_estimate_id,
+                contract_number=contract_number, pdf_path=pdf_path, drive_file_id=drive_file_id,
+                start_date=start_date, completion_date=completion_date,
+                project_site=project_site, subcontractors=subcontractors or [],
+            )
+            db.create_contract(contract)
+
         return {"pdf_path": pdf_path, "drive_link": drive_link}
+
+    def get_contract(self, project_id):
+        """The most recently generated contract for this project, or None if
+        none has been generated yet — the Contract tab shows "Not available"."""
+        c = db.get_contract_by_project(project_id)
+        return self._contract_to_dict(c) if c else None
+
+    def _contract_to_dict(self, c):
+        return {
+            "id": c.id, "project_id": c.project_id, "estimate_id": c.estimate_id,
+            "contract_number": c.contract_number, "pdf_path": c.pdf_path,
+            "start_date": c.start_date, "completion_date": c.completion_date,
+            "project_site": c.project_site, "subcontractors": c.subcontractors,
+            "status": c.status, "adobe_agreement_id": c.adobe_agreement_id,
+            "adobe_agreement_status": c.adobe_agreement_status,
+        }
+
+    # ── Adobe Acrobat Sign ───────────────────────────────────────────────────
+
+    def get_adobe_auth_url(self):
+        return {"url": adobe_svc.get_authorization_url()}
+
+    def get_adobe_status(self):
+        return {"authorized": adobe_svc.is_authorized()}
+
+    def exchange_adobe_code(self, code):
+        """Called by the FastAPI OAuth callback endpoint after Adobe redirects back
+        with an authorization code — never called by the Kivy UI directly."""
+        return adobe_svc.exchange_code_for_token(code)
+
+    def send_contract_for_signature(self, contract_id):
+        contract = db.get_contract(contract_id)
+        if not contract:
+            return {"error": "Contract not found"}
+        project = db.get_project(contract.project_id)
+        estimates = db.list_estimates(contract.project_id)
+        estimate = next((e for e in estimates if e.id == contract.estimate_id), None)
+        wbs_items = db.list_wbs(contract.project_id)
+        # Regenerate the full packet with Adobe Sign text tags embedded in the
+        # contract's signature blocks — the plain packet served for
+        # download/print is left untouched.
+        pdf_path = self._build_contract_packet(
+            project, estimate, wbs_items, contract.start_date, contract.completion_date,
+            contract.subcontractors, contract.project_site, adobe_tags=True,
+        )
+        result = adobe_svc.create_agreement_from_pdf(
+            pdf_path, contract.contract_number,
+            sender_name=COMPANY["representative"], sender_email=COMPANY["email"],
+            recipient_name=project.customer_name, recipient_email=project.customer_email,
+        )
+        db.update_contract_adobe_status(
+            contract.id, result["status"], adobe_agreement_id=result["adobe_agreement_id"])
+        return result
+
+    def sync_contract_status(self, contract_id):
+        contract = db.get_contract(contract_id)
+        if not contract or not contract.adobe_agreement_id:
+            return {"error": "No Adobe agreement associated with this contract"}
+        result = adobe_svc.get_agreement_status(contract.adobe_agreement_id)
+        db.update_contract_adobe_status(
+            contract.id, result["status"],
+            adobe_agreement_status=result["adobe_agreement_status"])
+        return result
+
+    # ── Change Orders ────────────────────────────────────────────────────────
+
+    def create_change_order(self, contract_id, description, line_items, days_delta=0):
+        contract = db.get_contract(contract_id)
+        if not contract:
+            return {"error": "Contract not found"}
+        project = db.get_project(contract.project_id)
+        original_price = None
+        if contract.estimate_id:
+            estimate = db.get_estimate(contract.estimate_id)
+            original_price = estimate.total if estimate else None
+        price_delta = sum(float(it.get("qty", 1) or 1) * float(it.get("unit_price", 0) or 0)
+                           for it in line_items)
+        existing = db.list_change_orders(contract_id)
+        co_number = f"{contract.contract_number}-CO{len(existing)+1:02d}"
+        co = ChangeOrder(id=None, contract_id=contract_id, change_order_number=co_number,
+                          description=description, line_items=line_items,
+                          price_delta=price_delta, days_delta=int(days_delta or 0))
+        pdf_path = doc_svc.generate_change_order_pdf(project, contract, co,
+                                                       original_price=original_price)
+        co.pdf_path = pdf_path
+        co_id = db.create_change_order(co)
+        return {"change_order_id": co_id, "change_order_number": co_number,
+                "price_delta": price_delta, "pdf_path": pdf_path}
+
+    def list_change_orders(self, contract_id):
+        return [{"id": c.id, "change_order_number": c.change_order_number,
+                  "description": c.description, "price_delta": c.price_delta,
+                  "days_delta": c.days_delta, "status": c.status, "pdf_path": c.pdf_path}
+                for c in db.list_change_orders(contract_id)]
 
     # ── Cloud Storage ─────────────────────────────────────────────────────────
 
@@ -485,6 +646,13 @@ class HTTPClient:
         r.raise_for_status()
         return r.json()
 
+    def _post_file(self, path, filepath):
+        with open(filepath, "rb") as f:
+            r = self._s.post(f"{self._base}{path}",
+                             files={"file": (os.path.basename(filepath), f, "application/pdf")})
+        r.raise_for_status()
+        return r.json()
+
     # ── Projects ──────────────────────────────────────────────────────────────
 
     def create_project(self, name, property_address, customer_name, customer_email,
@@ -519,10 +687,20 @@ class HTTPClient:
     # ── Estimates ─────────────────────────────────────────────────────────────
 
     def create_estimate(self, project_id, line_items, payment_schedule=None,
-                        tax_rate=0, permit_fees=0, discount=0):
+                        tax_rate=0, permit_fees=0, discount=0, source_pdf_path=None):
         return self._post("/api/v1/estimates", dict(project_id=project_id,
             line_items=line_items, payment_schedule=payment_schedule or [],
-            tax_rate=tax_rate, permit_fees=permit_fees, discount=discount))
+            tax_rate=tax_rate, permit_fees=permit_fees, discount=discount,
+            source_pdf_path=source_pdf_path))
+
+    def parse_estimate_pdf(self, local_path):
+        return self._post_file("/api/v1/estimates/parse", local_path)
+
+    def save_estimate_upload(self, project_id, local_path):
+        # The Cloud Run container has no durable local disk and parse_estimate_pdf
+        # already reads the file bytes directly — nothing additional to persist
+        # server-side in HTTP mode, so there's no stored path to report.
+        return {"stored_path": None}
 
     def get_estimate(self, estimate_id):
         return self._get(f"/api/v1/estimates/{estimate_id}")
@@ -613,6 +791,32 @@ class HTTPClient:
 
     def list_project_pdfs(self, project_id):
         return self._get(f"/api/v1/projects/{project_id}/pdfs")
+
+    def get_contract(self, project_id):
+        return self._get(f"/api/v1/projects/{project_id}/contract")
+
+    # ── Adobe Acrobat Sign ───────────────────────────────────────────────────
+
+    def get_adobe_auth_url(self):
+        return self._get("/api/v1/adobe/authorize")
+
+    def get_adobe_status(self):
+        return self._get("/api/v1/adobe/status")
+
+    def send_contract_for_signature(self, contract_id):
+        return self._post(f"/api/v1/contracts/{contract_id}/adobe/send")
+
+    def sync_contract_status(self, contract_id):
+        return self._post(f"/api/v1/contracts/{contract_id}/adobe/sync")
+
+    # ── Change Orders ────────────────────────────────────────────────────────
+
+    def create_change_order(self, contract_id, description, line_items, days_delta=0):
+        return self._post(f"/api/v1/contracts/{contract_id}/change-orders", dict(
+            description=description, line_items=line_items, days_delta=days_delta))
+
+    def list_change_orders(self, contract_id):
+        return self._get(f"/api/v1/contracts/{contract_id}/change-orders")
 
     # ── Google Drive ──────────────────────────────────────────────────────────
 

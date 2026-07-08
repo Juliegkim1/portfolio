@@ -52,13 +52,22 @@ class EstimateScreen(Screen):
         self._edit_id = None
         self._line_items = []
         self._ps_rows = []
+        self._source_pdf_path = None
+        self._client_info_inputs = {}
+        self._project_snapshot = None
         self._build()
 
-    def set_project(self, project_id):
-        """Called when creating a new estimate."""
+    def set_project(self, project_id, prefill_line_items=None,
+                     prefill_client_info=None, source_pdf_path=None):
+        """Called when creating a new estimate. If prefill_line_items is given
+        (best-effort scope parsed from an uploaded estimate PDF), the line-item
+        cards are pre-populated for review/editing instead of starting blank.
+        If prefill_client_info is given, an editable Client Info card is shown
+        too — on save its values are written back to the Project record."""
         self.project_id = project_id
         self._edit_mode = False
         self._edit_id = None
+        self._source_pdf_path = source_pdf_path
         self._nav_title.text = "New Estimate"
         self._tax_input.text = ""
         self._permit_input.text = ""
@@ -70,6 +79,25 @@ class EstimateScreen(Screen):
             amt_w.text = ""
             date_w.text = ""
 
+        self._client_info_container.clear_widgets()
+        self._client_info_inputs = {}
+        self._project_snapshot = None
+        if prefill_client_info is not None:
+            self._project_snapshot = self.client.get_project(project_id)
+            self._client_info_container.add_widget(
+                self._build_client_info_card(prefill_client_info))
+
+        if prefill_line_items:
+            for it in prefill_line_items:
+                self._add_line_item(
+                    section=it.get("section"),
+                    description=it.get("description", ""),
+                    qty=str(it.get("qty", 1)),
+                    unit=it.get("unit", "ea"),
+                    unit_price=str(it.get("unit_price", 0)),
+                )
+            show_toast(f"Parsed {len(prefill_line_items)} line item(s) — review before saving.")
+
     def set_estimate(self, estimate_id):
         """Called when editing an existing estimate — pre-fills all fields."""
         data = self.client.get_estimate(estimate_id)
@@ -78,6 +106,10 @@ class EstimateScreen(Screen):
             return
         self._edit_mode = True
         self._edit_id = estimate_id
+        self._source_pdf_path = None
+        self._client_info_container.clear_widgets()
+        self._client_info_inputs = {}
+        self._project_snapshot = None
         self._nav_title.text = f"Edit {data['estimate_number']}"
 
         # Pricing options
@@ -121,6 +153,13 @@ class EstimateScreen(Screen):
         form = BoxLayout(orientation="vertical", padding=PADDING, spacing=dp(14),
                           size_hint_y=None)
         form.bind(minimum_height=form.setter('height'))
+
+        # ── Client Info (only populated when created from an estimate upload) ──
+        self._client_info_container = BoxLayout(orientation="vertical",
+                                                  size_hint_y=None, spacing=dp(14))
+        self._client_info_container.bind(
+            minimum_height=self._client_info_container.setter('height'))
+        form.add_widget(self._client_info_container)
 
         # ── Tax / Permit / Discount ──────────────────────────────────────────
         opts_card = self._white_card()
@@ -208,6 +247,27 @@ class EstimateScreen(Screen):
         card.bind(pos=lambda *a: setattr(rect, 'pos', card.pos),
                   size=lambda *a: setattr(rect, 'size', card.size),
                   minimum_height=card.setter('height'))
+        return card
+
+    def _build_client_info_card(self, client_info):
+        """Editable Owner/Client info, pre-filled from the uploaded estimate PDF
+        (falling back to the project's current values). Saved back to the
+        Project record on Save so it stays the single source of truth used by
+        the contract and Adobe Sign."""
+        card = self._white_card()
+        card.add_widget(ios_label("Client Info (from uploaded estimate)", size=13,
+                                   bold=True, color=LABEL_SECONDARY,
+                                   size_hint_y=None, height=dp(24)))
+        for label, key, hint in [
+            ("Name", "name", "Owner name"),
+            ("Address", "address", "Property address"),
+            ("Phone", "phone", "(415) 000-0000"),
+            ("Email", "email", "email@example.com"),
+        ]:
+            card.add_widget(_field_label(label))
+            ti = _field_input(hint=hint, text=client_info.get(key, ""))
+            self._client_info_inputs[key] = ti
+            card.add_widget(ti)
         return card
 
     def _add_line_item(self, section=None, description="", qty="", unit="", unit_price=""):
@@ -348,7 +408,26 @@ class EstimateScreen(Screen):
                     tax_rate=tax_rate,
                     permit_fees=permit_fees,
                     discount=discount,
+                    source_pdf_path=self._source_pdf_path,
                 )
+                if self._client_info_inputs and self._project_snapshot:
+                    snap = self._project_snapshot
+                    self.client.update_project(
+                        self.project_id,
+                        name=snap.get("name", ""),
+                        property_address=self._client_info_inputs["address"].text.strip()
+                            or snap.get("property_address", ""),
+                        customer_name=self._client_info_inputs["name"].text.strip()
+                            or snap.get("customer_name", ""),
+                        customer_phone=self._client_info_inputs["phone"].text.strip()
+                            or snap.get("customer_phone", ""),
+                        customer_email=self._client_info_inputs["email"].text.strip()
+                            or snap.get("customer_email", ""),
+                        project_type=snap.get("project_type", "General"),
+                        notes=snap.get("notes", ""),
+                        start_date=snap.get("start_date", ""),
+                        duration_days=snap.get("duration_days", ""),
+                    )
                 show_toast(f"Estimate {result['estimate_number']} — ${result['total']:,.2f}")
             def _back(dt):
                 ps = self.manager.get_screen("project")
