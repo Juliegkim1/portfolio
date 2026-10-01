@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #132040; }
+  a { color: #E5348C; text-decoration: none; }
+  a:hover { color: #F4699F; }
+</style>
+</helmet>
+<div style="background:#132040;color:#E6E8EB;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:16px;line-height:1.62;-webkit-font-smoothing:antialiased;min-height:100vh">
+  <div style="max-width:1000px;margin:0 auto;padding:72px 32px 120px">
+
+    <header style="display:grid;gap:18px;padding-bottom:48px;border-bottom:1px solid rgba(230,232,235,.08)">
+      <img src="uploads/logo-1789148846326-lkk3.png" alt="Datana Solutions" style="height:42px;width:auto;align-self:start;justify-self:start">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#E5348C">Design document · v1 · Sept 2026</div>
+      <h1 style="margin:0;font-size:clamp(34px,4.4vw,52px);font-weight:400;letter-spacing:-.025em;line-height:1.1">datanasolutions.com</h1>
+      <p style="margin:0;max-width:62ch;color:#9AA1AB;font-weight:300;font-size:17px;text-wrap:pretty">This is the design spec for the six-page consulting site. The site sells engineering credibility, so it leads with specifics and proof. Type and rules carry the structure, and the accent appears only as a thin line.</p>
+    </header>
+
+    <section style="display:grid;grid-template-columns:minmax(0,180px) minmax(0,1fr);gap:32px;padding:56px 0;border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#6E7681">01 · Principles</div>
+      <ol style="margin:0;padding:0;list-style:none;display:grid;gap:18px">
+        <li style="display:grid;gap:4px"><div style="font-weight:500">Specifics over reassurance</div><div style="color:#8A9099;font-weight:300;font-size:15.5px">Numbers, timelines and named outcomes. Remove any sentence that only makes the reader feel better.</div></li>
+        <li style="display:grid;gap:4px"><div style="font-weight:500">One action per page</div><div style="color:#8A9099;font-weight:300;font-size:15.5px">Home, Services, Client work and About each have one CTA block. Contact and the legal pages have none.</div></li>
+        <li style="display:grid;gap:4px"><div style="font-weight:500">Accent as a line</div><div style="color:#8A9099;font-weight:300;font-size:15.5px">Magenta is used for the filled CTA, rule markers and mono labels, and nowhere else.</div></li>
+        <li style="display:grid;gap:4px"><div style="font-weight:500">Structure through rules</div><div style="color:#8A9099;font-weight:300;font-size:15.5px">Grids are separated by hairlines. No shadows, no gradients, no floating cards.</div></li>
+      </ol>
+    </section>
+
+    <section style="display:grid;grid-template-columns:minmax(0,180px) minmax(0,1fr);gap:32px;padding:56px 0;border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#6E7681">02 · Color</div>
+      <div style="display:grid;gap:28px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1px;background:rgba(230,232,235,.08);border:1px solid rgba(230,232,235,.08)">
+          <div style="background:#132040;padding:16px;display:grid;gap:10px"><div style="height:56px;background:#132040;border:1px solid rgba(230,232,235,.16)"></div><div style="font-size:14px">Ground</div><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681">#132040</div></div>
+          <div style="background:#132040;padding:16px;display:grid;gap:10px"><div style="height:56px;background:#17243D"></div><div style="font-size:14px">Raised panel</div><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681">#17243D</div></div>
+          <div style="background:#132040;padding:16px;display:grid;gap:10px"><div style="height:56px;background:#1A2A4C"></div><div style="font-size:14px">Hover</div><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681">#1A2A4C</div></div>
+          <div style="background:#132040;padding:16px;display:grid;gap:10px"><div style="height:56px;background:#0A1625"></div><div style="font-size:14px">Inset / input</div><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681">#0A1625</div></div>
+          <div style="background:#132040;padding:16px;display:grid;gap:10px"><div style="height:56px;background:#E5348C"></div><div style="font-size:14px">Accent</div><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681">#E5348C · hover #F4699F · press #C82778</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1px;background:rgba(230,232,235,.08);border:1px solid rgba(230,232,235,.08)">
+          <div style="background:#132040;padding:16px;display:grid;gap:6px"><div style="font-size:22px;color:#E6E8EB">Aa</div><div style="font-size:14px">Primary text</div><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681">#E6E8EB</div></div>
+          <div style="background:#132040;padding:16px;display:grid;gap:6px"><div style="font-size:22px;color:#9AA1AB">Aa</div><div style="font-size:14px">Secondary</div><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681">#9AA1AB</div></div>
+          <div style="background:#132040;padding:16px;display:grid;gap:6px"><div style="font-size:22px;color:#8A9099">Aa</div><div style="font-size:14px">Body muted</div><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681">#8A9099</div></div>
+          <div style="background:#132040;padding:16px;display:grid;gap:6px"><div style="font-size:22px;color:#6E7681">Aa</div><div style="font-size:14px">Meta / labels</div><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681">#6E7681</div></div>
+          <div style="background:#132040;padding:16px;display:grid;gap:6px"><div style="height:30px;display:flex;align-items:center"><div style="height:1px;width:100%;background:rgba(230,232,235,.08)"></div></div><div style="font-size:14px">Hairline</div><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681">rgba(230,232,235,.08)</div></div>
+        </div>
+        <p style="margin:0;color:#8A9099;font-weight:300;font-size:15.5px;max-width:62ch">The ground matches the live datanasolutions.com navy. Control borders use the same hairline at .12 to .22 opacity. Cyan has been dropped from the palette.</p>
+      </div>
+    </section>
+
+    <section style="display:grid;grid-template-columns:minmax(0,180px) minmax(0,1fr);gap:32px;padding:56px 0;border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#6E7681">03 · Type</div>
+      <div style="display:grid;gap:0;border-top:1px solid rgba(230,232,235,.08)">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,200px);gap:20px;padding:20px 0;border-bottom:1px solid rgba(230,232,235,.08);align-items:baseline"><div style="font-size:clamp(38px,5.2vw,68px);font-weight:400;letter-spacing:-.03em;line-height:1.05">Display</div><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681">Sans 400 · clamp(38–68px) · −.03em</div></div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,200px);gap:20px;padding:20px 0;border-bottom:1px solid rgba(230,232,235,.08);align-items:baseline"><div style="font-size:clamp(26px,2.8vw,34px);font-weight:400;letter-spacing:-.02em;line-height:1.2">Section heading</div><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681">Sans 400 · clamp(26–34px)</div></div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,200px);gap:20px;padding:20px 0;border-bottom:1px solid rgba(230,232,235,.08);align-items:baseline"><div style="font-size:19px;font-weight:500">Card title</div><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681">Sans 500 · 19px</div></div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,200px);gap:20px;padding:20px 0;border-bottom:1px solid rgba(230,232,235,.08);align-items:baseline"><div style="font-size:16px;font-weight:300;color:#9AA1AB">Body copy runs light at 15.5–17px on a 1.55–1.62 line height.</div><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681">Sans 300 · 15.5–17px</div></div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,200px);gap:20px;padding:20px 0;border-bottom:1px solid rgba(230,232,235,.08);align-items:baseline"><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#E5348C">Retail · Label</div><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681">Mono 400 · 11.5–12.5px · .1em caps</div></div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,200px);gap:20px;padding:20px 0;border-bottom:1px solid rgba(230,232,235,.08);align-items:baseline"><div style="font-family:'IBM Plex Mono',monospace;font-size:34px;letter-spacing:-.02em">3 days → 1 hr</div><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681">Mono · all figures</div></div>
+        <p style="margin:18px 0 0;color:#8A9099;font-weight:300;font-size:15.5px;max-width:62ch">IBM Plex Sans carries headings and text. IBM Plex Mono carries every number, label, index and piece of metadata. Headings never go above weight 500. Hierarchy comes from size and space.</p>
+      </div>
+    </section>
+
+    <section style="display:grid;grid-template-columns:minmax(0,180px) minmax(0,1fr);gap:32px;padding:56px 0;border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#6E7681">04 · Components</div>
+      <div style="display:grid;gap:32px">
+        <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center">
+          <a href="#" style="display:inline-flex;align-items:center;padding:13px 22px;border-radius:4px;background:#E5348C;color:#fff;font-size:15px;font-weight:500" style-hover="background:#C82778;color:#fff">Book a consultation</a>
+          <a href="#" style="display:inline-flex;align-items:center;padding:13px 22px;border-radius:4px;border:1px solid rgba(230,232,235,.2);color:#E6E8EB;font-size:15px" style-hover="border-color:#E5348C;color:#E6E8EB">Secondary</a>
+          <a href="#" style="display:inline-flex;align-items:center;padding:9px 16px;border:1px solid rgba(230,232,235,.22);border-radius:4px;color:#E6E8EB;font-family:'IBM Plex Mono',monospace;font-size:12.5px;letter-spacing:.04em;text-transform:uppercase" style-hover="border-color:#E5348C;color:#F4699F">Nav CTA</a>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:rgba(230,232,235,.08);border:1px solid rgba(230,232,235,.08)">
+          <div style="background:#132040;padding:28px 24px;display:flex;flex-direction:column;min-height:170px" style-hover="background:#1A2A4C"><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681;margin-bottom:22px">S.01</div><div style="font-size:19px;font-weight:500;margin-bottom:10px">Ruled grid cell</div><div style="color:#8A9099;font-size:15px;font-weight:300">1px gap over hairline background. Hover lifts to #1A2A4C.</div></div>
+          <div style="background:#132040;padding:28px 24px;display:flex;flex-direction:column;min-height:170px" style-hover="background:#1A2A4C"><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681;margin-bottom:22px">S.02</div><div style="font-size:19px;font-weight:500;margin-bottom:10px">Mono index</div><div style="color:#8A9099;font-size:15px;font-weight:300">Every repeated item carries a mono index or label.</div></div>
+        </div>
+        <div style="display:grid;gap:9px;max-width:360px">
+          <label style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#6E7681">Work email</label>
+          <div style="background:#0A1625;border:1px solid rgba(230,232,235,.16);border-radius:3px;padding:12px 13px;color:#6E7681;font-size:15px">name@company.com</div>
+        </div>
+        <p style="margin:0;color:#8A9099;font-weight:300;font-size:15.5px;max-width:62ch">Buttons use a 4px radius and inputs 3px. Nothing has a shadow. The magenta fill is used only for the single primary CTA on each page and the contact submit button.</p>
+      </div>
+    </section>
+
+    <section style="display:grid;grid-template-columns:minmax(0,180px) minmax(0,1fr);gap:32px;padding:56px 0;border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#6E7681">05 · Layout</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:rgba(230,232,235,.08);border:1px solid rgba(230,232,235,.08)">
+        <div style="background:#132040;padding:18px;display:grid;gap:4px"><div style="font-family:'IBM Plex Mono',monospace;font-size:24px">1200</div><div style="font-size:13.5px;color:#8A9099">Container max-width, px</div></div>
+        <div style="background:#132040;padding:18px;display:grid;gap:4px"><div style="font-family:'IBM Plex Mono',monospace;font-size:24px">32</div><div style="font-size:13.5px;color:#8A9099">Side padding, px</div></div>
+        <div style="background:#132040;padding:18px;display:grid;gap:4px"><div style="font-family:'IBM Plex Mono',monospace;font-size:24px">88–96</div><div style="font-size:13.5px;color:#8A9099">Section padding, px</div></div>
+        <div style="background:#132040;padding:18px;display:grid;gap:4px"><div style="font-family:'IBM Plex Mono',monospace;font-size:24px">42</div><div style="font-size:13.5px;color:#8A9099">Logo height, px</div></div>
+      </div>
+    </section>
+
+    <section style="display:grid;grid-template-columns:minmax(0,180px) minmax(0,1fr);gap:32px;padding:56px 0;border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#6E7681">06 · Pages</div>
+      <div style="display:grid;border-top:1px solid rgba(230,232,235,.08)">
+        <sc-for list="{{ pages }}" as="p" hint-placeholder-count="7">
+          <div style="display:grid;grid-template-columns:minmax(0,140px) minmax(0,1fr);gap:20px;padding:14px 0;border-bottom:1px solid rgba(230,232,235,.08)">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#E5348C">{{ p.route }}</div>
+            <div style="display:grid;gap:2px"><div style="font-size:15.5px">{{ p.name }}</div><div style="font-size:14px;color:#8A9099;font-weight:300">{{ p.note }}</div></div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <section style="display:grid;grid-template-columns:minmax(0,180px) minmax(0,1fr);gap:32px;padding:56px 0;border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#6E7681">07 · Capabilities</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1px;background:rgba(230,232,235,.08);border:1px solid rgba(230,232,235,.08)">
+        <div style="background:#132040;padding:24px;display:grid;gap:8px;align-content:start"><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681">S.04</div><div style="font-size:19px;font-weight:500">Predictive Modelling</div><div style="color:#8A9099;font-size:15px;font-weight:300">Produces a number, such as demand, churn or risk, for people to act on.</div></div>
+        <div style="background:#132040;padding:24px;display:grid;gap:8px;align-content:start"><div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681">S.05</div><div style="font-size:19px;font-weight:500">AI Agents</div><div style="color:#8A9099;font-size:15px;font-weight:300">Executes multi-step workflows end to end. Its scope never overlaps with Predictive Modelling.</div></div>
+      </div>
+    </section>
+
+    <section style="display:grid;grid-template-columns:minmax(0,180px) minmax(0,1fr);gap:32px;padding:56px 0">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#6E7681">08 · Diagrams</div>
+      <div style="display:grid;gap:18px">
+        <div style="display:grid;gap:4px"><div style="font-weight:500">Hero: learning loop</div><div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#9AA1AB">INPUT → MODEL → ACTION → LEARN → INPUT · output → BUSINESS OPERATION</div></div>
+        <div style="display:grid;gap:4px"><div style="font-weight:500">Services: data flow</div><div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#9AA1AB">6 sources → 3 models → ACTIONS · DECISIONS</div></div>
+        <p style="margin:0;color:#8A9099;font-weight:300;font-size:15.5px;max-width:62ch">Both diagrams are inline SVG animated with SMIL. They use mono labels and hairline strokes, with magenta only on the active path.</p>
+      </div>
+    </section>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      pages: [
+        { route: "#/", name: "Home", note: "Learning-loop hero, services grid, one CTA." },
+        { route: "#/services", name: "Services", note: "Six capabilities, data-flow diagram, one CTA." },
+        { route: "#/work", name: "Client work", note: "Index of three cases, one CTA." },
+        { route: "#/work/:case", name: "Case studies", note: "Retail, FinTech, Healthcare: problem, work, outcome, metrics." },
+        { route: "#/about", name: "About", note: "Founders: Gillian Villanueva, Ruben Arteaga (VP Data Engineering), third bio TBD." },
+        { route: "#/contact", name: "Contact", note: "Form and direct details. No CTA block." },
+        { route: "#/privacy", name: "Privacy / Terms", note: "Legal text. No CTA block." }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

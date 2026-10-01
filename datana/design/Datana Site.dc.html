@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: #132040; }
+  a { color: #E5348C; text-decoration: none; }
+  a:hover { color: #F4699F; }
+  ::selection { background: rgba(229,52,140,.3); }
+</style>
+</helmet>
+
+<div style="background:#132040;color:#E6E8EB;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:16px;line-height:1.62;-webkit-font-smoothing:antialiased">
+
+  <header style="position:sticky;top:0;z-index:60;background:rgba(19,32,64,.88);backdrop-filter:blur(12px);border-bottom:1px solid rgba(230,232,235,.08)">
+    <div style="max-width:1200px;margin:0 auto;padding:16px 32px;display:flex;align-items:center;gap:36px">
+      <a href="{{ hrefHome }}" onClick="{{ goHome }}" style="display:flex;align-items:center;flex:0 0 auto"><img src="uploads/logo-1789148846326-lkk3.png" alt="Datana Solutions" style="height:42px;width:auto;display:block"></a>
+      <nav style="display:flex;align-items:center;gap:28px;margin-left:auto;font-size:14px;letter-spacing:.01em">
+        <a href="#/services" style="color:#9AA1AB" style-hover="color:#E6E8EB">Services</a>
+        <a href="#/work" style="color:#9AA1AB" style-hover="color:#E6E8EB">Client work</a>
+        <a href="#/about" style="color:#9AA1AB" style-hover="color:#E6E8EB">About</a>
+        <a href="#/contact" style="color:#9AA1AB" style-hover="color:#E6E8EB">Contact</a>
+      </nav>
+      <a href="#/contact" style="display:inline-flex;align-items:center;padding:9px 16px;border:1px solid rgba(230,232,235,.22);border-radius:4px;color:#E6E8EB;font-family:'IBM Plex Mono',monospace;font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap" style-hover="border-color:#E5348C;color:#F4699F">Start a conversation</a>
+    </div>
+  </header>
+
+  <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+  <main>
+    <section style="position:relative;border-bottom:1px solid rgba(230,232,235,.08);overflow:hidden">
+      <div style="position:absolute;top:-10%;right:-5%;width:52%;height:120%;pointer-events:none;background:radial-gradient(closest-side, rgba(229,52,140,.10), transparent 72%)"></div>
+      <div style="position:relative;max-width:1200px;margin:0 auto;padding:118px 32px 100px;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:56px;align-items:center">
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#6E7681;margin-bottom:34px">Strategy · Engineering · Analytics · AI agents</div>
+        <h1 style="font-size:clamp(38px,5.2vw,68px);line-height:1.06;letter-spacing:-.03em;font-weight:400;margin:0;max-width:19ch">See what your data has been trying to tell you</h1>
+        <p style="margin:32px 0 0;font-size:clamp(17px,1.4vw,20px);line-height:1.55;color:#9AA1AB;max-width:54ch;font-weight:300">We turn scattered data into decisions your team can act on. Strategy, pipelines, dashboards and models, built to fit the business rather than the tooling.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:44px">
+          <a href="#/contact" style="display:inline-flex;align-items:center;padding:13px 22px;border-radius:4px;background:#E5348C;color:#fff;font-size:15px;font-weight:500" style-hover="background:#C82778;color:#fff">Book a consultation</a>
+          <a href="#/work" style="display:inline-flex;align-items:center;padding:13px 22px;border-radius:4px;border:1px solid rgba(230,232,235,.2);color:#E6E8EB;font-size:15px" style-hover="border-color:rgba(230,232,235,.45);color:#E6E8EB">See client results</a>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;min-width:0">{{ heroGraphic }}</div>
+      </div>
+    </section>
+
+    <section style="border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="max-width:1200px;margin:0 auto;padding:0 32px;display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">
+        <div style="padding:40px 32px 40px 0">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:clamp(26px,2.8vw,34px);letter-spacing:-.02em;color:#E6E8EB">3d → 1h</div>
+          <div style="margin-top:10px;font-size:13.5px;color:#6E7681;line-height:1.45">Reporting lag at a 60-store retailer</div>
+        </div>
+        <div style="padding:40px 32px;border-left:1px solid rgba(230,232,235,.08)">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:clamp(26px,2.8vw,34px);letter-spacing:-.02em;color:#E6E8EB">12×</div>
+          <div style="margin-top:10px;font-size:13.5px;color:#6E7681;line-height:1.45">Volume growth absorbed, zero outages</div>
+        </div>
+        <div style="padding:40px 32px;border-left:1px solid rgba(230,232,235,.08)">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:clamp(26px,2.8vw,34px);letter-spacing:-.02em;color:#E6E8EB">−31%</div>
+          <div style="margin-top:10px;font-size:13.5px;color:#6E7681;line-height:1.45">No-show rate, in six weeks</div>
+        </div>
+        <div style="padding:40px 0 40px 32px;border-left:1px solid rgba(230,232,235,.08)">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:clamp(26px,2.8vw,34px);letter-spacing:-.02em;color:#E6E8EB">90%</div>
+          <div style="margin-top:10px;font-size:13.5px;color:#6E7681;line-height:1.45">Repeat client rate since 2023</div>
+        </div>
+      </div>
+    </section>
+
+    <section style="border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="max-width:1200px;margin:0 auto;padding:104px 32px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:72px;align-items:start">
+        <div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#6E7681;margin-bottom:22px">01 / Approach</div>
+          <h2 style="font-size:clamp(26px,2.6vw,36px);line-height:1.14;letter-spacing:-.024em;font-weight:400;margin:0;max-width:22ch">Results-driven and tool-agnostic</h2>
+          <div style="margin-top:44px;min-width:0">{{ flowGraphic }}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:34px;max-width:58ch">
+          <p style="margin:0;color:#9AA1AB;font-weight:300;font-size:17px">Most data work fails at the start, because nobody agreed on what problem it was solving. We begin with the decision you can't make today and work backwards to the data that answers it. The stack follows from the problem, not the other way around.</p>
+          <div style="display:grid;gap:26px">
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:20px;padding-top:26px;border-top:1px solid rgba(230,232,235,.08)">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#E5348C">01</span>
+              <div>
+                <h3 style="font-size:17px;font-weight:500;margin:0 0 6px">One version of the numbers</h3>
+                <p style="margin:0;color:#8A9099;font-size:15px;font-weight:300">Your sources unified and documented, so nobody reconciles three spreadsheets before a meeting.</p>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:20px;padding-top:26px;border-top:1px solid rgba(230,232,235,.08)">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#E5348C">02</span>
+              <div>
+                <h3 style="font-size:17px;font-weight:500;margin:0 0 6px">Decisions in days, not quarters</h3>
+                <p style="margin:0;color:#8A9099;font-size:15px;font-weight:300">Dashboards and alerts scoped to the metrics that actually change what your team does next.</p>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:20px;padding-top:26px;border-top:1px solid rgba(230,232,235,.08)">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#E5348C">03</span>
+              <div>
+                <h3 style="font-size:17px;font-weight:500;margin:0 0 6px">Infrastructure that outlasts us</h3>
+                <p style="margin:0;color:#8A9099;font-size:15px;font-weight:300">Pipelines and models your team can run and extend after the engagement closes.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section style="border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="max-width:1200px;margin:0 auto;padding:104px 32px">
+        <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:baseline;justify-content:space-between;margin-bottom:56px">
+          <div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#6E7681;margin-bottom:22px">02 / Capabilities</div>
+            <h2 style="font-size:clamp(26px,2.6vw,36px);line-height:1.14;letter-spacing:-.024em;font-weight:400;margin:0;max-width:24ch">The full path from raw data to daily decisions</h2>
+          </div>
+          <a href="#/services" style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:#9AA1AB;border-bottom:1px solid rgba(230,232,235,.2);padding-bottom:3px" style-hover="color:#E6E8EB;border-color:#E5348C">All services →</a>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(206px,1fr));gap:1px;background:rgba(230,232,235,.08);border:1px solid rgba(230,232,235,.08)">
+          <div style="background:#132040;padding:32px 28px;display:flex;flex-direction:column;min-height:240px" style-hover="background:#1A2A4C">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681;margin-bottom:26px">S.01</div>
+            <h3 style="font-size:19px;font-weight:500;margin:0 0 12px">Data Strategy</h3>
+            <p style="margin:0;color:#8A9099;font-size:15px;font-weight:300">Maturity assessment, a metrics framework tied to business goals, and a roadmap that sequences the work by payback.</p>
+          </div>
+          <div style="background:#132040;padding:32px 28px;display:flex;flex-direction:column;min-height:240px" style-hover="background:#1A2A4C">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681;margin-bottom:26px">S.02</div>
+            <h3 style="font-size:19px;font-weight:500;margin:0 0 12px">Data Engineering</h3>
+            <p style="margin:0;color:#8A9099;font-size:15px;font-weight:300">ELT pipelines, cloud warehousing, system integrations and the quality monitoring that keeps them trustworthy.</p>
+          </div>
+          <div style="background:#132040;padding:32px 28px;display:flex;flex-direction:column;min-height:240px" style-hover="background:#1A2A4C">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681;margin-bottom:26px">S.03</div>
+            <h3 style="font-size:19px;font-weight:500;margin:0 0 12px">Analytics &amp; BI</h3>
+            <p style="margin:0;color:#8A9099;font-size:15px;font-weight:300">Executive and operational dashboards, self-serve reporting, and analysis for the questions that don't repeat.</p>
+          </div>
+          <div style="background:#132040;padding:32px 28px;display:flex;flex-direction:column;min-height:240px" style-hover="background:#1A2A4C">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681;margin-bottom:26px">S.04</div>
+            <h3 style="font-size:19px;font-weight:500;margin:0 0 12px">Predictive Modelling</h3>
+            <p style="margin:0;color:#8A9099;font-size:15px;font-weight:300">Models that put a number on what happens next: demand, churn, risk. Your team decides, with the odds in front of them.</p>
+          </div>
+          <div style="background:#132040;padding:32px 26px;display:flex;flex-direction:column;min-height:240px" style-hover="background:#1A2A4C">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E7681;margin-bottom:26px">S.05</div>
+            <h3 style="font-size:19px;font-weight:500;margin:0 0 12px">AI Agents</h3>
+            <p style="margin:0;color:#8A9099;font-size:15px;font-weight:300">Software that does the work: multi-step operational tasks executed inside your existing tools, start to finish.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section style="border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="max-width:1200px;margin:0 auto;padding:104px 32px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#6E7681;margin-bottom:22px">03 / Client work</div>
+        <h2 style="font-size:clamp(26px,2.6vw,36px);line-height:1.14;letter-spacing:-.024em;font-weight:400;margin:0 0 56px;max-width:26ch">Decisions our clients couldn't make before</h2>
+        <div style="display:flex;flex-direction:column">
+          <a href="#/work/retail" style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) auto;gap:40px;align-items:baseline;padding:34px 0;border-top:1px solid rgba(230,232,235,.08);color:#E6E8EB" style-hover="color:#fff">
+            <div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#E5348C;margin-bottom:12px">Retail · Analytics &amp; BI</div>
+              <h3 style="font-size:clamp(20px,2vw,26px);font-weight:400;letter-spacing:-.02em;margin:0;line-height:1.2">Unifying sales data across 60 stores</h3>
+            </div>
+            <div style="color:#8A9099;font-size:15px;font-weight:300">Regional managers were pricing on numbers three days stale. One live view, pulled from every POS.</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681;white-space:nowrap">Read →</div>
+          </a>
+          <a href="#/work/fintech" style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) auto;gap:40px;align-items:baseline;padding:34px 0;border-top:1px solid rgba(230,232,235,.08);color:#E6E8EB" style-hover="color:#fff">
+            <div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#E5348C;margin-bottom:12px">FinTech · Data Engineering</div>
+              <h3 style="font-size:clamp(20px,2vw,26px);font-weight:400;letter-spacing:-.02em;margin:0;line-height:1.2">A warehouse that survived hypergrowth</h3>
+            </div>
+            <div style="color:#8A9099;font-size:15px;font-weight:300">Ahead of a raise, volume was set to grow 12×. Due-diligence numbers reconciled on the first try.</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681;white-space:nowrap">Read →</div>
+          </a>
+          <a href="#/work/health" style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) auto;gap:40px;align-items:baseline;padding:34px 0;border-top:1px solid rgba(230,232,235,.08);border-bottom:1px solid rgba(230,232,235,.08);color:#E6E8EB" style-hover="color:#fff">
+            <div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#E5348C;margin-bottom:12px">Healthcare · AI &amp; Automation</div>
+              <h3 style="font-size:clamp(20px,2vw,26px);font-weight:400;letter-spacing:-.02em;margin:0;line-height:1.2">Predicting no-shows before they happen</h3>
+            </div>
+            <div style="color:#8A9099;font-size:15px;font-weight:300">A model scoring appointment risk daily, wired into the scheduling team's existing workflow.</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681;white-space:nowrap">Read →</div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section style="border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="max-width:1200px;margin:0 auto;padding:72px 32px">
+        <div style="display:flex;flex-wrap:wrap;gap:40px;align-items:center;justify-content:space-between">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#6E7681;max-width:18ch;line-height:1.7">Platforms we build on</div>
+          <div style="display:flex;flex-wrap:wrap;gap:14px 12px;flex:1;min-width:280px">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#9AA1AB;padding:7px 13px;border:1px solid rgba(230,232,235,.12);border-radius:3px">Snowflake</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#9AA1AB;padding:7px 13px;border:1px solid rgba(230,232,235,.12);border-radius:3px">Databricks</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#9AA1AB;padding:7px 13px;border:1px solid rgba(230,232,235,.12);border-radius:3px">BigQuery</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#9AA1AB;padding:7px 13px;border:1px solid rgba(230,232,235,.12);border-radius:3px">Power BI</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#9AA1AB;padding:7px 13px;border:1px solid rgba(230,232,235,.12);border-radius:3px">Tableau</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#9AA1AB;padding:7px 13px;border:1px solid rgba(230,232,235,.12);border-radius:3px">Looker</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#9AA1AB;padding:7px 13px;border:1px solid rgba(230,232,235,.12);border-radius:3px">Azure · AWS · GCP</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#9AA1AB;padding:7px 13px;border:1px solid rgba(230,232,235,.12);border-radius:3px">Python</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#9AA1AB;padding:7px 13px;border:1px solid rgba(230,232,235,.12);border-radius:3px">LLM APIs</span>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681;padding-left:22px;border-left:1px solid rgba(229,52,140,.5);line-height:1.6">Databricks<br>partner</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div style="max-width:1200px;margin:0 auto;padding:104px 32px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:64px;align-items:start">
+          <div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#6E7681;margin-bottom:22px">04 / Engagement</div>
+            <h2 style="font-size:clamp(26px,2.6vw,36px);line-height:1.14;letter-spacing:-.024em;font-weight:400;margin:0;max-width:20ch">Three ways to work with us</h2>
+            <p style="margin:24px 0 0;color:#8A9099;font-size:16px;font-weight:300;max-width:42ch">Most clients start with an assessment and continue into a project once the priorities are clear.</p>
+          </div>
+          <div style="display:grid;gap:0">
+            <div style="padding:28px 0;border-top:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:baseline">
+              <div>
+                <h3 style="font-size:18px;font-weight:500;margin:0 0 8px">Data Assessment</h3>
+                <p style="margin:0;color:#8A9099;font-size:15px;font-weight:300;max-width:46ch">A fixed-scope review of your data, tooling and reporting, ending in a prioritised roadmap.</p>
+              </div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681;white-space:nowrap">Initial</div>
+            </div>
+            <div style="padding:28px 0;border-top:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:baseline">
+              <div>
+                <h3 style="font-size:18px;font-weight:500;margin:0 0 8px">Project Delivery</h3>
+                <p style="margin:0;color:#8A9099;font-size:15px;font-weight:300;max-width:46ch">A defined build with agreed milestones: a warehouse, a dashboard suite, a model in production.</p>
+              </div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681;white-space:nowrap">Defined</div>
+            </div>
+            <div style="padding:28px 0;border-top:1px solid rgba(230,232,235,.08);border-bottom:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:baseline">
+              <div>
+                <h3 style="font-size:18px;font-weight:500;margin:0 0 8px">Embedded Partner</h3>
+                <p style="margin:0;color:#8A9099;font-size:15px;font-weight:300;max-width:46ch">Ongoing capacity for teams without an in-house data function, at an agreed monthly commitment.</p>
+              </div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681;white-space:nowrap">Retained</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isServices }}" hint-placeholder-val="{{ false }}">
+  <main>
+    <section style="border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="max-width:1200px;margin:0 auto;padding:96px 32px 72px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#6E7681;margin-bottom:28px">Services</div>
+        <h1 style="font-size:clamp(34px,4.4vw,56px);line-height:1.08;letter-spacing:-.03em;font-weight:400;margin:0;max-width:20ch">Five capabilities, one continuous path</h1>
+        <p style="margin:28px 0 0;font-size:18px;color:#9AA1AB;max-width:56ch;font-weight:300">Engagements usually span more than one. A dashboard is only as good as the pipeline beneath it, and a model is only as good as the question it was asked.</p>
+      </div>
+    </section>
+
+    <section style="border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="max-width:1200px;margin:0 auto;padding:80px 32px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:64px;align-items:start">
+        <div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.14em;color:#E5348C;margin-bottom:20px">S.01</div>
+          <h2 style="font-size:clamp(24px,2.4vw,32px);font-weight:400;letter-spacing:-.024em;margin:0 0 18px;line-height:1.16">Data Strategy</h2>
+          <p style="margin:0;color:#9AA1AB;font-size:16.5px;font-weight:300;max-width:44ch">A clear roadmap that ties data investment to business outcomes, so the next twelve months of work has a stated payback.</p>
+        </div>
+        <div style="display:grid;gap:0">
+          <div style="padding:20px 0;border-top:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:20px;font-size:15.5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681">01</span><span>Data maturity assessment and opportunity map</span></div>
+          <div style="padding:20px 0;border-top:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:20px;font-size:15.5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681">02</span><span>Metrics and KPI framework tied to business goals</span></div>
+          <div style="padding:20px 0;border-top:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:20px;font-size:15.5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681">03</span><span>Governance, ownership and data quality standards</span></div>
+          <div style="padding:20px 0;border-top:1px solid rgba(230,232,235,.08);border-bottom:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:20px;font-size:15.5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681">04</span><span>Tooling recommendations scoped to your budget</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section style="border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="max-width:1200px;margin:0 auto;padding:80px 32px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:64px;align-items:start">
+        <div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.14em;color:#E5348C;margin-bottom:20px">S.02</div>
+          <h2 style="font-size:clamp(24px,2.4vw,32px);font-weight:400;letter-spacing:-.024em;margin:0 0 18px;line-height:1.16">Data Engineering</h2>
+          <p style="margin:0;color:#9AA1AB;font-size:16.5px;font-weight:300;max-width:44ch">Reliable pipelines and warehousing, so every team works from the same numbers and nobody maintains a private extract.</p>
+        </div>
+        <div style="display:grid;gap:0">
+          <div style="padding:20px 0;border-top:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:20px;font-size:15.5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681">01</span><span>ETL / ELT pipeline design and implementation</span></div>
+          <div style="padding:20px 0;border-top:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:20px;font-size:15.5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681">02</span><span>Cloud data warehouse setup and migration</span></div>
+          <div style="padding:20px 0;border-top:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:20px;font-size:15.5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681">03</span><span>API and third-party system integrations</span></div>
+          <div style="padding:20px 0;border-top:1px solid rgba(230,232,235,.08);border-bottom:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:20px;font-size:15.5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681">04</span><span>Data quality monitoring and documentation</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section style="border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="max-width:1200px;margin:0 auto;padding:80px 32px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:64px;align-items:start">
+        <div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.14em;color:#E5348C;margin-bottom:20px">S.03</div>
+          <h2 style="font-size:clamp(24px,2.4vw,32px);font-weight:400;letter-spacing:-.024em;margin:0 0 18px;line-height:1.16">Analytics &amp; BI</h2>
+          <p style="margin:0;color:#9AA1AB;font-size:16.5px;font-weight:300;max-width:44ch">Dashboards and reporting built around the decisions your team makes each week, not around what the tool renders by default.</p>
+        </div>
+        <div style="display:grid;gap:0">
+          <div style="padding:20px 0;border-top:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:20px;font-size:15.5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681">01</span><span>Executive and operational dashboards</span></div>
+          <div style="padding:20px 0;border-top:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:20px;font-size:15.5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681">02</span><span>Self-serve reporting for non-technical teams</span></div>
+          <div style="padding:20px 0;border-top:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:20px;font-size:15.5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681">03</span><span>BI platform implementation and rollout</span></div>
+          <div style="padding:20px 0;border-top:1px solid rgba(230,232,235,.08);border-bottom:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:20px;font-size:15.5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681">04</span><span>Ad-hoc analysis and deep-dive reporting</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section style="border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="max-width:1200px;margin:0 auto;padding:80px 32px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:64px;align-items:start">
+        <div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.14em;color:#E5348C;margin-bottom:20px">S.04</div>
+          <h2 style="font-size:clamp(24px,2.4vw,32px);font-weight:400;letter-spacing:-.024em;margin:0 0 18px;line-height:1.16">Predictive Modelling</h2>
+          <p style="margin:0;color:#9AA1AB;font-size:16.5px;font-weight:300;max-width:44ch">Models that quantify what happens next and hand the answer to a person. The output is a forecast or a score; the decision stays yours.</p>
+        </div>
+        <div style="display:grid;gap:0">
+          <div style="padding:20px 0;border-top:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:20px;font-size:15.5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681">01</span><span>Demand and revenue forecasting</span></div>
+          <div style="padding:20px 0;border-top:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:20px;font-size:15.5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681">02</span><span>Churn, risk and propensity scoring</span></div>
+          <div style="padding:20px 0;border-top:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:20px;font-size:15.5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681">03</span><span>Validation against historical outcomes</span></div>
+          <div style="padding:20px 0;border-top:1px solid rgba(230,232,235,.08);border-bottom:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:20px;font-size:15.5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681">04</span><span>Model monitoring and retraining pipelines</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div style="max-width:1200px;margin:0 auto;padding:80px 32px 96px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:64px;align-items:start">
+        <div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.14em;color:#E5348C;margin-bottom:20px">S.05</div>
+          <h2 style="font-size:clamp(24px,2.4vw,32px);font-weight:400;letter-spacing:-.024em;margin:0 0 18px;line-height:1.16">AI Agents</h2>
+          <p style="margin:0;color:#9AA1AB;font-size:16.5px;font-weight:300;max-width:44ch">We develop agents that work inside your business processes, carrying out the routine operational steps end to end so your team spends its time on the exceptions.</p>
+        </div>
+        <div style="display:grid;gap:0">
+          <div style="padding:20px 0;border-top:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:20px;font-size:15.5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681">01</span><span>Workflow mapping to find where an agent pays back</span></div>
+          <div style="padding:20px 0;border-top:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:20px;font-size:15.5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681">02</span><span>Agents built into the tools your team already uses</span></div>
+          <div style="padding:20px 0;border-top:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:20px;font-size:15.5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681">03</span><span>Human approval on the steps that carry real risk</span></div>
+          <div style="padding:20px 0;border-top:1px solid rgba(230,232,235,.08);border-bottom:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:20px;font-size:15.5px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681">04</span><span>Guardrails, audit trails and ongoing tuning in production</span></div>
+        </div>
+      </div>
+    </section>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isWorkIndex }}" hint-placeholder-val="{{ false }}">
+  <main>
+    <section style="border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="max-width:1200px;margin:0 auto;padding:96px 32px 72px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#6E7681;margin-bottom:28px">Client work</div>
+        <h1 style="font-size:clamp(34px,4.4vw,56px);line-height:1.08;letter-spacing:-.03em;font-weight:400;margin:0;max-width:22ch">Three engagements, start to outcome</h1>
+        <p style="margin:28px 0 0;font-size:18px;color:#9AA1AB;max-width:56ch;font-weight:300">Client names and identifying details have been changed. The problems, the work and the numbers are drawn from real engagements.</p>
+      </div>
+    </section>
+    <section>
+      <div style="max-width:1200px;margin:0 auto;padding:64px 32px 96px;display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:1px;background:rgba(230,232,235,.08);border:1px solid rgba(230,232,235,.08)">
+        <a href="#/work/retail" style="background:#132040;padding:36px 30px;display:flex;flex-direction:column;color:#E6E8EB;min-height:300px" style-hover="background:#1A2A4C;color:#fff">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#E5348C;margin-bottom:24px">Retail</div>
+          <h2 style="font-size:22px;font-weight:400;letter-spacing:-.02em;margin:0 0 14px;line-height:1.22">Unifying sales data across 60 stores</h2>
+          <p style="margin:0;color:#8A9099;font-size:15px;font-weight:300">Regional managers were pricing on numbers three days stale.</p>
+          <div style="margin-top:auto;padding-top:28px;font-family:'IBM Plex Mono',monospace;font-size:26px;letter-spacing:-.02em">3d → 1h</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#6E7681;margin-top:6px;letter-spacing:.06em;text-transform:uppercase">Reporting lag</div>
+        </a>
+        <a href="#/work/fintech" style="background:#132040;padding:36px 30px;display:flex;flex-direction:column;color:#E6E8EB;min-height:300px" style-hover="background:#1A2A4C;color:#fff">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#E5348C;margin-bottom:24px">FinTech</div>
+          <h2 style="font-size:22px;font-weight:400;letter-spacing:-.02em;margin:0 0 14px;line-height:1.22">A warehouse that survived hypergrowth</h2>
+          <p style="margin:0;color:#8A9099;font-size:15px;font-weight:300">Volume was set to grow 12× ahead of a funding round.</p>
+          <div style="margin-top:auto;padding-top:28px;font-family:'IBM Plex Mono',monospace;font-size:26px;letter-spacing:-.02em">0 outages</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#6E7681;margin-top:6px;letter-spacing:.06em;text-transform:uppercase">Since cutover</div>
+        </a>
+        <a href="#/work/health" style="background:#132040;padding:36px 30px;display:flex;flex-direction:column;color:#E6E8EB;min-height:300px" style-hover="background:#1A2A4C;color:#fff">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#E5348C;margin-bottom:24px">Healthcare</div>
+          <h2 style="font-size:22px;font-weight:400;letter-spacing:-.02em;margin:0 0 14px;line-height:1.22">Predicting no-shows before they happen</h2>
+          <p style="margin:0;color:#8A9099;font-size:15px;font-weight:300">Empty slots were costing clinic capacity every week.</p>
+          <div style="margin-top:auto;padding-top:28px;font-family:'IBM Plex Mono',monospace;font-size:26px;letter-spacing:-.02em">−31%</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#6E7681;margin-top:6px;letter-spacing:.06em;text-transform:uppercase">No-show rate</div>
+        </a>
+      </div>
+    </section>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isCase }}" hint-placeholder-val="{{ false }}">
+  <main>
+    <section style="border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="max-width:960px;margin:0 auto;padding:72px 32px 64px">
+        <a href="#/work" style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:#6E7681" style-hover="color:#E6E8EB">← All client work</a>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:#E5348C;margin:38px 0 22px">{{ caseTag }}</div>
+        <h1 style="font-size:clamp(32px,4.2vw,52px);line-height:1.1;letter-spacing:-.03em;font-weight:400;margin:0;max-width:24ch">{{ caseTitle }}</h1>
+        <p style="margin:26px 0 0;font-size:18px;color:#9AA1AB;max-width:58ch;font-weight:300">{{ caseLede }}</p>
+      </div>
+    </section>
+
+    <section style="border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="max-width:960px;margin:0 auto;padding:0 32px;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
+        <div style="padding:40px 32px 40px 0">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:clamp(24px,2.6vw,32px);letter-spacing:-.02em">{{ caseMetric0Value }}</div>
+          <div style="margin-top:10px;font-size:13.5px;color:#6E7681;line-height:1.45">{{ caseMetric0Label }}</div>
+        </div>
+        <sc-for list="{{ caseMetricsRest }}" as="m" hint-placeholder-count="2">
+          <div style="padding:40px 32px;border-left:1px solid rgba(230,232,235,.08)">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:clamp(24px,2.6vw,32px);letter-spacing:-.02em">{{ m.value }}</div>
+            <div style="margin-top:10px;font-size:13.5px;color:#6E7681;line-height:1.45">{{ m.label }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <section style="border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="max-width:960px;margin:0 auto;padding:80px 32px;display:grid;gap:56px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:48px;align-items:start">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#6E7681">The problem</div>
+          <p style="margin:0;grid-column:span 2;font-size:17px;color:#C3C8D0;font-weight:300;max-width:60ch">{{ caseProblem }}</p>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:48px;align-items:start;padding-top:56px;border-top:1px solid rgba(230,232,235,.08)">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#6E7681">What we built</div>
+          <div style="grid-column:span 2;display:grid;gap:18px;max-width:60ch">
+            <sc-for list="{{ caseWork }}" as="w" hint-placeholder-count="4">
+              <div style="display:grid;grid-template-columns:auto 1fr;gap:18px;font-size:16px;color:#C3C8D0;font-weight:300"><span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#E5348C;padding-top:3px">{{ w.n }}</span><span>{{ w.text }}</span></div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:48px;align-items:start;padding-top:56px;border-top:1px solid rgba(230,232,235,.08)">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#6E7681">The outcome</div>
+          <p style="margin:0;grid-column:span 2;font-size:17px;color:#C3C8D0;font-weight:300;max-width:60ch">{{ caseOutcome }}</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div style="max-width:960px;margin:0 auto;padding:80px 32px 96px">
+        <blockquote style="margin:0;padding-left:28px;border-left:2px solid #E5348C">
+          <p style="margin:0;font-size:clamp(20px,2.2vw,26px);line-height:1.4;letter-spacing:-.016em;font-weight:300;color:#E6E8EB;max-width:40ch">{{ caseQuote }}</p>
+          <footer style="margin-top:22px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:#6E7681">{{ caseQuoteBy }}</footer>
+        </blockquote>
+        <div style="margin-top:64px;padding-top:32px;border-top:1px solid rgba(230,232,235,.08);display:flex;flex-wrap:wrap;gap:20px;justify-content:space-between;align-items:center">
+          <div style="color:#8A9099;font-size:16px;font-weight:300">Facing something similar?</div>
+          <a href="#/contact" style="display:inline-flex;align-items:center;padding:12px 20px;border-radius:4px;background:#E5348C;color:#fff;font-size:14.5px;font-weight:500" style-hover="background:#C82778;color:#fff">Book a consultation</a>
+        </div>
+      </div>
+    </section>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isAbout }}" hint-placeholder-val="{{ false }}">
+  <main>
+    <section style="border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="max-width:1200px;margin:0 auto;padding:96px 32px 72px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#6E7681;margin-bottom:28px">About</div>
+        <h1 style="font-size:clamp(34px,4.4vw,56px);line-height:1.08;letter-spacing:-.03em;font-weight:400;margin:0;max-width:24ch">A small senior team, no handoffs</h1>
+        <p style="margin:28px 0 0;font-size:18px;color:#9AA1AB;max-width:58ch;font-weight:300">Datana Solutions was founded in 2023 to give growing companies the data capability usually reserved for firms with an in-house team. The people who scope your engagement are the people who deliver it.</p>
+      </div>
+    </section>
+
+    <section style="border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="max-width:1200px;margin:0 auto;padding:0 32px;display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">
+        <div style="padding:40px 32px 40px 0">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:clamp(26px,2.8vw,34px);letter-spacing:-.02em">2023</div>
+          <div style="margin-top:10px;font-size:13.5px;color:#6E7681">Founded</div>
+        </div>
+        <div style="padding:40px 32px;border-left:1px solid rgba(230,232,235,.08)">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:clamp(26px,2.8vw,34px);letter-spacing:-.02em">40+</div>
+          <div style="margin-top:10px;font-size:13.5px;color:#6E7681">Projects delivered</div>
+        </div>
+        <div style="padding:40px 32px;border-left:1px solid rgba(230,232,235,.08)">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:clamp(26px,2.8vw,34px);letter-spacing:-.02em">90%</div>
+          <div style="margin-top:10px;font-size:13.5px;color:#6E7681">Repeat client rate</div>
+        </div>
+        <div style="padding:40px 0 40px 32px;border-left:1px solid rgba(230,232,235,.08)">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:clamp(26px,2.8vw,34px);letter-spacing:-.02em">3</div>
+          <div style="margin-top:10px;font-size:13.5px;color:#6E7681">Industries served most</div>
+        </div>
+      </div>
+    </section>
+
+    <section style="border-bottom:1px solid rgba(230,232,235,.08)">
+      <div style="max-width:1200px;margin:0 auto;padding:96px 32px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:64px;align-items:start">
+        <div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#6E7681;margin-bottom:22px">Team</div>
+          <h2 style="font-size:clamp(26px,2.6vw,36px);line-height:1.14;letter-spacing:-.024em;font-weight:400;margin:0;max-width:20ch">Who you'll actually work with</h2>
+        </div>
+        <div style="display:grid;gap:0">
+          <sc-for list="{{ team }}" as="p" hint-placeholder-count="3">
+            <div style="padding:30px 0;border-top:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:28px;align-items:start">
+              <div>
+                <h3 style="font-size:18px;font-weight:500;margin:0 0 4px">{{ p.name }}</h3>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#E5348C">{{ p.role }}</div>
+              </div>
+              <p style="margin:0;color:#8A9099;font-size:15px;font-weight:300;grid-column:span 2;max-width:48ch">{{ p.bio }}</p>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div style="max-width:1200px;margin:0 auto;padding:96px 32px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:64px;align-items:start">
+        <div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#6E7681;margin-bottom:22px">How we work</div>
+          <h2 style="font-size:clamp(26px,2.6vw,36px);line-height:1.14;letter-spacing:-.024em;font-weight:400;margin:0;max-width:20ch">Four stages, every engagement</h2>
+        </div>
+        <div style="display:grid;gap:0">
+          <div style="padding:26px 0;border-top:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:22px">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#E5348C;padding-top:4px">01</span>
+            <div><h3 style="font-size:17px;font-weight:500;margin:0 0 6px">Understand</h3><p style="margin:0;color:#8A9099;font-size:15px;font-weight:300;max-width:46ch">We start with the decision you can't make today and the data standing in the way.</p></div>
+          </div>
+          <div style="padding:26px 0;border-top:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:22px">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#E5348C;padding-top:4px">02</span>
+            <div><h3 style="font-size:17px;font-weight:500;margin:0 0 6px">Design</h3><p style="margin:0;color:#8A9099;font-size:15px;font-weight:300;max-width:46ch">A scoped plan with named deliverables, sequenced so value lands before the end.</p></div>
+          </div>
+          <div style="padding:26px 0;border-top:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:22px">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#E5348C;padding-top:4px">03</span>
+            <div><h3 style="font-size:17px;font-weight:500;margin:0 0 6px">Build</h3><p style="margin:0;color:#8A9099;font-size:15px;font-weight:300;max-width:46ch">Delivery in short cycles, reviewed with you, with documentation written as we go.</p></div>
+          </div>
+          <div style="padding:26px 0;border-top:1px solid rgba(230,232,235,.08);border-bottom:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:auto 1fr;gap:22px">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#E5348C;padding-top:4px">04</span>
+            <div><h3 style="font-size:17px;font-weight:500;margin:0 0 6px">Hand over</h3><p style="margin:0;color:#8A9099;font-size:15px;font-weight:300;max-width:46ch">Training and handover so your team owns what we built, whether or not we stay on.</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isContact }}" hint-placeholder-val="{{ false }}">
+  <main>
+    <section>
+      <div style="max-width:1200px;margin:0 auto;padding:96px 32px;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:72px;align-items:start">
+        <div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#6E7681;margin-bottom:28px">Contact</div>
+          <h1 style="font-size:clamp(32px,4vw,50px);line-height:1.08;letter-spacing:-.03em;font-weight:400;margin:0;max-width:20ch">Start with a conversation</h1>
+          <p style="margin:26px 0 44px;font-size:17.5px;color:#9AA1AB;max-width:46ch;font-weight:300">Tell us the decision you're trying to make. A 30-minute call is usually enough to tell whether we can help and what it would take.</p>
+          <div style="display:grid;gap:0;max-width:420px">
+            <div style="padding:22px 0;border-top:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:110px 1fr;gap:20px;align-items:baseline">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#6E7681">Email</span>
+              <a href="mailto:hello@datanasolutions.com" style="font-size:15.5px">hello@datanasolutions.com</a>
+            </div>
+            <div style="padding:22px 0;border-top:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:110px 1fr;gap:20px;align-items:baseline">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#6E7681">Response</span>
+              <span style="font-size:15.5px;color:#C3C8D0">Within one business day</span>
+            </div>
+            <div style="padding:22px 0;border-top:1px solid rgba(230,232,235,.08);border-bottom:1px solid rgba(230,232,235,.08);display:grid;grid-template-columns:110px 1fr;gap:20px;align-items:baseline">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#6E7681">Remote</span>
+              <span style="font-size:15.5px;color:#C3C8D0">Working across North America and LATAM</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="border:1px solid rgba(230,232,235,.1);padding:36px 32px;background:#17243D">
+          <sc-if value="{{ sent }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:40px 0;text-align:left">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#E5348C;margin-bottom:16px">Received</div>
+              <h2 style="font-size:24px;font-weight:400;letter-spacing:-.02em;margin:0 0 12px">Thanks, we'll be in touch</h2>
+              <p style="margin:0;color:#8A9099;font-size:15px;font-weight:300">One of us will reply within a business day.</p>
+            </div>
+          </sc-if>
+          <sc-if value="{{ notSent }}" hint-placeholder-val="{{ true }}">
+          <form onSubmit="{{ submit }}" style="display:grid;gap:22px">
+            <div style="display:grid;gap:9px">
+              <label for="c-name" style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#6E7681">Name</label>
+              <input id="c-name" name="name" required="required" style="background:#0A1625;border:1px solid rgba(230,232,235,.16);border-radius:3px;padding:12px 13px;color:#E6E8EB;font-family:'IBM Plex Sans',sans-serif;font-size:15px;outline:none" style-focus="border-color:#E5348C">
+            </div>
+            <div style="display:grid;gap:9px">
+              <label for="c-email" style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#6E7681">Work email</label>
+              <input id="c-email" name="email" type="email" required="required" style="background:#0A1625;border:1px solid rgba(230,232,235,.16);border-radius:3px;padding:12px 13px;color:#E6E8EB;font-family:'IBM Plex Sans',sans-serif;font-size:15px;outline:none" style-focus="border-color:#E5348C">
+            </div>
+            <div style="display:grid;gap:9px">
+              <label for="c-company" style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#6E7681">Company</label>
+              <input id="c-company" name="company" style="background:#0A1625;border:1px solid rgba(230,232,235,.16);border-radius:3px;padding:12px 13px;color:#E6E8EB;font-family:'IBM Plex Sans',sans-serif;font-size:15px;outline:none" style-focus="border-color:#E5348C">
+            </div>
+            <div style="display:grid;gap:9px">
+              <label for="c-need" style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#6E7681">What are you trying to figure out?</label>
+              <textarea id="c-need" name="need" rows="5" style="background:#0A1625;border:1px solid rgba(230,232,235,.16);border-radius:3px;padding:12px 13px;color:#E6E8EB;font-family:'IBM Plex Sans',sans-serif;font-size:15px;outline:none;resize:vertical" style-focus="border-color:#E5348C"></textarea>
+            </div>
+            <button type="submit" style="margin-top:6px;padding:13px 20px;border:none;border-radius:4px;background:#E5348C;color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:15px;font-weight:500;cursor:pointer;justify-self:start" style-hover="background:#C82778">Send enquiry</button>
+          </form>
+          </sc-if>
+        </div>
+      </div>
+    </section>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isLegal }}" hint-placeholder-val="{{ false }}">
+  <main>
+    <section>
+      <div style="max-width:820px;margin:0 auto;padding:96px 32px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#6E7681;margin-bottom:28px">{{ legalKicker }}</div>
+        <h1 style="font-size:clamp(30px,3.6vw,44px);line-height:1.1;letter-spacing:-.03em;font-weight:400;margin:0 0 18px">{{ legalTitle }}</h1>
+        <p style="margin:0 0 56px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#6E7681">Last updated: January 2026</p>
+        <div style="display:grid;gap:44px">
+          <sc-for list="{{ legalSections }}" as="s" hint-placeholder-count="5">
+            <div style="padding-top:36px;border-top:1px solid rgba(230,232,235,.08)">
+              <h2 style="font-size:19px;font-weight:500;margin:0 0 14px">{{ s.h }}</h2>
+              <p style="margin:0;color:#9AA1AB;font-size:16px;font-weight:300;max-width:66ch">{{ s.p }}</p>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:56px;padding-top:32px;border-top:1px solid rgba(230,232,235,.08);display:flex;gap:26px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase">
+          <a href="#/privacy" style="color:#9AA1AB" style-hover="color:#E6E8EB">Privacy policy</a>
+          <a href="#/terms" style="color:#9AA1AB" style-hover="color:#E6E8EB">Terms of service</a>
+        </div>
+      </div>
+    </section>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ showCta }}" hint-placeholder-val="{{ true }}">
+  <section style="border-top:1px solid rgba(230,232,235,.08);background:#17243D">
+    <div style="max-width:1200px;margin:0 auto;padding:88px 32px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:48px;align-items:center">
+      <div>
+        <h2 style="font-size:clamp(24px,2.6vw,34px);line-height:1.16;letter-spacing:-.024em;font-weight:400;margin:0;max-width:24ch">Tell us the decision you can't make yet</h2>
+        <p style="margin:18px 0 0;color:#8A9099;font-size:16px;font-weight:300;max-width:46ch">A 30-minute call, no preparation needed. We'll tell you honestly whether we're the right fit.</p>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:14px;justify-content:flex-end">
+        <a href="#/contact" style="display:inline-flex;align-items:center;padding:13px 22px;border-radius:4px;background:#E5348C;color:#fff;font-size:15px;font-weight:500" style-hover="background:#C82778;color:#fff">Book a consultation</a>
+      </div>
+    </div>
+  </section>
+  </sc-if>
+
+  <footer style="border-top:1px solid rgba(230,232,235,.08)">
+    <div style="max-width:1200px;margin:0 auto;padding:56px 32px 40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:48px;align-items:start">
+      <div>
+        <img src="uploads/logo-1789148846326-lkk3.png" alt="Datana Solutions" style="height:26px;width:auto;display:block;margin-bottom:20px">
+        <p style="margin:0;color:#6E7681;font-size:14px;font-weight:300;max-width:30ch">Data strategy, engineering, analytics and AI agents for teams that need to move faster on their data.</p>
+      </div>
+      <div style="display:grid;gap:12px;font-size:14px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#6E7681;margin-bottom:4px">Company</div>
+        <a href="#/services" style="color:#9AA1AB" style-hover="color:#E6E8EB">Services</a>
+        <a href="#/work" style="color:#9AA1AB" style-hover="color:#E6E8EB">Client work</a>
+        <a href="#/about" style="color:#9AA1AB" style-hover="color:#E6E8EB">About</a>
+        <a href="#/contact" style="color:#9AA1AB" style-hover="color:#E6E8EB">Contact</a>
+      </div>
+      <div style="display:grid;gap:12px;font-size:14px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#6E7681;margin-bottom:4px">Legal</div>
+        <a href="#/privacy" style="color:#9AA1AB" style-hover="color:#E6E8EB">Privacy policy</a>
+        <a href="#/terms" style="color:#9AA1AB" style-hover="color:#E6E8EB">Terms of service</a>
+      </div>
+      <div style="display:grid;gap:12px;font-size:14px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:#6E7681;margin-bottom:4px">Contact</div>
+        <a href="mailto:hello@datanasolutions.com" style="color:#9AA1AB" style-hover="color:#E6E8EB">hello@datanasolutions.com</a>
+      </div>
+    </div>
+    <div style="max-width:1200px;margin:0 auto;padding:0 32px 48px">
+      <div style="padding-top:28px;border-top:1px solid rgba(230,232,235,.08);font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#4E555E;letter-spacing:.04em">© 2026 Datana Solutions. All rights reserved.</div>
+    </div>
+  </footer>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+const CASES = {
+  retail: {
+    tag: "Retail · Analytics & BI",
+    title: "Unifying sales data across 60 stores",
+    lede: "A specialty retailer running 60 locations on three different POS systems, with no single view of what was selling where.",
+    metrics: [
+      { value: "3d → 1h", label: "Reporting lag" },
+      { value: "60", label: "Locations unified" },
+      { value: "4", label: "Systems consolidated" }
+    ],
+    problem: "Regional managers were making pricing and inventory calls on numbers up to three days old. Each POS system reported differently, so head office spent the first two days of every week reconciling extracts instead of acting on them. Nobody trusted a figure unless they had built it themselves.",
+    work: [
+      { n: "01", text: "Mapped every source system and agreed a single definition for revenue, margin and units with the finance and ops leads." },
+      { n: "02", text: "Built an ELT pipeline consolidating all POS feeds into a cloud warehouse, refreshing hourly." },
+      { n: "03", text: "Added automated quality checks that flag missing or anomalous store feeds before anyone opens a report." },
+      { n: "04", text: "Delivered one operational dashboard for regional managers and one summary view for the executive team." }
+    ],
+    outcome: "Reporting lag went from three days to one hour, and the weekly reconciliation work disappeared entirely. Regional managers now adjust pricing and transfer stock within the same trading week, using figures the whole business agrees on.",
+    quote: "We stopped arguing about whose number was right and started arguing about what to do next. That was the whole point.",
+    by: "Head of Operations, retail client"
+  },
+  fintech: {
+    tag: "FinTech · Data Engineering",
+    title: "A warehouse that survived hypergrowth",
+    lede: "A payments company heading into a funding round, with transaction volume forecast to grow twelve-fold and a pipeline that was already straining.",
+    metrics: [
+      { value: "12×", label: "Volume growth absorbed" },
+      { value: "0", label: "Outages since cutover" },
+      { value: "1st", label: "Pass on diligence data" }
+    ],
+    problem: "The existing pipeline had been built for a fraction of the volume and was failing weekly. Investor diligence required transaction-level reconciliation the team could not produce reliably, and every failed run cost days of engineering time that was needed elsewhere.",
+    work: [
+      { n: "01", text: "Re-architected ingestion around incremental, idempotent loads so a failed run retries without manual repair." },
+      { n: "02", text: "Migrated to a cloud warehouse sized for the forecast volume, with cost controls agreed up front." },
+      { n: "03", text: "Built a reconciliation layer producing an audit trail from raw transaction to reported figure." },
+      { n: "04", text: "Instrumented the pipeline with alerting and documented runbooks for the internal team." }
+    ],
+    outcome: "The platform absorbed twelve-fold volume growth without a single outage, and diligence figures reconciled on the first submission. The engineering team got its time back and now extends the pipeline without our involvement.",
+    quote: "The diligence data reconciled first time. Our CFO had been braced for two weeks of cleanup.",
+    by: "VP Engineering, fintech client"
+  },
+  health: {
+    tag: "Healthcare · AI & Automation",
+    title: "Predicting no-shows before they happen",
+    lede: "A multi-site clinic group losing a meaningful share of daily capacity to appointments that were never attended.",
+    metrics: [
+      { value: "−31%", label: "No-show rate" },
+      { value: "6 wks", label: "To production" },
+      { value: "Daily", label: "Risk scoring" }
+    ],
+    problem: "Around one in six appointments went unattended, with no way to tell in advance which ones. Scheduling staff had strong instincts but no data behind them, and blanket reminder calls to every patient were not affordable at the clinic's staffing level.",
+    work: [
+      { n: "01", text: "Assembled a feature set from historical attendance, appointment type, lead time and reminder history." },
+      { n: "02", text: "Trained and validated a risk model, tuned so that the staff's follow-up list stayed within their daily capacity." },
+      { n: "03", text: "Wired daily scores into the existing scheduling tool, so no one had to learn new software." },
+      { n: "04", text: "Set up monitoring and a retraining schedule, with performance reported to the operations lead monthly." }
+    ],
+    outcome: "The no-show rate fell 31% within six weeks of going live. Reminder effort is now concentrated on the appointments most at risk, and recovered slots are offered to patients on the waiting list the same day.",
+    quote: "It told us what our best schedulers already suspected, but for every appointment, every morning.",
+    by: "Clinic Operations Director, healthcare client"
+  }
+};
+
+const TEAM = [
+  { name: "Gillian Villanueva", role: "Founder & Principal Consultant", bio: "Leads strategy engagements and scopes every project. Add a two-line background here: previous roles, industries, degree or certification." },
+  { name: "Ruben Arteaga", role: "VP of Data Engineering", bio: "Owns pipeline and warehouse delivery. Add background: platforms, years of experience, notable builds." },
+  { name: "[Name]", role: "Analytics & AI Lead", bio: "Owns dashboards, modelling and production monitoring. Add background here." }
+];
+
+const PRIVACY = [
+  { h: "What we collect", p: "When you contact us through this site we collect your name, email address, company name and the message you send. We do not use advertising trackers or sell data to third parties." },
+  { h: "How we use it", p: "Solely to respond to your enquiry and, where relevant, to deliver services you have engaged us for. We do not add you to a marketing list without your consent." },
+  { h: "Client data", p: "Data we access during an engagement is processed under a written agreement, used only for the purposes of that engagement, and returned or deleted at its conclusion on request." },
+  { h: "Storage and security", p: "Enquiry data is held in access-controlled systems. Client data is held in the environment agreed with you, under the security controls specified in the engagement agreement." },
+  { h: "Your rights", p: "You may request access to, correction of, or deletion of any personal data we hold about you by emailing hello@datanasolutions.com. We respond within 30 days." },
+  { h: "Changes", p: "Material changes to this policy will be reflected in the date above. Continued use of the site after a change constitutes acceptance of the revised policy." }
+];
+
+const TERMS = [
+  { h: "Scope of services", p: "Services are defined in a written statement of work agreed before any engagement begins. Nothing on this site constitutes an offer, a fixed price, or a guarantee of a particular result." },
+  { h: "Fees and payment", p: "Fees, milestones and invoicing terms are set out in the applicable statement of work. Invoices are payable within the period stated there unless otherwise agreed in writing." },
+  { h: "Intellectual property", p: "On full payment, deliverables created specifically for you are yours. Pre-existing methods, templates and tooling we bring to the engagement remain ours, licensed to you for internal use." },
+  { h: "Confidentiality", p: "Each party keeps the other's confidential information confidential and uses it only for the purposes of the engagement. This obligation survives the end of the engagement." },
+  { h: "Limitation of liability", p: "Our aggregate liability arising from an engagement is limited to the fees paid under the applicable statement of work. We are not liable for indirect or consequential loss." },
+  { h: "Governing law", p: "These terms are governed by the law stated in the applicable statement of work. Disputes are resolved through good-faith negotiation before any formal proceedings." }
+];
+
+const h = (t, p, ...c) => React.createElement(t, p, ...c);
+
+const CX = 240, CY = 200, R = 118;
+const STAGES = [
+  { label: "INPUT", nx: CX - R, ny: CY, lx: CX - 88, ly: CY + 4, anchor: "start" },
+  { label: "MODEL", nx: CX, ny: CY - R, lx: CX, ly: CY - 84, anchor: "middle" },
+  { label: "ACTION", nx: CX + R, ny: CY, lx: CX + 88, ly: CY + 4, anchor: "end" },
+  { label: "LEARN", nx: CX, ny: CY + R, lx: CX, ly: CY + 92, anchor: "middle" }
+];
+const LINE = "rgba(230,232,235,.13)";
+const ACCENT = "#E5348C";
+
+function heroGraphic() {
+  const kids = [];
+
+  kids.push(h("defs", { key: "defs" },
+    h("radialGradient", { id: "dtHub", cx: "50%", cy: "50%", r: "50%" },
+      h("stop", { offset: "0%", stopColor: ACCENT, stopOpacity: .22 }),
+      h("stop", { offset: "100%", stopColor: ACCENT, stopOpacity: 0 })
+    ),
+    h("linearGradient", { id: "dtOut", x1: "0", x2: "1" },
+      h("stop", { offset: "0%", stopColor: "rgba(230,232,235,.34)" }),
+      h("stop", { offset: "100%", stopColor: "rgba(230,232,235,.08)" })
+    )
+  ));
+
+  const dots = [];
+  for (let c = 0; c < 9; c++) {
+    for (let r = 0; r < 7; r++) {
+      dots.push(h("circle", { key: c + "-" + r, cx: 30 + c * 50, cy: 32 + r * 56, r: 1, fill: "rgba(230,232,235,.075)" }));
+    }
+  }
+  kids.push(h("g", { key: "grid" }, dots));
+
+  kids.push(h("circle", { key: "glow", cx: CX, cy: CY, r: 86, fill: "url(#dtHub)" },
+    h("animate", { attributeName: "r", values: "76;96;76", dur: "7s", repeatCount: "indefinite" })
+  ));
+
+  kids.push(h("path", { key: "inb", d: "M14 " + CY + " L " + (CX - R - 7) + " " + CY, fill: "none", stroke: LINE, strokeWidth: 1 }));
+  kids.push(h("path", {
+    key: "inp", d: "M14 " + CY + " L " + (CX - R - 7) + " " + CY, fill: "none", stroke: ACCENT,
+    strokeWidth: 1.6, strokeLinecap: "round", pathLength: 400, strokeDasharray: "56 344"
+  }, h("animate", { attributeName: "stroke-dashoffset", from: "0", to: "-400", dur: "2.4s", repeatCount: "indefinite" })));
+
+  kids.push(h("circle", { key: "ringbase", cx: CX, cy: CY, r: R, fill: "none", stroke: LINE, strokeWidth: 1 }));
+
+  [0, 1, 2].forEach((i) => {
+    kids.push(h("circle", {
+      key: "arc" + i, cx: CX, cy: CY, r: R, fill: "none", stroke: ACCENT, strokeWidth: 1.6,
+      strokeLinecap: "round", pathLength: 400, strokeDasharray: "30 370",
+      transform: "rotate(-90 " + CX + " " + CY + ")"
+    }, h("animate", {
+      attributeName: "stroke-dashoffset", from: "0", to: "-400",
+      dur: "7.2s", begin: (i * 2.4) + "s", repeatCount: "indefinite"
+    })));
+  });
+
+  kids.push(h("circle", {
+    key: "inner", cx: CX, cy: CY, r: 68, fill: "none", stroke: "rgba(230,232,235,.16)",
+    strokeWidth: 1, strokeDasharray: "2 10"
+  }, h("animateTransform", {
+    attributeName: "transform", type: "rotate", from: "0 " + CX + " " + CY,
+    to: "360 " + CX + " " + CY, dur: "48s", repeatCount: "indefinite"
+  })));
+
+  kids.push(h("g", { key: "core" },
+    h("circle", { cx: CX, cy: CY, r: 15, fill: "none", stroke: "rgba(229,52,140,.5)", strokeWidth: 1 },
+      h("animate", { attributeName: "r", values: "15;26;15", dur: "4.8s", repeatCount: "indefinite" }),
+      h("animate", { attributeName: "stroke-opacity", values: ".5;0;.5", dur: "4.8s", repeatCount: "indefinite" })
+    ),
+    h("circle", { cx: CX, cy: CY, r: 4.5, fill: ACCENT })
+  ));
+
+  STAGES.forEach((s, i) => {
+    kids.push(h("g", { key: "st" + i },
+      h("circle", { cx: s.nx, cy: s.ny, r: 4.5, fill: "#132040", stroke: "rgba(230,232,235,.5)", strokeWidth: 1 },
+        h("animate", {
+          attributeName: "stroke",
+          values: "rgba(230,232,235,.5);" + ACCENT + ";rgba(230,232,235,.5)",
+          dur: "7.2s", begin: (i * 1.8) + "s", repeatCount: "indefinite"
+        })
+      ),
+      h("text", {
+        x: s.lx, y: s.ly, textAnchor: s.anchor, fill: "#6E7681",
+        style: { fontFamily: "'IBM Plex Mono', monospace", fontSize: "10.5px", letterSpacing: ".16em" }
+      }, s.label)
+    ));
+  });
+
+  kids.push(h("path", { key: "ob", d: "M" + (CX + R + 7) + " " + CY + " L 440 " + CY, fill: "none", stroke: "url(#dtOut)", strokeWidth: 1 }));
+  kids.push(h("path", {
+    key: "op", d: "M" + (CX + R + 7) + " " + CY + " L 440 " + CY, fill: "none", stroke: ACCENT,
+    strokeWidth: 1.6, strokeLinecap: "round", pathLength: 400, strokeDasharray: "56 344"
+  }, h("animate", { attributeName: "stroke-dashoffset", from: "0", to: "-400", dur: "2.4s", repeatCount: "indefinite" })));
+
+  kids.push(h("g", { key: "outg" },
+    h("rect", { x: 440, y: CY - 24, width: 22, height: 48, fill: "none", stroke: "rgba(230,232,235,.2)", strokeWidth: 1, rx: 2 }),
+    h("rect", { x: 446, y: CY - 4, width: 10, height: 8, fill: ACCENT },
+      h("animate", { attributeName: "fill-opacity", values: ".45;1;.45", dur: "2.4s", repeatCount: "indefinite" })
+    ),
+    h("text", {
+      x: 451, y: CY + 42, textAnchor: "middle", fill: "#6E7681",
+      style: { fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: ".12em" }
+    }, "BUSINESS"),
+    h("text", {
+      x: 451, y: CY + 56, textAnchor: "middle", fill: "#6E7681",
+      style: { fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: ".12em" }
+    }, "OPERATION")
+  ));
+
+  return h("svg", {
+    viewBox: "0 0 480 400", width: "100%", role: "presentation", "aria-hidden": "true",
+    style: { display: "block", width: "100%", maxWidth: "540px", height: "auto", overflow: "visible" }
+  }, kids);
+}
+
+const SRC_Y = [24, 62, 100, 138, 176, 214];
+const MOD_Y = [69, 119, 169];
+const OUTS = [{ y: 94, label: "ACTIONS" }, { y: 144, label: "DECISIONS" }];
+
+function flowGraphic() {
+  const kids = [];
+
+  kids.push(h("defs", { key: "d" },
+    h("linearGradient", { id: "dtFlow", x1: "0", x2: "1" },
+      h("stop", { offset: "0%", stopColor: "rgba(230,232,235,.05)" }),
+      h("stop", { offset: "45%", stopColor: "rgba(230,232,235,.16)" }),
+      h("stop", { offset: "100%", stopColor: "rgba(230,232,235,.05)" })
+    )
+  ));
+
+  const dots = [];
+  for (let c = 0; c < 10; c++) {
+    for (let r = 0; r < 6; r++) {
+      dots.push(h("circle", { key: c + "-" + r, cx: 24 + c * 48, cy: 22 + r * 48, r: 1, fill: "rgba(230,232,235,.06)" }));
+    }
+  }
+  kids.push(h("g", { key: "grid" }, dots));
+
+  SRC_Y.forEach((sy, i) => {
+    const my = MOD_Y[Math.floor(i / 2)];
+    const d = "M22 " + sy + " C 96 " + sy + ", 120 " + my + ", 180 " + my;
+    kids.push(h("path", { key: "sb" + i, d: d, fill: "none", stroke: "url(#dtFlow)", strokeWidth: 1 }));
+    kids.push(h("path", {
+      key: "sp" + i, d: d, fill: "none", stroke: ACCENT, strokeWidth: 1.5, strokeLinecap: "round",
+      pathLength: 400, strokeDasharray: "24 376"
+    }, h("animate", {
+      attributeName: "stroke-dashoffset", from: "0", to: "-400",
+      dur: "3.6s", begin: (i * 0.6) + "s", repeatCount: "indefinite"
+    })));
+    kids.push(h("circle", { key: "sn" + i, cx: 18, cy: sy, r: 3.5, fill: "#132040", stroke: "rgba(230,232,235,.42)", strokeWidth: 1 },
+      h("animate", {
+        attributeName: "stroke", values: "rgba(230,232,235,.42);" + ACCENT + ";rgba(230,232,235,.42)",
+        dur: "3.6s", begin: (i * 0.6) + "s", repeatCount: "indefinite"
+      })
+    ));
+  });
+
+  MOD_Y.forEach((my, i) => {
+    OUTS.forEach((o, j) => {
+      const d = "M212 " + my + " C 292 " + my + ", 316 " + o.y + ", 386 " + o.y;
+      kids.push(h("path", { key: "mb" + i + j, d: d, fill: "none", stroke: "rgba(230,232,235,.09)", strokeWidth: 1 }));
+      kids.push(h("path", {
+        key: "mp" + i + j, d: d, fill: "none", stroke: ACCENT, strokeWidth: 1.5, strokeLinecap: "round",
+        pathLength: 400, strokeDasharray: "20 380"
+      }, h("animate", {
+        attributeName: "stroke-dashoffset", from: "0", to: "-400",
+        dur: "3.2s", begin: (1.4 + i * 0.5 + j * 0.9) + "s", repeatCount: "indefinite"
+      })));
+    });
+    kids.push(h("g", { key: "m" + i },
+      h("rect", { x: 182, y: my - 11, width: 30, height: 22, rx: 2, fill: "#132040", stroke: "rgba(230,232,235,.28)", strokeWidth: 1 }),
+      h("rect", { x: 186, y: my - 4, width: 5, height: 8, fill: ACCENT, fillOpacity: .9 },
+        h("animate", {
+          attributeName: "x", values: "186;203;186", dur: "2.6s",
+          begin: (i * 0.65) + "s", repeatCount: "indefinite"
+        })
+      )
+    ));
+  });
+
+  OUTS.forEach((o, j) => {
+    kids.push(h("g", { key: "o" + j },
+      h("circle", { cx: 390, cy: o.y, r: 12, fill: "none", stroke: "rgba(229,52,140,.45)", strokeWidth: 1 },
+        h("animate", { attributeName: "r", values: "8;17;8", dur: "3.2s", begin: (j * 1.2) + "s", repeatCount: "indefinite" }),
+        h("animate", { attributeName: "stroke-opacity", values: ".45;0;.45", dur: "3.2s", begin: (j * 1.2) + "s", repeatCount: "indefinite" })
+      ),
+      h("circle", { cx: 390, cy: o.y, r: 4.5, fill: ACCENT }),
+      h("text", {
+        x: 410, y: o.y + 4, textAnchor: "start", fill: "#9AA1AB",
+        style: { fontFamily: "'IBM Plex Mono', monospace", fontSize: "10.5px", letterSpacing: ".14em" }
+      }, o.label)
+    ));
+  });
+
+  const cap = { fontFamily: "'IBM Plex Mono', monospace", fontSize: "10.5px", letterSpacing: ".14em" };
+  kids.push(h("text", { key: "c1", x: 18, y: 254, fill: "#6E7681", style: cap }, "SOURCES"));
+  kids.push(h("text", { key: "c2", x: 197, y: 254, textAnchor: "middle", fill: "#6E7681", style: cap }, "TRANSFORM"));
+
+  return h("svg", {
+    viewBox: "0 0 480 268", width: "100%", role: "presentation", "aria-hidden": "true",
+    style: { display: "block", width: "100%", maxWidth: "520px", height: "auto", overflow: "visible" }
+  }, kids);
+}
+
+class Component extends DCLogic {
+  state = { route: "/", sent: false };
+
+  componentDidMount() {
+    this.sync = () => {
+      const h = (window.location.hash || "").replace(/^#/, "") || "/";
+      this.setState({ route: h, sent: false });
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener("hashchange", this.sync);
+    this.sync();
+  }
+  componentWillUnmount() { window.removeEventListener("hashchange", this.sync); }
+
+  renderVals() {
+    const r = this.state.route;
+    const caseKey = r.startsWith("/work/") ? r.slice(6) : null;
+    const c = caseKey ? CASES[caseKey] : null;
+    const isLegal = r === "/privacy" || r === "/terms";
+    const isPrivacy = r === "/privacy";
+    const known = ["/", "/services", "/work", "/about", "/contact", "/privacy", "/terms"];
+    const isHome = r === "/" || (!known.includes(r) && !c);
+
+    return {
+      heroGraphic: heroGraphic(),
+      flowGraphic: flowGraphic(),
+      hrefHome: "#/",
+      goHome: () => { window.location.hash = "#/"; },
+      isHome,
+      isServices: r === "/services",
+      isWorkIndex: r === "/work",
+      isCase: !!c,
+      isAbout: r === "/about",
+      isContact: r === "/contact",
+      isLegal,
+      showCta: isHome || r === "/services" || r === "/work" || r === "/about",
+
+      caseTag: c ? c.tag : "",
+      caseTitle: c ? c.title : "",
+      caseLede: c ? c.lede : "",
+      caseMetric0Value: c ? c.metrics[0].value : "",
+      caseMetric0Label: c ? c.metrics[0].label : "",
+      caseMetricsRest: c ? c.metrics.slice(1) : [],
+      caseProblem: c ? c.problem : "",
+      caseWork: c ? c.work : [],
+      caseOutcome: c ? c.outcome : "",
+      caseQuote: c ? c.quote : "",
+      caseQuoteBy: c ? c.by : "",
+
+      team: TEAM,
+
+      legalKicker: isPrivacy ? "Privacy" : "Terms",
+      legalTitle: isPrivacy ? "Privacy policy" : "Terms of service",
+      legalSections: isPrivacy ? PRIVACY : TERMS,
+
+      sent: this.state.sent,
+      notSent: !this.state.sent,
+      submit: (e) => { e.preventDefault(); this.setState({ sent: true }); }
+    };
+  }
+}
+
+</script>
+</body>
+</html>

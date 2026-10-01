@@ -1,0 +1,33 @@
+# API server — used in the Docker/Cloud Run container (no Kivy)
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.0.0
+
+# PDF generation
+reportlab>=4.0.4
+jinja2>=3.1.0
+
+# PDF text/table extraction (parsing uploaded QuickBooks estimates)
+pdfplumber>=0.11.0
+
+# PDF merging (assembling the contract packet from multiple generated PDFs)
+pypdf>=4.0.0
+
+# Database
+psycopg2-binary>=2.9.9
+
+# Stripe
+stripe>=8.0.0
+
+# Google Cloud Storage
+google-cloud-storage>=2.16.0
+
+# Google Workspace Drive — contract drafts saved to admin@cabrera.construction
+# via domain-wide-delegation service-account impersonation
+google-api-python-client>=2.100.0
+
+# Google Sheets (reconciliation export)
+gspread>=6.0.0
+
+# HTTP client (used by HTTPClient in client.py on the Kivy side)
+requests>=2.31.0

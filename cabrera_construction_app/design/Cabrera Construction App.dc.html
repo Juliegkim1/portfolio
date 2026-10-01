@@ -1,0 +1,1808 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/industry-76030fe9-7f29-4006-b874-2814ceb7969a/styles.css">
+<script src="_ds/industry-76030fe9-7f29-4006-b874-2814ceb7969a/_ds_bundle.js"></script>
+<style>
+  body{margin:0}
+  a{color:var(--color-accent)}
+  a:hover{color:var(--color-accent-700)}
+  input.input[readonly],textarea.input[readonly]{opacity:0.85;cursor:default}
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body)">
+
+<sc-if value="{{isDesktop}}" hint-placeholder-val="{{true}}">
+<div style="display:flex;min-height:100vh">
+
+  <aside style="width:236px;flex:none;border-right:1px solid var(--color-divider);display:flex;flex-direction:column;padding:var(--space-6) 0">
+    <div style="display:flex;align-items:center;gap:10px;padding:0 var(--space-4) var(--space-6)">
+      <img src="assets/cabrera-logo.png" alt="Cabrera Construction" style="width:32px;height:32px;object-fit:contain">
+      <div style="font-family:var(--font-heading);font-weight:600;font-size:15px;line-height:1.15">Cabrera<br>Construction</div>
+    </div>
+    <nav style="display:flex;flex-direction:column;gap:3px;padding:0 var(--space-3)">
+      <button onClick="{{setScreenDatabase}}" style="{{navStyleDatabase}}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"></path></svg>
+        <span>1&nbsp;&nbsp;Customers &amp; Projects</span>
+      </button>
+      <button onClick="{{setScreenEstimate}}" style="{{navStyleEstimate}}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l3 3v15H6z"></path><path d="M12 16v-6"></path><path d="M9.5 12.5 12 10l2.5 2.5"></path></svg>
+        <span>2&nbsp;&nbsp;Estimate Upload</span>
+      </button>
+      <button onClick="{{setScreenScope}}" style="{{navStyleScope}}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1"></rect><path d="M3 9h18"></path><path d="M9 9v11"></path></svg>
+        <span>3&nbsp;&nbsp;Scope &amp; Payments</span>
+      </button>
+      <button onClick="{{setScreenContract}}" style="{{navStyleContract}}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l3 3v15H6z"></path><path d="M9 11h6"></path><path d="M9 15h4"></path></svg>
+        <span>4&nbsp;&nbsp;Contract Package</span>
+      </button>
+      <button onClick="{{setScreenChangeOrder}}" style="{{navStyleChangeOrder}}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.1"></circle><circle cx="6" cy="18" r="2.1"></circle><circle cx="18" cy="9" r="2.1"></circle><path d="M6 8.1V15.9"></path><path d="M6 8.1c0 3.7 3.6 5.4 7.3 5.4h1.9"></path></svg>
+        <span>5&nbsp;&nbsp;Change Orders</span>
+      </button>
+      <button onClick="{{setScreenInvoice}}" style="{{navStyleInvoice}}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-2.5-1.4L14 21l-2-1.4L10 21l-2.5-1.4L6 21Z"></path><path d="M9 8h6"></path><path d="M9 12h6"></path></svg>
+        <span>6&nbsp;&nbsp;Invoices</span>
+      </button>
+      <button onClick="{{setScreenReconciliation}}" style="{{navStyleReconciliation}}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M7.5 12.5 10 15l6.5-6.5"></path></svg>
+        <span>7&nbsp;&nbsp;Reconciliation</span>
+      </button>
+    </nav>
+    <div style="padding:var(--space-6) var(--space-3) 0;display:flex;flex-direction:column;gap:3px">
+      <div style="font-size:10.5px;color:var(--color-neutral-600);letter-spacing:0.04em;text-transform:uppercase;padding:0 12px 4px">Company</div>
+      <button onClick="{{setScreenAnalytics}}" style="{{navStyleAnalytics}}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M7 15l4-4 3 3 6-7"></path></svg>
+        <span>Analytics</span>
+      </button>
+      <button onClick="{{setScreenBankrec}}" style="{{navStyleBankrec}}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h18"></path><path d="M12 3l9 5H3z"></path><path d="M5 10v8"></path><path d="M9.5 10v8"></path><path d="M14.5 10v8"></path><path d="M19 10v8"></path><path d="M3 21h18"></path></svg>
+        <span>Operational Reconciliation</span>
+      </button>
+      <button onClick="{{setScreenUsers}}" style="{{navStyleUsers}}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"></path><path d="M19 8v6"></path><path d="M16 11h6"></path></svg>
+        <span>Team &amp; Users</span>
+      </button>
+      <button onClick="{{setScreenExpenses}}" style="{{navStyleExpenses}}">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-2.5-1.4L14 21l-2-1.4L10 21l-2.5-1.4L6 21Z"></path><path d="M12 7v10"></path><path d="M14.5 9.2c-.4-.8-1.3-1.2-2.5-1.2-1.4 0-2.5.7-2.5 1.8 0 2.6 5 1.4 5 4 0 1.1-1.1 1.8-2.5 1.8-1.2 0-2.1-.4-2.6-1.2"></path></svg>
+        <span>Business Expenses</span>
+      </button>
+    </div>
+    <div style="margin-top:auto;padding:var(--space-4);border-top:1px solid var(--color-divider)">
+      <div style="font-size:10.5px;color:var(--color-neutral-600);letter-spacing:0.04em;text-transform:uppercase">Signed in as</div>
+      <div style="font-size:13px;font-weight:600;margin-top:2px">Samuel Cabrera</div>
+      <div style="font-size:11.5px;color:var(--color-neutral-600)">Owner · Lic. #1135927</div>
+    </div>
+  </aside>
+
+  <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+    <header style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);padding:var(--space-4) var(--space-6);border-bottom:1px solid var(--color-divider);flex-wrap:wrap">
+      <div>
+        <h2 style="margin:0">{{screenTitle}}</h2>
+        <div class="text-muted" style="font-size:12.5px;margin-top:2px">{{projectContext}}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="tag tag-outline">QuickBooks · Connected</span>
+        <span class="tag tag-outline">Adobe Acrobat · Connected</span>
+        <span class="tag tag-outline">Google Workspace · Connected</span>
+        <div class="seg" style="margin-left:8px">
+          <label class="seg-opt"><input type="radio" name="modesel" checked="{{isDesktop}}" onChange="{{selectDesktop}}">Desktop</label>
+          <label class="seg-opt"><input type="radio" name="modesel" checked="{{isMobile}}" onChange="{{selectMobile}}">Mobile</label>
+        </div>
+      </div>
+    </header>
+
+    <main style="flex:1;overflow:auto;padding:var(--space-6);max-width:1120px">
+
+    <sc-if value="{{isDatabase}}" hint-placeholder-val="{{true}}">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--space-4);margin-bottom:var(--space-4);flex-wrap:wrap">
+        <p class="text-muted" style="margin:0;max-width:560px">Projects are created from uploaded QuickBooks estimates. Select a project to work on its scope, contract, change orders, invoices and reconciliation.</p>
+        <button class="btn btn-secondary" onClick="{{setScreenEstimate}}">+ New Project from Estimate</button>
+      </div>
+      <table class="table">
+        <thead><tr><th>Project</th><th>Customer</th><th>Type</th><th>Status</th><th>Start</th><th>Contract Value</th></tr></thead>
+        <tbody>
+          <sc-for list="{{customers}}" as="c" hint-placeholder-count="3">
+            <tr style="{{c.rowStyle}}">
+              <td><strong>{{c.projectName}}</strong><div class="text-muted" style="font-size:12px">{{c.address}}</div></td>
+              <td>{{c.customerName}}</td>
+              <td>{{c.type}}</td>
+              <td><span class="{{c.tagClass}}">{{c.statusLabel}}</span></td>
+              <td>{{c.startFmt}}</td>
+              <td>{{c.contractFmt}}</td>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+
+      <div class="card blueprint elev-sm" style="margin-top:var(--space-6);padding:var(--space-4)">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">Selected Project</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+          <div>
+            <div class="card-title">{{project.name}}</div>
+            <div class="text-muted" style="margin-top:6px;font-size:13px">{{project.type}}</div>
+            <div style="margin-top:var(--space-3);display:flex;flex-direction:column;gap:5px;font-size:13px">
+              <div><span class="text-muted">Customer&nbsp;</span>{{project.customerName}}</div>
+              <div><span class="text-muted">Phone&nbsp;</span>{{project.phone}}</div>
+              <div><span class="text-muted">Email&nbsp;</span>{{project.email}}</div>
+              <div><span class="text-muted">Property&nbsp;</span>{{project.address}}</div>
+              <div><span class="text-muted">Drive Folder&nbsp;</span><a href="#">Projects / {{folderName}}</a></div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:13px">
+            <div class="text-muted" style="font-size:11px;letter-spacing:0.04em;text-transform:uppercase">Project Documents</div>
+            <sc-for list="{{projectDocs}}" as="d" hint-placeholder-count="4">
+              <div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--color-divider)"><span>{{d.label}}</span><span class="{{d.cls}}">{{d.status}}</span></div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isEstimate}}" hint-placeholder-val="{{false}}">
+      <div class="card blueprint elev-sm" style="padding:var(--space-4);gap:var(--space-3);margin-bottom:var(--space-3)">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><div><div class="card-kicker">Step 1 · Recommended</div><div class="card-title">Get the estimate from QuickBooks</div></div><span class="tag tag-outline">QuickBooks · Connected</span></div>
+        <div class="text-muted" style="font-size:13px">Enter the estimate number shown in QuickBooks. The app pulls the estimate data (customer, address, line items and totals) directly, so nothing has to be re-read from a PDF.</div>
+        <div style="display:flex;gap:var(--space-3);align-items:flex-end;flex-wrap:wrap">
+          <div class="field" style="flex:0 1 260px"><label>Estimate Number</label><input class="input" value="{{estNumber}}" onChange="{{setEstNumber}}" onKeyDown="{{estKey}}" placeholder="e.g. 1042"></div>
+          <button class="btn btn-primary blueprint" style="position:relative" onClick="{{fetchEstimate}}"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Fetch Estimate</button>
+        </div>
+        <sc-if value="{{estFound}}" hint-placeholder-val="{{true}}">
+          <div style="display:flex;align-items:center;gap:10px;font-size:13px;flex-wrap:wrap;padding-top:4px"><span class="tag tag-accent">✓ Found in QuickBooks</span><span>Estimate #{{estDocNumber}} · {{project.customerName}} · {{estimate.totalFmt}} · status Pending</span><span class="text-muted">Retrieved {{estRetrieved}}</span></div>
+        </sc-if>
+        <sc-if value="{{estNotFound}}" hint-placeholder-val="{{false}}">
+          <div style="padding:10px 12px;border:1px solid var(--color-accent-300);background:var(--color-accent-100);color:var(--color-accent-900);font-size:13px">No estimate numbered <strong>{{estTried}}</strong> was found in QuickBooks. Check the number, or upload the estimate PDF below.</div>
+        </sc-if>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin:var(--space-3) 0;color:var(--color-neutral-600);font-size:12px"><div style="flex:1;height:1px;background:var(--color-divider)"></div>OR, IF THERE IS NO ESTIMATE NUMBER<div style="flex:1;height:1px;background:var(--color-divider)"></div></div>
+      <label class="card blueprint" style="padding:var(--space-4);display:flex;flex-direction:row;align-items:center;gap:var(--space-4);cursor:pointer;border-style:dashed;margin-bottom:var(--space-3)">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <input type="file" accept=".pdf" onChange="{{uploadEstimate}}" style="display:none">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-accent-700);flex:none"><path d="M12 16V4"></path><path d="M7 9l5-5 5 5"></path><path d="M4 16v4h16v-4"></path></svg>
+        <div style="flex:1;min-width:0"><div class="card-title" style="font-size:16px">Upload the estimate PDF</div><div class="text-muted" style="font-size:12.5px">PDF exported from QuickBooks. The app reads the fields from the document.</div></div>
+        <span class="btn btn-secondary">Choose File</span>
+      </label>
+      <sc-if value="{{estFromPdf}}" hint-placeholder-val="{{false}}">
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;padding:10px 12px;border:1px solid var(--color-divider);margin-bottom:var(--space-3)"><strong>{{estimateFile}}</strong><span class="tag tag-accent">Parsed from PDF</span></div>
+      </sc-if>
+      <div style="height:var(--space-4)"></div>
+      <h4 style="margin-top:0">{{estSourceLabel}}</h4>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);margin-bottom:var(--space-6)">
+        <div class="field"><label>Customer Name</label><input class="input" value="{{project.customerName}}" readonly></div>
+        <div class="field"><label>Property Address</label><input class="input" value="{{project.address}}" readonly></div>
+        <div class="field"><label>Phone</label><input class="input" value="{{project.phone}}" readonly></div>
+        <div class="field"><label>Email</label><input class="input" value="{{project.email}}" readonly></div>
+        <div class="field"><label>Estimate # · Date Issued</label><input class="input" value="{{estimate.label}}" readonly></div>
+        <div class="field"><label>Estimate Total</label><input class="input" value="{{estimate.totalFmt}}" readonly></div>
+        <div class="field" style="grid-column:1/-1"><label>Project Scope</label><textarea class="input" readonly value="{{project.description}}"></textarea></div>
+      </div>
+
+      <h4>Estimate Sections</h4>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-3);margin-bottom:var(--space-6)">
+        <sc-for list="{{estimateSections}}" as="s" hint-placeholder-count="4">
+          <div class="card blueprint" style="padding:var(--space-3)">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div class="card-kicker">{{s.name}}</div>
+            <div style="font-size:13px" class="text-muted">{{s.itemsCount}} line items</div>
+            <div style="font-family:var(--font-heading);font-weight:600;font-size:18px">{{s.subtotalFmt}}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div class="card blueprint elev-sm" style="padding:var(--space-4);margin-bottom:var(--space-6)">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">The app creates</div>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{pipeline}}" as="p" hint-placeholder-count="4">
+            <div style="display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--color-divider);font-size:13.5px">
+              <span style="font-family:var(--font-heading);font-weight:600;color:var(--color-accent-700)">{{p.n}}</span>
+              <div><strong>{{p.label}}</strong><div class="text-muted" style="font-size:12px">{{p.detail}}</div></div>
+              <span class="{{p.cls}}">{{p.status}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <button class="btn btn-primary blueprint" style="position:relative" onClick="{{setScreenScope}}">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        Create Project &amp; Continue to Scope
+      </button>
+    </sc-if>
+
+    <sc-if value="{{isScope}}" hint-placeholder-val="{{false}}">
+      <div class="card blueprint" style="padding:var(--space-4);margin-bottom:var(--space-6)">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-3);flex-wrap:wrap">
+          <div><div class="card-kicker">Project Scope &amp; Payment Schedule</div><div class="card-title">{{project.name}}</div></div>
+          <span class="tag tag-outline">Draft · from {{estimate.number}}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px var(--space-4);font-size:13px;margin-top:var(--space-3)">
+          <div><div class="text-muted">Project Scope</div>{{project.type}}</div>
+          <div><div class="text-muted">Contract Date</div>{{contractDateFmt}}</div>
+          <div><div class="text-muted">Contract Type</div>Fixed-Price Agreement</div>
+          <div><div class="text-muted">Job Site Location</div>{{project.address}}</div>
+          <div><div class="text-muted">Payment Terms</div>Due on milestone completion, net 15</div>
+          <div><div class="text-muted">Total Price</div><strong>{{estimate.totalFmt}}</strong></div>
+        </div>
+      </div>
+
+      <h5 style="margin:0 0 8px">Project Parties, Site Details &amp; Schedule</h5>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-4);font-size:13px;margin-bottom:var(--space-6)">
+        <div><div class="card-kicker">Client (Property Owner)</div><strong>{{project.customerName}}</strong><div>{{project.email}}</div></div>
+        <div><div class="card-kicker">Licensed General Contractor</div><strong>{{company.name}} ({{company.license}})</strong><div>{{company.email}} · {{company.phone}}</div></div>
+        <div><div class="card-kicker">Project Timeline &amp; Site</div><strong>{{durationFmt}}</strong><div>{{project.address}}</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid var(--color-divider);margin-bottom:var(--space-6)">
+        <div style="padding:10px 12px;border-right:1px solid var(--color-divider)"><div class="card-kicker">Total Contract Price</div><div style="font-family:var(--font-heading);font-weight:600;font-size:18px">{{scopeTotalFmt}}</div><div class="text-muted" style="font-size:11.5px">Fixed-Price Agreement</div></div>
+        <div style="padding:10px 12px;border-right:1px solid var(--color-divider)"><div class="card-kicker">Initial Deposit</div><div style="font-family:var(--font-heading);font-weight:600;font-size:18px">{{depositFmt}}</div><div class="text-muted" style="font-size:11.5px">Due upon signing</div></div>
+        <div style="padding:10px 12px;border-right:1px solid var(--color-divider)"><div class="card-kicker">Project Scope</div><div style="font-size:13px;font-weight:600">Kitchen + Two-Unit Bath</div></div>
+        <div style="padding:10px 12px;border-right:1px solid var(--color-divider)"><div class="card-kicker">Project Duration</div><div style="font-size:13px;font-weight:600">{{durationFmt}}</div></div>
+        <div style="padding:10px 12px"><div class="card-kicker">Milestones</div><div style="font-size:13px;font-weight:600">{{milestoneRange}}</div></div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-wrap:wrap">
+        <h5 style="margin:0">Milestone Payment Schedule</h5>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="{{balanceCheck.cls}}">{{balanceCheck.label}}</span><span class="{{depositCheck.cls}}">{{depositCheck.label}}</span></div>
+      </div>
+      <table class="table" style="margin-bottom:var(--space-3)">
+        <thead><tr><th>#</th><th>Milestone Title &amp; Deliverable</th><th>Detailed Scope &amp; Verification</th><th>Target Due</th><th>Amount ($)</th><th>%</th><th>Status</th></tr></thead>
+        <tbody>
+          <sc-for list="{{milestones}}" as="m" hint-placeholder-count="7">
+            <tr>
+              <td style="font-family:var(--font-heading);font-weight:600">{{m.n}}</td>
+              <td><strong>{{m.title}}</strong><div class="text-muted" style="font-size:12px">{{m.deliverable}}</div></td>
+              <td style="font-size:12.5px;max-width:280px">{{m.scope}}</td>
+              <td><input class="input" style="max-width:118px" value="{{m.dueFmt}}" readonly></td>
+              <td><input class="input" style="max-width:110px" value="{{m.amountStr}}" onChange="{{m.setAmount}}"></td>
+              <td>{{m.percentFmt}}</td>
+              <td><span class="{{m.tagClass}}">{{m.statusLabel}}</span></td>
+            </tr>
+          </sc-for>
+          <tr><td colspan="4" style="text-align:right;font-weight:600">Total Fixed Contract Value</td><td style="font-weight:600">{{scopeSumFmt}}</td><td style="font-weight:600">{{scopePctFmt}}</td><td></td></tr>
+        </tbody>
+      </table>
+      <button class="btn btn-ghost" style="margin-bottom:var(--space-6)">+ Add Milestone</button>
+
+      <h5 style="margin:0 0 8px">Material Supply &amp; Responsibility Matrix</h5>
+      <table class="table" style="margin-bottom:var(--space-6)">
+        <thead><tr><th>Item Category</th><th>Material Description</th><th>Qty / Coverage</th><th>Supplied By</th><th>Installed / Hauled By</th><th>Notes</th></tr></thead>
+        <tbody>
+          <sc-for list="{{materials}}" as="x" hint-placeholder-count="5">
+            <tr><td><strong>{{x.cat}}</strong></td><td>{{x.desc}}</td><td>{{x.qty}}</td><td>{{x.supplied}}</td><td>{{x.installed}}</td><td class="text-muted" style="font-size:12.5px">{{x.notes}}</td></tr>
+          </sc-for>
+        </tbody>
+      </table>
+
+      <h5 style="margin:0 0 8px">Workmanship Warranty &amp; Quality Assurance</h5>
+      <table class="table" style="margin-bottom:var(--space-6)">
+        <tbody>
+          <tr><td style="width:190px"><strong>Warranty Policy &amp; Term</strong></td><td>1 Year Workmanship Guarantee (CSLB Compliant): Cabrera Construction warrants all workmanship for one full year from the date of final completion ({{completionLongFmt}}).</td></tr>
+          <tr><td><strong>Standard Exclusions</strong></td><td>Excludes normal wear and tear, direct flooding or water damage unrelated to installation, subfloor/wall structural settling, ambient humidity extremes, or manufacturing flaws and material defects in owner-supplied fixtures or tile.</td></tr>
+          <tr><td><strong>Service Procedure</strong></td><td>Submit written notification to admin@cabrera.construction or call +1 (415) 359-5394. Cabrera Construction will schedule an on-site inspection and initiate corrective warranty repair within 5 business days.</td></tr>
+        </tbody>
+      </table>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-secondary">Preview PDF</button>
+        <button class="btn btn-primary blueprint" style="position:relative" onClick="{{setScreenContract}}">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          Save Schedule &amp; Draft Contract
+        </button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isContract}}" hint-placeholder-val="{{false}}">
+      <div style="display:flex;gap:var(--space-2);margin-bottom:var(--space-6);flex-wrap:wrap">
+        <sc-for list="{{contractSteps}}" as="s" hint-placeholder-count="4"><span class="{{s.cls}}">{{s.label}}</span></sc-for>
+      </div>
+
+      <div style="display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,1fr);gap:var(--space-6);align-items:start">
+        <div style="display:flex;flex-direction:column;gap:var(--space-6)">
+          <div>
+            <h5 style="margin:0 0 8px">Home Improvement Contract · B&amp;P Code §7159</h5>
+            <div class="field" style="max-width:240px"><label>Agreement Date</label><input class="input" value="{{contractDateFmt}}" readonly></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+            <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+              <div class="card-kicker">Owner</div>
+              <div class="field"><label>Owner's Name</label><input class="input" value="{{project.customerName}}" readonly></div>
+              <div class="field"><label>Owner's Street Address</label><input class="input" value="{{project.street}}" readonly></div>
+              <div class="field"><label>City, State and Zip</label><input class="input" value="{{project.cityStateZip}}" readonly></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+              <div class="card-kicker">Contractor</div>
+              <div class="field"><label>Contractor's Name</label><input class="input" value="{{company.name}}" readonly></div>
+              <div class="field"><label>Address</label><input class="input" value="{{company.address}}" readonly></div>
+              <div class="field"><label>License # · Classification</label><input class="input" value="{{company.licenseClass}}" readonly></div>
+            </div>
+          </div>
+          <div class="field"><label>The Project Is (Name and Address)</label><input class="input" value="{{projectNameAddress}}" readonly></div>
+          <div class="field">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><label>Description of the Project and Significant Materials / Equipment</label><button class="btn btn-ghost" onClick="{{regenerateDescription}}">Regenerate summary</button></div>
+            <textarea class="input" style="min-height:130px" value="{{contractDescription}}" onChange="{{setContractDescription}}"></textarea>
+            <div class="text-muted" style="font-size:11.5px">Contract template: Google Drive › Projects › Templates. Summarized from the {{estimate.number}} scope, line items and the Project Scope &amp; Payment Schedule. Edit as needed before approving.</div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-3)">
+            <div class="field"><label>Contract Price</label><input class="input" value="{{scopeTotalFmt}}" readonly></div>
+            <div class="field"><label>Finance Charge</label><input class="input" value="$0.00" readonly></div>
+            <div class="field"><label>Down Payment</label><input class="input" value="{{depositFmt}}" readonly></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h5 style="margin:0">Schedule of Progress Payments</h5><span class="text-muted" style="font-size:12px">Full schedule: Attachment 4</span></div>
+            <table class="table" style="font-size:13px"><thead><tr><th>Work / Materials</th><th>Amount Due</th><th>When Due</th></tr></thead>
+              <tbody>
+                <sc-for list="{{milestones}}" as="m" hint-placeholder-count="7"><tr><td>{{m.n}} · {{m.title}}</td><td>{{m.amountFmt}}</td><td>{{m.dueFmt}}</td></tr></sc-for>
+              </tbody>
+            </table>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3)">
+            <div class="field"><label>Approximate Start Date</label><input class="input" value="{{startFmt}}" readonly></div>
+            <div class="field"><label>Approximate Completion Date</label><input class="input" value="{{completionFmt}}" readonly></div>
+          </div>
+          <div>
+            <h5 style="margin:0 0 8px">Required Disclosures</h5>
+            <table class="table" style="font-size:13px"><tbody>
+              <tr><td style="width:200px" class="text-muted">Workers' Compensation</td><td>☑ Carries workers' compensation insurance for all employees</td></tr>
+              <tr><td class="text-muted">Commercial General Liability</td><td>☑ Carries CGL — Golden State Mutual Insurance, Policy #GL-4482910</td></tr>
+              <tr><td class="text-muted">Subcontractors (SB 517 / AB 1327)</td><td>☑ No — in-house crews only</td></tr>
+              <tr><td class="text-muted">Right to Cancel</td><td>☑ Three-day</td></tr>
+              <tr><td class="text-muted">Arbitration</td><td>Initial lines placed for Owner and Contractor</td></tr>
+            </tbody></table>
+          </div>
+        </div>
+
+        <div class="card blueprint elev-sm" style="padding:var(--space-4);gap:var(--space-3);position:sticky;top:0">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="card-kicker">Combined PDF</div>
+          <div style="font-size:13px;font-weight:600;word-break:break-word">{{packageFile}}</div>
+          <div style="display:flex;flex-direction:column">
+            <sc-for list="{{packageDocs}}" as="d" hint-placeholder-count="6">
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:7px 0;border-bottom:1px solid var(--color-divider);font-size:12.5px">
+                <div><div class="text-muted" style="font-size:11px">{{d.kicker}}</div>{{d.label}}</div>
+                <span class="text-muted" style="white-space:nowrap">{{d.pages}}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="font-size:12.5px"><div class="text-muted" style="font-size:11px">Save to Google Drive</div>Projects › {{folderName}}</div>
+          <button class="btn btn-secondary btn-block">Preview Combined PDF</button>
+          <sc-if value="{{contractDraft}}" hint-placeholder-val="{{true}}">
+            <button class="btn btn-primary btn-block" onClick="{{approveContract}}">Approve &amp; Save to Drive</button>
+            <div class="text-muted" style="font-size:11.5px">Owner or Project Manager reviews the draft. Approval merges the documents and saves the PDF to the project folder.</div>
+          </sc-if>
+          <sc-if value="{{contractApproved}}" hint-placeholder-val="{{false}}">
+            <div style="display:flex;align-items:center;gap:8px;font-size:12.5px"><span class="tag tag-accent">Approved</span><span>Saved by Samuel Cabrera · Aug 27, 2026</span></div>
+            <button class="btn btn-primary btn-block">Send for Signature via Adobe Acrobat Sign</button>
+            <button class="btn btn-ghost btn-block" onClick="{{revertContract}}">Revert to Draft</button>
+            <div style="border-top:1px solid var(--color-divider);padding-top:8px">
+              <div class="text-muted" style="font-size:11px;margin-bottom:4px">Folder contents</div>
+              <sc-for list="{{folderFiles}}" as="f" hint-placeholder-count="5"><div style="font-size:12.5px;padding:3px 0">{{f}}</div></sc-for>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isChangeOrder}}" hint-placeholder-val="{{false}}">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--space-4);margin-bottom:var(--space-4);flex-wrap:wrap">
+        <p class="text-muted" style="margin:0;max-width:620px">Create a change order whenever any part of the project changes: scope, price, milestones, completion date, materials or subcontractors. Signed change orders are attached to the contract and revise the Scope &amp; Payment Schedule.</p>
+        <button class="btn btn-secondary">+ New Change Order</button>
+      </div>
+      <table class="table" style="margin-bottom:var(--space-6)">
+        <thead><tr><th>CO No.</th><th>Date</th><th>Change</th><th>Price</th><th>Schedule</th><th>Status</th></tr></thead>
+        <tbody>
+          <sc-for list="{{changeOrders}}" as="co" hint-placeholder-count="2">
+            <tr style="{{co.rowStyle}}" onClick="{{co.select}}">
+              <td><strong>{{co.no}}</strong></td><td>{{co.dateFmt}}</td><td>{{co.title}}</td><td>{{co.priceFmt}}</td><td>{{co.daysLabel}}</td><td><span class="{{co.tagClass}}">{{co.status}}</span></td>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+
+      <div style="display:flex;flex-wrap:wrap-reverse;gap:var(--space-6);align-items:flex-start">
+      <div style="flex:999 1 460px;min-width:0;display:flex;flex-direction:column;gap:var(--space-3)">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h5 style="margin:0">Change Order {{co.no}} · Form Preview</h5><span class="text-muted" style="font-size:12px">Template: Google Drive › Projects › Templates · legal text unchanged</span></div>
+        <div style="border:1px solid var(--color-divider);box-shadow:var(--shadow-sm);padding:28px 32px;display:flex;flex-direction:column;gap:12px;font-size:12.5px;line-height:1.5;max-width:760px">
+          <div style="display:flex;flex-direction:column;gap:2px;font-size:9.5px;color:var(--color-neutral-700);border-bottom:1px solid var(--color-divider);padding-bottom:6px">
+            <div>Cabrera Construction - Lic. #1135927 - B-General Building - 2752 Capistrano St, Antioch, CA 94509 - (415) 359-5394 - admin@cabrera.construction</div>
+            <div>Home Improvement Change Order - Attachment to Home Improvement Contract</div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:center">
+            <img src="assets/cabrera-logo.png" alt="Cabrera Construction" style="width:40px;height:40px;object-fit:contain">
+            <div style="line-height:1.35"><div style="font-family:var(--font-heading);font-weight:700;font-size:17px;letter-spacing:0.03em">CABRERA CONSTRUCTION</div><div>Lic. #1135927 | B-General Building</div><div>2752 Capistrano St, Antioch, CA 94509</div><div>(415) 359-5394 | admin@cabrera.construction</div></div>
+          </div>
+          <div style="text-align:center;padding:4px 0"><div style="font-family:var(--font-heading);font-weight:700;font-size:19px;letter-spacing:0.02em">HOME IMPROVEMENT CHANGE ORDER</div><div style="font-size:11.5px">(Business and Professions Code §7159) Attachment to the Home Improvement Contract</div></div>
+          <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:10px 20px">
+            <div style="display:flex;flex-direction:column;gap:2px"><div style="border-bottom:1px solid var(--color-text);min-height:22px;font-size:13px;padding:0 2px">{{project.customerName}}</div><div style="font-size:10.5px;color:var(--color-neutral-700)">(Owner's Name)</div></div>
+            <div style="display:flex;flex-direction:column;gap:2px"><div style="border-bottom:1px solid var(--color-text);min-height:22px;font-size:13px;padding:0 2px">{{co.no}}</div><div style="font-size:10.5px;color:var(--color-neutral-700)">Change Order No.</div></div>
+            <div style="display:flex;flex-direction:column;gap:2px"><div style="border-bottom:1px solid var(--color-text);min-height:22px;font-size:13px;padding:0 2px">{{projectNameAddress}}</div><div style="font-size:10.5px;color:var(--color-neutral-700)">(Project Name and Address)</div></div>
+            <div style="display:flex;flex-direction:column;gap:2px"><div style="border-bottom:1px solid var(--color-text);min-height:22px;font-size:13px;padding:0 2px">{{co.dateFmt}}</div><div style="font-size:10.5px;color:var(--color-neutral-700)">Date of Change Order</div></div>
+            <div style="display:flex;flex-direction:column;gap:2px"><div style="border-bottom:1px solid var(--color-text);min-height:22px;font-size:13px;padding:0 2px">{{contractDateFmt}}</div><div style="font-size:10.5px;color:var(--color-neutral-700)">(Date of Original Home Improvement Contract)</div></div>
+            <div style="display:flex;flex-direction:column;gap:2px"><div style="border-bottom:1px solid var(--color-text);min-height:22px;font-size:13px;padding:0 2px">{{company.name}}</div><div style="font-size:10.5px;color:var(--color-neutral-700)">Contractor</div></div>
+          </div>
+          <p style="margin:0">This Change Order modifies the Home Improvement Contract identified above between the Owner and Cabrera Construction.</p>
+          <p style="margin:0">Extra work and change orders become part of the contract once the order is prepared in writing and signed by both parties before any work covered by the change order begins. The Owner may not be required to perform extra work without written authorization prior to the commencement of work covered by this order. To be enforceable, this order must identify, in writing, all of the following: (i) the scope of the work; (ii) the amount to be added to or subtracted from the contract; and (iii) the effect the order will have on the schedule of progress payments and the completion date.</p>
+          <div><div style="font-weight:700">1. Scope of the Extra Work or Change</div><div style="border:1px solid var(--color-divider);padding:8px 10px;min-height:56px;margin-top:4px">{{co.scope}}</div></div>
+          <div><div style="font-weight:700">2. Effect on the Contract Price</div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:4px 12px;margin-top:4px">
+              <div>Original Contract Price:</div><div style="border-bottom:1px solid var(--color-text)">$ {{co.originalNum}}</div>
+              <div>Previously Signed Contract Price (incl. {{co.priorLabel}}):</div><div style="border-bottom:1px solid var(--color-text)">$ {{co.beforeNum}}</div>
+              <div>Amount ADDED by this Change Order:</div><div style="border-bottom:1px solid var(--color-text)">$ {{co.addedNum}}</div>
+              <div>Amount SUBTRACTED by this Change Order:</div><div style="border-bottom:1px solid var(--color-text)">$ {{co.subtractedNum}}</div>
+              <div style="font-weight:700;background:var(--color-accent-100);padding:2px 4px">NEW Contract Price (after this Change Order):</div><div style="border-bottom:2px solid var(--color-accent-700);font-weight:700;background:var(--color-accent-100);padding:2px 4px;color:var(--color-accent-900)">$ {{co.newNum}}</div>
+            </div>
+          </div>
+          <div><div style="font-weight:700">3. Effect on the Schedule of Progress Payments</div><div style="border:1px solid var(--color-divider);padding:8px 10px;min-height:40px;margin-top:4px">{{co.paymentsText}}</div></div>
+          <div><div style="font-weight:700">4. Effect on the Completion Date</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:4px"><div style="display:flex;flex-direction:column;gap:2px"><div style="border-bottom:1px solid var(--color-text);min-height:22px;font-size:13px;padding:0 2px">{{co.priorDate}}</div><div style="font-size:10.5px;color:var(--color-neutral-700)">Prior Approximate Completion Date</div></div><div style="display:flex;flex-direction:column;gap:2px"><div style="border-bottom:2px solid var(--color-accent-700);min-height:22px;font-size:13px;padding:0 4px;background:var(--color-accent-100);color:var(--color-accent-900);font-weight:700">{{co.newDate}}</div><div style="font-size:10.5px;color:var(--color-neutral-700)">New Approximate Completion Date</div></div></div>
+          </div>
+          <div><div style="font-weight:700">Use of Subcontractors (required disclosure – check one):</div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:2px"><span>Will one or more subcontractors be used for this change?</span><span>{{co.subsYes}} Yes</span><span>{{co.subsNo}} No</span></div>
+          </div>
+          <p style="margin:0">If "Yes" is checked, the following disclosure applies and is part of this change order: One or more subcontractors will be used on this project, and the contractor is aware that a list of subcontractors is required to be provided, upon request, along with the names, contact information, license number, and classification of those subcontractors.</p>
+          <p style="margin:0;font-weight:700">By signing below, the Owner and Contractor agree to the change described above. This Change Order is not effective and the changed work shall not begin until this order is signed and dated by both parties.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 28px;margin-top:8px">
+            <div style="display:flex;flex-direction:column;gap:2px"><div style="border-bottom:1px solid var(--color-text);min-height:22px;font-size:13px;padding:0 2px">{{co.ownerSig}}</div><div style="font-size:10.5px;color:var(--color-neutral-700)">OWNER (SIGNATURE)</div></div><div style="display:flex;flex-direction:column;gap:2px"><div style="border-bottom:1px solid var(--color-text);min-height:22px;font-size:13px;padding:0 2px">{{co.contractorSig}}</div><div style="font-size:10.5px;color:var(--color-neutral-700)">CONTRACTOR (SIGNATURE)</div></div>
+            <div style="display:flex;flex-direction:column;gap:2px"><div style="border-bottom:1px solid var(--color-text);min-height:22px;font-size:13px;padding:0 2px">{{co.ownerDate}}</div><div style="font-size:10.5px;color:var(--color-neutral-700)">Date</div></div><div style="display:flex;flex-direction:column;gap:2px"><div style="border-bottom:1px solid var(--color-text);min-height:22px;font-size:13px;padding:0 2px">{{co.contractorDate}}</div><div style="font-size:10.5px;color:var(--color-neutral-700)">Date</div></div>
+          </div>
+          <div style="font-size:9.5px;color:var(--color-neutral-700);border-top:1px solid var(--color-divider);padding-top:6px;margin-top:6px">This form implements the change-order requirements of Business and Professions Code §7159. It is a compliance aid, not legal advice; the Contractor is responsible for reviewing §7159 in full.</div>
+        </div>
+      </div>
+
+      <div style="flex:1 1 260px;display:flex;flex-direction:column;gap:var(--space-4)">
+        <div class="card blueprint" style="padding:var(--space-4);gap:var(--space-3)">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div class="card-title" style="font-size:17px">{{co.no}}</div><span class="{{co.tagClass}}">{{co.status}}</span></div>
+          <div>
+            <div class="text-muted" style="font-size:12px;margin-bottom:6px">Parts of the project this changes</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{co.parts}}" as="pt" hint-placeholder-count="6"><span class="{{pt.cls}}">{{pt.label}}</span></sc-for></div>
+          </div>
+          <div style="font-size:13px;display:flex;flex-direction:column;gap:4px">
+            <div style="display:flex;justify-content:space-between"><span class="text-muted">Previously signed price</span><span>{{co.beforeFmt}}</span></div>
+            <div style="display:flex;justify-content:space-between"><span class="text-muted">Price change</span><span>{{co.netFmt}}</span></div>
+            <div style="display:flex;justify-content:space-between;background:var(--color-accent-100);padding:2px 4px;color:var(--color-accent-900)"><span>New contract price</span><strong>{{co.newFmt}}</strong></div>
+            <div style="display:flex;justify-content:space-between;margin-top:4px"><span class="text-muted">Previously signed completion</span><span>{{co.priorDate}}</span></div>
+            <div style="display:flex;justify-content:space-between;background:var(--color-accent-100);padding:2px 4px;color:var(--color-accent-900)"><span>New completion</span><strong>{{co.newDateShort}}</strong></div>
+          </div>
+        </div>
+        <div class="card blueprint" style="padding:var(--space-4);gap:var(--space-2)">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="card-kicker">Approval · both parties required</div>
+          <sc-for list="{{co.approvals}}" as="ap" hint-placeholder-count="2">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--color-divider);font-size:13px"><div><strong>{{ap.party}}</strong><div class="text-muted" style="font-size:11.5px">{{ap.name}}</div></div><span class="{{ap.cls}}">{{ap.status}}</span></div>
+          </sc-for>
+          <div class="text-muted" style="font-size:11.5px">The change takes effect, and the Scope &amp; Payment Schedule updates, only after the customer and Cabrera Construction have both signed.</div>
+        </div>
+        <sc-if value="{{co.isDraft}}" hint-placeholder-val="{{true}}">
+          <button class="btn btn-secondary btn-block">Edit Change Order</button>
+          <button class="btn btn-primary blueprint btn-block" style="position:relative"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Approve &amp; Send to Both Parties</button>
+          <div class="text-muted" style="font-size:11.5px">Saves Change Orders / {{co.no}}.pdf in Projects › {{folderName}} and sends it through Adobe Acrobat Sign.</div>
+        </sc-if>
+        <sc-if value="{{co.isSigned}}" hint-placeholder-val="{{false}}">
+          <div class="text-muted" style="font-size:12px">Signed by both parties {{co.signedFmt}}. Saved to Change Orders / {{co.no}}.pdf.</div>
+        </sc-if>
+      </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isInvoice}}" hint-placeholder-val="{{false}}">
+      <div class="card blueprint elev-sm" style="padding:var(--space-4);margin-bottom:var(--space-6)">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div><div class="card-kicker">Next Invoice · Draft</div><div class="card-title">{{invoice.number}}</div></div>
+          <span class="tag tag-outline">Draft</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3) var(--space-4);font-size:13px;margin-top:6px">
+          <div><span class="text-muted">Bill To&nbsp;</span>{{project.customerName}}, {{project.address}}</div>
+          <div><span class="text-muted">Project&nbsp;</span>{{project.name}}</div>
+          <div><span class="text-muted">Date Issued&nbsp;</span>{{invoice.dateIssuedFmt}}</div>
+          <div><span class="text-muted">Due Date&nbsp;</span>{{invoice.dueDateFmt}}</div>
+        </div>
+        <table class="table" style="margin-top:var(--space-3)">
+          <thead><tr><th>Description</th><th>Amount</th></tr></thead>
+          <tbody><tr><td>{{invoice.description}}</td><td>{{invoice.amountFmt}}</td></tr></tbody>
+        </table>
+        <div style="display:flex;justify-content:space-between;gap:var(--space-6);margin-top:var(--space-2);font-size:14px;flex-wrap:wrap">
+          <div class="text-muted" style="font-size:12px">Generated from Milestone {{invoice.milestone}} of the Project Scope &amp; Payment Schedule</div>
+          <div style="font-weight:700">Total Due {{invoice.amountFmt}}</div>
+        </div>
+      </div>
+      <button class="btn btn-primary blueprint" style="position:relative;margin-bottom:var(--space-6)">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        Send Invoice via QuickBooks
+      </button>
+
+      <h5 style="margin:0 0 8px">Invoices by Milestone</h5>
+      <table class="table">
+        <thead><tr><th>Milestone</th><th>Amount</th><th>Invoice</th><th>Issued</th><th>Status</th></tr></thead>
+        <tbody>
+          <sc-for list="{{recon.rows}}" as="r" hint-placeholder-count="7">
+            <tr><td>{{r.n}} · {{r.title}}</td><td>{{r.amountFmt}}</td><td>{{r.invoice}}</td><td>{{r.issuedFmt}}</td><td><span class="{{r.tagClass}}">{{r.status}}</span></td></tr>
+          </sc-for>
+        </tbody>
+      </table>
+    </sc-if>
+
+    <sc-if value="{{isReconciliation}}" hint-placeholder-val="{{false}}">
+      <div style="padding:10px 12px;border:1px solid var(--color-divider);margin-bottom:var(--space-6);font-size:13px">{{recon.triggerNote}}</div>
+
+      <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:var(--space-3);margin-bottom:var(--space-6)">
+        <sc-for list="{{recon.cards}}" as="k" hint-placeholder-count="6">
+          <div class="card blueprint" style="padding:var(--space-3)">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div class="card-kicker">{{k.label}}</div>
+            <div style="{{k.style}}">{{k.value}}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <h5 style="margin:0 0 8px">Contract Milestones · Invoices · Payments</h5>
+      <table class="table" style="margin-bottom:var(--space-6)">
+        <thead><tr><th>Milestone</th><th>Scheduled</th><th>Invoice</th><th>Received</th><th>Status</th></tr></thead>
+        <tbody>
+          <sc-for list="{{recon.rows}}" as="r" hint-placeholder-count="7">
+            <tr><td>{{r.n}} · {{r.title}}<div class="text-muted" style="font-size:11.5px">{{r.note}}</div></td><td>{{r.amountFmt}}</td><td>{{r.invoice}}</td><td>{{r.receivedFmt}}</td><td><span class="{{r.tagClass}}">{{r.status}}</span></td></tr>
+          </sc-for>
+        </tbody>
+      </table>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <h5 style="margin:0">Receipts</h5>
+        <div style="display:flex;gap:8px"><button class="btn btn-secondary">Scan Project Folder</button><button class="btn btn-secondary" onClick="{{openReceiptProject}}">+ Add Receipt</button></div>
+      </div>
+      <table class="table" style="margin-bottom:var(--space-6)">
+        <thead><tr><th>Date</th><th>Description</th><th>Type</th><th>Applied To</th><th>Source</th><th>Amount</th></tr></thead>
+        <tbody>
+          <sc-for list="{{recon.receipts}}" as="rc" hint-placeholder-count="6">
+            <tr><td>{{rc.dateFmt}}</td><td>{{rc.desc}}</td><td><span class="{{rc.typeCls}}">{{rc.type}}</span></td><td>{{rc.applied}}</td><td class="text-muted">{{rc.source}}</td><td>{{rc.amountFmt}}</td></tr>
+          </sc-for>
+        </tbody>
+      </table>
+
+      <div class="text-muted" style="font-size:12.5px;margin:-16px 0 var(--space-6);text-align:right">Job expenses assigned to this project: <strong style="color:var(--color-text)">{{recon.expensesFmt}}</strong> (also in the <a href="#" onClick="{{goExpenses}}">Business Expense report</a>; not applied to the contract balance)</div>
+      <div class="card blueprint elev-sm" style="padding:var(--space-4);flex-direction:row;align-items:center;justify-content:space-between;margin-bottom:var(--space-6)">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div>
+          <div class="card-title">Google Sheets</div>
+          <div class="text-muted" style="font-size:13px;margin-top:2px">Projects › {{folderName}} › Reconciliation</div>
+        </div>
+        <button class="btn btn-secondary">Open in Google Sheets</button>
+      </div>
+      <button class="btn btn-secondary" disabled style="opacity:0.45">Close Project</button>
+      <div class="text-muted" style="font-size:12px;margin-top:6px">Available once balance due reaches $0.00.</div>
+    </sc-if>
+
+    <sc-if value="{{isAnalytics}}" hint-placeholder-val="{{false}}">
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-3);margin-bottom:var(--space-6)">
+        <sc-for list="{{an.kpis}}" as="k" hint-placeholder-count="4">
+          <div class="card blueprint" style="padding:var(--space-3)"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div class="card-kicker">{{k.label}}</div><div style="font-family:var(--font-heading);font-weight:600;font-size:24px">{{k.value}}</div><div class="text-muted" style="font-size:11.5px">{{k.sub}}</div></div>
+        </sc-for>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:var(--space-3);margin-bottom:8px;flex-wrap:wrap">
+        <div><h4 style="margin:0">Project Timeline</h4><div class="text-muted" style="font-size:12.5px">Signed and pending projects, {{an.rangeLabel}}. Use it to see overlap before committing to new start dates.</div></div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" checked="{{an.showPending}}" onChange="{{an.togglePending}}" style="accent-color:var(--color-accent);width:16px;height:16px">Include pending contracts</label>
+      </div>
+      <div style="border:1px solid var(--color-divider);padding:var(--space-3) var(--space-3) var(--space-2);margin-bottom:var(--space-6);position:relative">
+        <div style="position:relative">
+          <div style="display:grid;grid-template-columns:210px minmax(0,1fr);border-bottom:1px solid var(--color-divider);height:26px">
+            <div></div>
+            <div style="position:relative">
+              <sc-for list="{{an.months}}" as="m" hint-placeholder-count="11"><div style="{{m.labelStyle}}">{{m.label}}</div></sc-for>
+            </div>
+          </div>
+          <sc-for list="{{an.months}}" as="m" hint-placeholder-count="11"><div style="{{m.lineStyle}}"></div></sc-for>
+          <div style="{{an.todayStyle}}"><span style="position:absolute;bottom:-17px;left:-26px;font-size:10px;font-weight:600;color:var(--color-accent-800);white-space:nowrap;background:var(--color-bg);padding:0 3px">Today · {{an.todayLabel}}</span></div>
+          <sc-for list="{{an.bars}}" as="b" hint-placeholder-count="5">
+            <div style="display:grid;grid-template-columns:210px minmax(0,1fr);align-items:center;height:44px;border-bottom:1px solid var(--color-divider)">
+              <div style="padding-right:10px;min-width:0"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{b.name}}</div><div class="text-muted" style="font-size:11px">{{b.sub}}</div></div>
+              <div style="position:relative;height:100%">
+                <div style="{{b.style}}" title="{{b.tip}}"><span style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{b.label}}</span></div>
+              </div>
+            </div>
+          </sc-for>
+          <div style="display:grid;grid-template-columns:210px minmax(0,1fr);align-items:end;height:92px;padding-top:10px">
+            <div style="padding-right:10px;align-self:center"><div style="font-size:13px;font-weight:600">Projects at the same time</div><div class="text-muted" style="font-size:11px">Per week · peak {{an.peak}}</div></div>
+            <div style="position:relative;height:100%">
+              <sc-for list="{{an.weeks}}" as="w" hint-placeholder-count="30"><div style="{{w.style}}" title="{{w.tip}}"></div></sc-for>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:var(--space-4);flex-wrap:wrap;font-size:11.5px;margin-top:26px" class="text-muted">
+          <span style="display:flex;align-items:center;gap:6px"><i style="display:inline-block;width:18px;height:10px;background:var(--color-accent-300);border:1px solid var(--color-accent-700)"></i>Signed</span>
+          <span style="display:flex;align-items:center;gap:6px"><i style="display:inline-block;width:18px;height:10px;border:1px dashed var(--color-accent-700)"></i>Pending signature</span>
+          <span style="display:flex;align-items:center;gap:6px"><i style="display:inline-block;width:10px;height:10px;background:var(--color-accent-700)"></i>Peak week</span>
+        </div>
+      </div>
+      <sc-if value="{{an.hasPeakNote}}" hint-placeholder-val="{{false}}">
+        <div style="padding:10px 12px;border:1px solid var(--color-accent-300);background:var(--color-accent-100);color:var(--color-accent-900);font-size:13px;margin:-12px 0 var(--space-6)">{{an.peakNote}}</div>
+      </sc-if>
+
+      <div style="margin-bottom:8px"><h4 style="margin:0">Revenue Projection · Signed Contracts</h4><div class="text-muted" style="font-size:12.5px">Milestone payments by due month, from each signed contract's Scope &amp; Payment Schedule plus signed change orders. Pending contracts are not included.</div></div>
+      <div style="border:1px solid var(--color-divider);padding:var(--space-4) var(--space-3) var(--space-3);margin-bottom:var(--space-3)">
+        <div style="display:grid;grid-template-columns:52px minmax(0,1fr);gap:8px">
+          <div style="position:relative;height:200px">
+            <sc-for list="{{an.yTicks}}" as="t" hint-placeholder-count="4"><div style="{{t.labelStyle}}">{{t.label}}</div></sc-for>
+          </div>
+          <div style="position:relative;height:200px;border-left:1px solid var(--color-divider);border-bottom:1px solid var(--color-text)">
+            <sc-for list="{{an.yTicks}}" as="t" hint-placeholder-count="4"><div style="{{t.lineStyle}}"></div></sc-for>
+            <div style="position:absolute;inset:0;display:grid;grid-template-columns:repeat({{an.monthCount}},minmax(0,1fr));gap:10px;padding:0 8px;align-items:end">
+              <sc-for list="{{an.revenue}}" as="r" hint-placeholder-count="11">
+                <div style="display:flex;flex-direction:column;justify-content:flex-end;height:100%;position:relative" title="{{r.tip}}">
+                  <div style="font-size:10.5px;font-weight:600;text-align:center;margin-bottom:3px;white-space:nowrap">{{r.totalK}}</div>
+                  <div style="{{r.projStyle}}"></div>
+                  <div style="{{r.paidStyle}}"></div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div></div>
+          <div style="display:grid;grid-template-columns:repeat({{an.monthCount}},minmax(0,1fr));gap:10px;padding:4px 8px 0">
+            <sc-for list="{{an.revenue}}" as="r" hint-placeholder-count="11"><div style="font-size:11px;text-align:center" class="text-muted">{{r.label}}</div></sc-for>
+          </div>
+        </div>
+        <div style="display:flex;gap:var(--space-4);flex-wrap:wrap;font-size:11.5px;margin-top:var(--space-3)" class="text-muted">
+          <span style="display:flex;align-items:center;gap:6px"><i style="display:inline-block;width:10px;height:10px;background:var(--color-accent-700)"></i>Collected</span>
+          <span style="display:flex;align-items:center;gap:6px"><i style="display:inline-block;width:10px;height:10px;background:var(--color-accent-300)"></i>Scheduled (not yet collected)</span>
+        </div>
+      </div>
+
+      <table class="table" style="margin-bottom:var(--space-6)">
+        <thead><tr><th>Project</th><th>Status</th><th>Dates</th><th>Contract Value</th><th>Collected</th><th>Remaining</th></tr></thead>
+        <tbody>
+          <sc-for list="{{an.table}}" as="t" hint-placeholder-count="5">
+            <tr><td><strong>{{t.name}}</strong><div class="text-muted" style="font-size:12px">{{t.customer}}</div></td><td><span class="{{t.cls}}">{{t.status}}</span></td><td style="font-size:12.5px">{{t.dates}}</td><td>{{t.valueFmt}}</td><td>{{t.collectedFmt}}</td><td>{{t.remainingFmt}}</td></tr>
+          </sc-for>
+          <tr><td colspan="3" style="text-align:right;font-weight:600">Signed contracts total</td><td style="font-weight:600">{{an.signedFmt}}</td><td style="font-weight:600">{{an.collectedFmt}}</td><td style="font-weight:600">{{an.remainingFmt}}</td></tr>
+        </tbody>
+      </table>
+      <div class="card blueprint elev-sm" style="padding:var(--space-4);flex-direction:row;align-items:center;justify-content:space-between">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div><div class="card-title">Export</div><div class="text-muted" style="font-size:13px;margin-top:2px">Google Sheets · Projects › Analytics · updates when a contract or change order is signed or a payment is received</div></div>
+        <button class="btn btn-secondary">Open in Google Sheets</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isBankrec}}" hint-placeholder-val="{{false}}">
+      <p class="text-muted" style="margin:0 0 var(--space-4);max-width:680px">Upload the transaction file from Bank of America. Each transaction is matched to receipts already on file by vendor name, amount and date. Expenses without a receipt need a project, otherwise they stay as business expenses.</p>
+      <label class="card blueprint" style="padding:var(--space-4);display:flex;flex-direction:row;align-items:center;gap:var(--space-4);cursor:pointer;border-style:dashed;margin-bottom:var(--space-3)">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <input type="file" accept=".csv,.qfx,.ofx" onChange="{{bank.upload}}" style="display:none">
+        <span style="color:var(--color-accent-700)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h18"></path><path d="M12 3l9 5H3z"></path><path d="M5 10v8"></path><path d="M9.5 10v8"></path><path d="M14.5 10v8"></path><path d="M19 10v8"></path><path d="M3 21h18"></path></svg></span>
+        <div style="flex:1;min-width:0"><div class="card-title" style="font-size:16px">Upload Bank of America transactions</div><div class="text-muted" style="font-size:12.5px">CSV download from Online Banking (Date, Description, Amount). QFX / OFX also accepted.</div></div>
+        <span class="btn btn-secondary">Choose File</span>
+      </label>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);padding:10px 12px;border:1px solid var(--color-divider);margin-bottom:var(--space-6);flex-wrap:wrap;font-size:13px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><strong>{{bank.file}}</strong><span class="tag tag-accent">Imported</span><span class="text-muted">{{bank.fileMeta}}</span></div>
+        <span class="text-muted">Last import: {{bank.imported}}</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-3);margin-bottom:var(--space-4)">
+        <sc-for list="{{bank.kpis}}" as="k" hint-placeholder-count="4">
+          <div class="card blueprint" style="padding:var(--space-3)"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div class="card-kicker">{{k.label}}</div><div style="{{k.style}}">{{k.value}}</div><div class="text-muted" style="font-size:11.5px">{{k.sub}}</div></div>
+        </sc-for>
+      </div>
+      <sc-if value="{{bank.hasOpen}}" hint-placeholder-val="{{false}}">
+        <div style="padding:10px 12px;border:1px solid var(--color-accent-300);background:var(--color-accent-100);color:var(--color-accent-900);font-size:13px;margin-bottom:var(--space-4)"><strong>{{bank.openLabel}}</strong> Choose a project for each one, or confirm the suggested receipt. Anything left without a project is recorded as a Cabrera Construction business expense.</div>
+      </sc-if>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--space-3);margin-bottom:8px;flex-wrap:wrap">
+        <div class="seg">
+          <sc-for list="{{bank.filters}}" as="f" hint-placeholder-count="4"><label class="seg-opt"><input type="radio" name="bankfilter" checked="{{f.on}}" onChange="{{f.pick}}">{{f.label}}</label></sc-for>
+        </div>
+        <span class="text-muted" style="font-size:12px">Match rule: same vendor · same amount · posted within 3 days of the receipt date</span>
+      </div>
+      <table class="table" style="margin-bottom:var(--space-6)">
+        <thead><tr><th>Posted</th><th>Bank Description</th><th style="text-align:right">Amount</th><th>Receipt on File</th><th>Project</th><th>Status</th></tr></thead>
+        <tbody>
+          <sc-for list="{{bank.rows}}" as="t" hint-placeholder-count="10">
+            <tr style="{{t.rowStyle}}">
+              <td style="white-space:nowrap">{{t.dateFmt}}</td>
+              <td style="font-size:12.5px"><div style="font-family:ui-monospace,monospace;font-size:11.5px">{{t.desc}}</div><div class="text-muted" style="font-size:11.5px">Vendor: {{t.vendor}}</div></td>
+              <td style="text-align:right;white-space:nowrap;font-weight:600">{{t.amountFmt}}</td>
+              <td style="font-size:12.5px;min-width:210px">
+                <sc-if value="{{t.hasMatch}}" hint-placeholder-val="{{false}}">
+                  <div>{{t.matchDesc}}</div>
+                  <div class="text-muted" style="font-size:11px">{{t.matchMeta}}</div>
+                  <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px"><sc-for list="{{t.checks}}" as="c" hint-placeholder-count="3"><span class="{{c.cls}}" style="padding:1px 6px;font-size:10px">{{c.label}}</span></sc-for></div>
+                </sc-if>
+                <sc-if value="{{t.noMatch}}" hint-placeholder-val="{{false}}"><span class="text-muted">No receipt uploaded</span></sc-if>
+              </td>
+              <td>
+                <sc-if value="{{t.canAssign}}" hint-placeholder-val="{{false}}">
+                  <select class="input" style="min-width:170px;max-width:220px;font-size:13px" key="{{t.selKey}}" onChange="{{t.assign}}"><sc-for list="{{t.options}}" as="o" hint-placeholder-count="6"><option value="{{o.value}}">{{o.label}}</option></sc-for></select>
+                </sc-if>
+                <sc-if value="{{t.showProject}}" hint-placeholder-val="{{true}}"><span style="font-size:13px">{{t.projectLabel}}</span></sc-if>
+              </td>
+              <td>
+                <span class="{{t.statusCls}}">{{t.status}}</span>
+                <sc-if value="{{t.isPossible}}" hint-placeholder-val="{{false}}">
+                  <div style="display:flex;gap:4px;margin-top:6px"><button class="btn btn-secondary" style="min-height:28px;padding:2px 8px;font-size:12px" onClick="{{t.confirm}}">Confirm</button><button class="btn btn-ghost" style="font-size:12px" onClick="{{t.reject}}">Not a match</button></div>
+                </sc-if>
+              </td>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--space-4);margin-bottom:var(--space-6)">
+        <div class="card blueprint" style="padding:var(--space-4);gap:6px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="card-kicker">How matching works</div>
+          <div style="font-size:13px;line-height:1.5"><strong>Matched</strong>: vendor, amount and date (within 3 days) agree with a receipt. The transaction takes the receipt's project.<br><strong>Possible match</strong>: amount agrees but the vendor or date doesn't fully. Confirm or reject.<br><strong>Needs project</strong>: no receipt uploaded, or the receipt has no project. Pick one here.<br>Deposits are matched to customer payments by amount and date.</div>
+        </div>
+        <div class="card blueprint" style="padding:var(--space-4);gap:6px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="card-kicker">What assigning does</div>
+          <div style="font-size:13px;line-height:1.5">Choosing a project for a transaction with no receipt adds it to that project's job expenses, flagged <em>No receipt · from bank</em>. It then appears in the project's reconciliation and in Business Expenses. Upload the receipt later and it links automatically.</div>
+        </div>
+      </div>
+      <div class="card blueprint elev-sm" style="padding:var(--space-4);flex-direction:row;align-items:center;justify-content:space-between">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div><div class="card-title">Google Sheets</div><div class="text-muted" style="font-size:13px;margin-top:2px">Projects › Operational Reconciliation · one tab per bank statement month</div></div>
+        <button class="btn btn-secondary">Open in Google Sheets</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isExpenses}}" hint-placeholder-val="{{false}}">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--space-4);margin-bottom:var(--space-4);flex-wrap:wrap">
+        <p class="text-muted" style="margin:0;max-width:600px">Every job expense receipt, company-wide. Receipts assigned to a project also appear in that project's reconciliation. Receipts without a project are filed as Cabrera Construction business expenses.</p>
+        <div style="display:flex;gap:8px"><button class="btn btn-secondary">Scan Business Receipts Folder</button><button class="btn btn-secondary" onClick="{{openReceiptBusiness}}">+ Add Receipt</button></div>
+      </div>
+      <sc-if value="{{exp.hasUnidentified}}" hint-placeholder-val="{{false}}">
+        <div style="padding:10px 12px;border:1px solid var(--color-accent-300);background:var(--color-accent-100);color:var(--color-accent-900);font-size:13px;margin-bottom:var(--space-4)"><strong>{{exp.unidentifiedLabel}}</strong> Choose a project for each one below. If you leave it as is, it stays in the business expense report and isn't added to any project.</div>
+      </sc-if>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-3);margin-bottom:var(--space-6)">
+        <sc-for list="{{exp.cards}}" as="k" hint-placeholder-count="3">
+          <div class="card blueprint" style="padding:var(--space-3)"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div class="card-kicker">{{k.label}}</div><div style="font-family:var(--font-heading);font-weight:600;font-size:20px">{{k.value}}</div><div class="text-muted" style="font-size:11.5px">{{k.sub}}</div></div>
+        </sc-for>
+      </div>
+      <table class="table" style="margin-bottom:var(--space-6)">
+        <thead><tr><th>Date</th><th>Description</th><th>Source</th><th>Project</th><th>Amount</th></tr></thead>
+        <tbody>
+          <sc-for list="{{exp.rows}}" as="x" hint-placeholder-count="6">
+            <tr>
+              <td>{{x.dateFmt}}</td>
+              <td>{{x.desc}}<sc-if value="{{x.needsProject}}" hint-placeholder-val="{{false}}"><div><span class="tag tag-outline" style="margin-top:4px">Project not identified</span></div></sc-if></td>
+              <td class="text-muted">{{x.source}}</td>
+              <td><select class="input" style="max-width:260px" key="{{x.selKey}}" onChange="{{x.assign}}"><sc-for list="{{x.options}}" as="o" hint-placeholder-count="4"><option value="{{o.value}}">{{o.label}}</option></sc-for></select></td>
+              <td>{{x.amountFmt}}</td>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+      <div class="card blueprint elev-sm" style="padding:var(--space-4);flex-direction:row;align-items:center;justify-content:space-between">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div><div class="card-title">Business Expense Report</div><div class="text-muted" style="font-size:13px;margin-top:2px">Google Sheets · Cabrera Construction › Business Expenses › 2026</div></div>
+        <button class="btn btn-secondary">Open in Google Sheets</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isUsers}}" hint-placeholder-val="{{false}}">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:var(--space-4);margin-bottom:var(--space-4);flex-wrap:wrap">
+        <p class="text-muted" style="margin:0;max-width:560px">People who can sign in to the app. Invited users get an email link to set a password. Customers don't need accounts. They sign in Adobe Acrobat Sign and pay through QuickBooks.</p>
+        <button class="btn btn-primary blueprint" style="position:relative" onClick="{{openInvite}}">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          + Invite User
+        </button>
+      </div>
+      <table class="table" style="margin-bottom:var(--space-6)">
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last Active</th><th></th></tr></thead>
+        <tbody>
+          <sc-for list="{{users}}" as="u" hint-placeholder-count="3">
+            <tr>
+              <td><strong>{{u.name}}</strong></td>
+              <td>{{u.email}}</td>
+              <td>{{u.role}}</td>
+              <td><span class="{{u.tagClass}}">{{u.status}}</span></td>
+              <td class="text-muted">{{u.lastActive}}</td>
+              <td style="text-align:right">
+                <sc-if value="{{u.removable}}" hint-placeholder-val="{{false}}">
+                  <div style="display:flex;gap:4px;justify-content:flex-end">
+                    <sc-if value="{{u.invited}}" hint-placeholder-val="{{false}}"><button class="btn btn-ghost" onClick="{{u.resend}}">{{u.resendLabel}}</button></sc-if>
+                    <button class="btn btn-ghost" onClick="{{u.remove}}">Remove</button>
+                  </div>
+                </sc-if>
+              </td>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+      <h5 style="margin:0 0 8px">Roles</h5>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+        <div class="card blueprint" style="padding:var(--space-3)">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="card-kicker">Owner / Admin</div>
+          <div style="font-size:13px">All screens. Manages integrations and users, approves contract packages, signs as Contractor, sends invoices, closes projects.</div>
+        </div>
+        <div class="card blueprint" style="padding:var(--space-3)">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="card-kicker">Project Manager</div>
+          <div style="font-size:13px">Uploads estimates, enters milestones, reviews and approves contract drafts, drafts change orders and invoices, adds receipts. Can't manage users or close projects.</div>
+        </div>
+      </div>
+    </sc-if>
+
+    </main>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{isMobile}}" hint-placeholder-val="{{false}}">
+<div style="max-width:412px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;border-left:1px solid var(--color-divider);border-right:1px solid var(--color-divider)">
+  <header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--color-divider)">
+    <div style="display:flex;align-items:center;gap:8px;min-width:0">
+      <img src="assets/cabrera-logo.png" alt="Cabrera Construction" style="width:22px;height:22px;object-fit:contain">
+      <h5 style="margin:0">{{screenTitle}}</h5>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <div style="position:relative">
+        <button class="btn btn-ghost btn-icon" aria-label="Company menu" onClick="{{toggleMenu}}" style="width:44px;height:44px;display:grid;place-items:center;padding:0">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path></svg>
+        </button>
+        <sc-if value="{{menuOpen}}" hint-placeholder-val="{{false}}">
+          <div style="position:absolute;right:0;top:48px;z-index:40;width:250px;background:var(--color-bg);border:1px solid var(--color-divider);box-shadow:var(--shadow-md);display:flex;flex-direction:column;padding:4px">
+            <div class="card-kicker" style="padding:8px 10px 4px">Company</div>
+            <sc-for list="{{menuItems}}" as="mi" hint-placeholder-count="4">
+              <button onClick="{{mi.go}}" style="{{mi.style}}">{{mi.label}}</button>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+      <div class="seg">
+        <label class="seg-opt" style="padding:5px 8px;font-size:11px"><input type="radio" name="modesel2" checked="{{isDesktop}}" onChange="{{selectDesktop}}">Desktop</label>
+        <label class="seg-opt" style="padding:5px 8px;font-size:11px"><input type="radio" name="modesel2" checked="{{isMobile}}" onChange="{{selectMobile}}">Mobile</label>
+      </div>
+    </div>
+  </header>
+
+  <main style="flex:1;overflow:auto;padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-3)">
+
+    <sc-if value="{{isDatabase}}" hint-placeholder-val="{{true}}">
+      <button class="btn btn-secondary btn-block" style="margin:0 0 4px" onClick="{{setScreenEstimate}}">+ New Project from Estimate</button>
+      <sc-for list="{{customers}}" as="c" hint-placeholder-count="3">
+        <div class="card blueprint" style="padding:var(--space-3)">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div style="display:flex;justify-content:space-between;gap:8px"><strong style="font-size:14px">{{c.projectName}}</strong><span class="{{c.tagClass}}">{{c.statusLabel}}</span></div>
+          <div class="text-muted" style="font-size:12px">{{c.customerName}} · {{c.type}}</div>
+          <div class="text-muted" style="font-size:12px">{{c.address}}</div>
+          <div style="font-weight:600;font-size:14px">{{c.contractFmt}}</div>
+        </div>
+      </sc-for>
+    </sc-if>
+
+    <sc-if value="{{isEstimate}}" hint-placeholder-val="{{false}}">
+      <div class="card blueprint" style="padding:var(--space-3);gap:8px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">Get from QuickBooks</div>
+        <div class="field"><label>Estimate Number</label><input class="input" style="min-height:44px" value="{{estNumber}}" onChange="{{setEstNumber}}" onKeyDown="{{estKey}}" placeholder="e.g. 1042"></div>
+        <button class="btn btn-primary btn-block" onClick="{{fetchEstimate}}">Fetch Estimate</button>
+        <sc-if value="{{estFound}}" hint-placeholder-val="{{true}}"><div style="font-size:12px"><span class="tag tag-accent">✓ Found</span> #{{estDocNumber}} · {{estimate.totalFmt}}</div></sc-if>
+        <sc-if value="{{estNotFound}}" hint-placeholder-val="{{false}}"><div style="font-size:12px;padding:8px;border:1px solid var(--color-accent-300);background:var(--color-accent-100);color:var(--color-accent-900)">#{{estTried}} not found. Upload the PDF instead.</div></sc-if>
+      </div>
+      <label class="card blueprint" style="padding:var(--space-3);display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;border-style:dashed;cursor:pointer">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <input type="file" accept=".pdf" onChange="{{uploadEstimate}}" style="display:none">
+        <strong style="font-size:13px">No estimate number? Upload the PDF</strong>
+        <span class="text-muted" style="font-size:12px">PDF exported from QuickBooks</span>
+      </label>
+      <sc-if value="{{estFromPdf}}" hint-placeholder-val="{{false}}"><div style="font-size:12.5px;display:flex;justify-content:space-between;gap:8px"><strong style="word-break:break-all">{{estimateFile}}</strong><span class="tag tag-accent">Parsed</span></div></sc-if>
+      <div class="field"><label>Customer</label><input class="input" value="{{project.customerName}}" readonly></div>
+      <div class="field"><label>Property Address</label><input class="input" value="{{project.address}}" readonly></div>
+      <div class="field"><label>Project Scope</label><textarea class="input" readonly value="{{project.description}}"></textarea></div>
+      <div class="card blueprint" style="padding:var(--space-3)">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">The app creates</div>
+        <sc-for list="{{pipeline}}" as="p" hint-placeholder-count="4">
+          <div style="display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:5px 0;border-bottom:1px solid var(--color-divider)"><span>{{p.n}} · {{p.label}}</span><span class="{{p.cls}}">{{p.status}}</span></div>
+        </sc-for>
+      </div>
+      <button class="btn btn-primary btn-block" onClick="{{setScreenScope}}">Create Project &amp; Continue</button>
+    </sc-if>
+
+    <sc-if value="{{isScope}}" hint-placeholder-val="{{false}}">
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="{{balanceCheck.cls}}">{{balanceCheck.label}}</span><span class="{{depositCheck.cls}}">{{depositCheck.label}}</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--color-divider)">
+        <div style="padding:8px 10px;border-right:1px solid var(--color-divider)"><div class="card-kicker" style="font-size:9px">Total Price</div><strong>{{scopeTotalFmt}}</strong></div>
+        <div style="padding:8px 10px"><div class="card-kicker" style="font-size:9px">Deposit on Signing</div><strong>{{depositFmt}}</strong></div>
+      </div>
+      <sc-for list="{{milestones}}" as="m" hint-placeholder-count="7">
+        <div class="card blueprint" style="padding:var(--space-3);gap:6px">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div style="display:flex;justify-content:space-between;gap:8px"><strong style="font-size:13px;line-height:1.3;flex:1;min-width:0">{{m.n}} · {{m.title}}</strong><span class="text-muted" style="font-size:12px">{{m.percentFmt}}</span></div>
+          <div class="text-muted" style="font-size:12px">{{m.deliverable}} · Due {{m.dueFmt}}</div>
+          <input class="input" value="{{m.amountStr}}" onChange="{{m.setAmount}}" style="min-height:44px">
+        </div>
+      </sc-for>
+      <button class="btn btn-primary btn-block" onClick="{{setScreenContract}}">Save &amp; Draft Contract</button>
+    </sc-if>
+
+    <sc-if value="{{isContract}}" hint-placeholder-val="{{false}}">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:11px"><sc-for list="{{contractSteps}}" as="s" hint-placeholder-count="4"><span class="{{s.cls}}">{{s.short}}</span></sc-for></div>
+      <div class="card blueprint" style="padding:var(--space-3)">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">Owner</div><div style="font-size:13px">{{project.customerName}}, {{project.address}}</div>
+        <div class="card-kicker" style="margin-top:6px">Contract Price · Down Payment</div><div style="font-size:13px">{{scopeTotalFmt}} · {{depositFmt}}</div>
+        <div class="card-kicker" style="margin-top:6px">Dates</div><div style="font-size:13px">{{startFmt}} → {{completionFmt}}</div>
+      </div>
+      <div class="field"><label>Description (auto-summarized)</label><textarea class="input" style="min-height:120px" value="{{contractDescription}}" onChange="{{setContractDescription}}"></textarea></div>
+      <div class="card blueprint" style="padding:var(--space-3)">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">Combined PDF</div>
+        <sc-for list="{{packageDocs}}" as="d" hint-placeholder-count="6"><div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:4px 0;border-bottom:1px solid var(--color-divider)"><span>{{d.label}}</span><span class="text-muted">{{d.pages}}</span></div></sc-for>
+        <div class="text-muted" style="font-size:11.5px;margin-top:6px">Projects › {{folderName}}</div>
+      </div>
+      <sc-if value="{{contractDraft}}" hint-placeholder-val="{{true}}"><button class="btn btn-primary btn-block" onClick="{{approveContract}}">Approve &amp; Save to Drive</button></sc-if>
+      <sc-if value="{{contractApproved}}" hint-placeholder-val="{{false}}"><button class="btn btn-primary btn-block">Send via Adobe Acrobat Sign</button><button class="btn btn-ghost btn-block" onClick="{{revertContract}}">Revert to Draft</button></sc-if>
+    </sc-if>
+
+    <sc-if value="{{isChangeOrder}}" hint-placeholder-val="{{false}}">
+      <button class="btn btn-secondary btn-block">+ New Change Order</button>
+      <sc-for list="{{changeOrders}}" as="c" hint-placeholder-count="2">
+        <div class="card blueprint" style="padding:var(--space-3);cursor:pointer" onClick="{{c.select}}">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div style="display:flex;justify-content:space-between;gap:8px"><strong style="font-size:13px">{{c.no}} · {{c.title}}</strong><span class="{{c.tagClass}}">{{c.status}}</span></div>
+          <div class="text-muted" style="font-size:12px">{{c.priceFmt}} · {{c.daysLabel}}</div>
+        </div>
+      </sc-for>
+      <div class="field"><label>{{co.no}} · Scope of Change</label><textarea class="input" readonly value="{{co.scope}}"></textarea></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{co.parts}}" as="pt" hint-placeholder-count="6"><span class="{{pt.cls}}">{{pt.label}}</span></sc-for></div>
+      <div style="font-size:12.5px;display:flex;justify-content:space-between"><span class="text-muted">Previously Signed Price</span><span>{{co.beforeFmt}}</span></div>
+      <div style="font-size:12.5px;display:flex;justify-content:space-between;background:var(--color-accent-100);padding:2px 4px;color:var(--color-accent-900)"><span>New Contract Price</span><strong>{{co.newFmt}}</strong></div>
+      <div style="font-size:12.5px;display:flex;justify-content:space-between"><span class="text-muted">Completion</span><span>{{co.priorDate}} → {{co.newDate}}</span></div>
+      <div class="card blueprint" style="padding:var(--space-3);gap:4px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div class="card-kicker">Both parties must sign</div><sc-for list="{{co.approvals}}" as="ap" hint-placeholder-count="2"><div style="display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:4px 0"><span>{{ap.party}} · {{ap.name}}</span><span class="{{ap.cls}}">{{ap.status}}</span></div></sc-for></div>
+      <button class="btn btn-secondary btn-block">Preview Change Order Form</button>
+      <sc-if value="{{co.isDraft}}" hint-placeholder-val="{{true}}"><button class="btn btn-primary btn-block">Approve &amp; Send to Both Parties</button></sc-if>
+    </sc-if>
+
+    <sc-if value="{{isInvoice}}" hint-placeholder-val="{{false}}">
+      <div class="card blueprint elev-sm" style="padding:var(--space-3)">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="display:flex;justify-content:space-between"><strong>{{invoice.number}}</strong><span class="tag tag-outline">Draft</span></div>
+        <div style="font-size:12px">{{invoice.description}}</div>
+        <div style="font-weight:700;font-size:18px">{{invoice.amountFmt}}</div>
+        <div class="text-muted" style="font-size:11px">Due {{invoice.dueDateFmt}}</div>
+      </div>
+      <button class="btn btn-primary btn-block">Send via QuickBooks</button>
+      <sc-for list="{{recon.rows}}" as="r" hint-placeholder-count="7">
+        <div style="display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:6px 0;border-bottom:1px solid var(--color-divider)"><span>{{r.n}} · {{r.title}}</span><span class="{{r.tagClass}}">{{r.status}}</span></div>
+      </sc-for>
+    </sc-if>
+
+    <sc-if value="{{isReconciliation}}" hint-placeholder-val="{{false}}">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)">
+        <sc-for list="{{recon.cards}}" as="k" hint-placeholder-count="6">
+          <div class="card blueprint" style="padding:var(--space-2)"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div class="card-kicker" style="font-size:9px">{{k.label}}</div><div style="font-weight:600">{{k.value}}</div></div>
+        </sc-for>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center"><h5 style="margin:0">Receipts</h5><button class="btn btn-secondary" style="min-height:44px" onClick="{{openReceiptProject}}">+ Add</button></div>
+      <sc-for list="{{recon.receipts}}" as="rc" hint-placeholder-count="6">
+        <div style="display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:6px 0;border-bottom:1px solid var(--color-divider)"><div>{{rc.desc}}<div class="text-muted" style="font-size:11px">{{rc.dateFmt}} · {{rc.type}} · {{rc.source}}</div></div><strong>{{rc.amountFmt}}</strong></div>
+      </sc-for>
+      <button class="btn btn-secondary btn-block">Open in Google Sheets</button>
+    </sc-if>
+
+    <sc-if value="{{isAnalytics}}" hint-placeholder-val="{{false}}">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)">
+        <sc-for list="{{an.kpis}}" as="k" hint-placeholder-count="4">
+          <div class="card blueprint" style="padding:var(--space-2)"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div class="card-kicker" style="font-size:9px">{{k.label}}</div><div style="font-weight:600;font-size:15px">{{k.value}}</div></div>
+        </sc-for>
+      </div>
+      <h5 style="margin:6px 0 0">Projects at the same time</h5>
+      <sc-for list="{{an.monthLoad}}" as="m" hint-placeholder-count="11">
+        <div style="display:grid;grid-template-columns:62px minmax(0,1fr) 24px;gap:8px;align-items:center;font-size:12px">
+          <span class="text-muted">{{m.label}}</span>
+          <div style="height:14px;background:var(--color-accent-100)"><div style="{{m.style}}"></div></div>
+          <strong style="text-align:right">{{m.count}}</strong>
+        </div>
+      </sc-for>
+      <div class="text-muted" style="font-size:11.5px">Most projects running in any week that month. Open on desktop for the full timeline.</div>
+      <h5 style="margin:6px 0 0">Projected revenue · signed</h5>
+      <sc-for list="{{an.revenue}}" as="r" hint-placeholder-count="11">
+        <div style="display:grid;grid-template-columns:62px minmax(0,1fr) 64px;gap:8px;align-items:center;font-size:12px">
+          <span class="text-muted">{{r.label}}</span>
+          <div style="height:14px;display:flex;background:var(--color-accent-100)"><div style="{{r.mPaidStyle}}"></div><div style="{{r.mProjStyle}}"></div></div>
+          <strong style="text-align:right">{{r.totalK}}</strong>
+        </div>
+      </sc-for>
+      <sc-for list="{{an.table}}" as="t" hint-placeholder-count="5">
+        <div class="card blueprint" style="padding:var(--space-3);gap:4px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div style="display:flex;justify-content:space-between;gap:8px"><strong style="font-size:13px;flex:1;min-width:0">{{t.name}}</strong><span class="{{t.cls}}">{{t.status}}</span></div>
+          <div class="text-muted" style="font-size:11.5px">{{t.dates}}</div>
+          <div style="font-size:12.5px;display:flex;justify-content:space-between"><span>{{t.valueFmt}}</span><span class="text-muted">Remaining {{t.remainingFmt}}</span></div>
+        </div>
+      </sc-for>
+    </sc-if>
+
+    <sc-if value="{{isBankrec}}" hint-placeholder-val="{{false}}">
+      <label class="card blueprint" style="padding:var(--space-3);display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;border-style:dashed;cursor:pointer"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><input type="file" accept=".csv,.qfx,.ofx" onChange="{{bank.upload}}" style="display:none"><strong>Upload Bank of America file</strong><span class="text-muted" style="font-size:12px">CSV, QFX or OFX</span></label>
+      <div style="font-size:12px"><strong style="word-break:break-all">{{bank.file}}</strong><div class="text-muted">{{bank.fileMeta}}</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)">
+        <sc-for list="{{bank.kpis}}" as="k" hint-placeholder-count="4"><div class="card blueprint" style="padding:var(--space-2)"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div class="card-kicker" style="font-size:9px">{{k.label}}</div><div style="font-weight:600">{{k.value}}</div></div></sc-for>
+      </div>
+      <div class="seg" style="display:flex">
+        <sc-for list="{{bank.filters}}" as="f" hint-placeholder-count="4"><label class="seg-opt" style="flex:1;justify-content:center;padding:8px 4px;font-size:11px;min-height:40px"><input type="radio" name="bankfilter2" checked="{{f.on}}" onChange="{{f.pick}}">{{f.short}}</label></sc-for>
+      </div>
+      <sc-for list="{{bank.rows}}" as="t" hint-placeholder-count="8">
+        <div class="card blueprint" style="padding:var(--space-3);gap:6px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div style="display:flex;justify-content:space-between;gap:8px"><strong style="font-size:13px;flex:1;min-width:0">{{t.vendor}}</strong><strong style="font-size:13px">{{t.amountFmt}}</strong></div>
+          <div class="text-muted" style="font-size:11px">{{t.dateFmt}} · {{t.desc}}</div>
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:12px"><span>{{t.matchShort}}</span><span class="{{t.statusCls}}">{{t.status}}</span></div>
+          <sc-if value="{{t.canAssign}}" hint-placeholder-val="{{false}}"><select class="input" style="min-height:44px" key="{{t.selKey}}" onChange="{{t.assign}}"><sc-for list="{{t.options}}" as="o" hint-placeholder-count="6"><option value="{{o.value}}">{{o.label}}</option></sc-for></select></sc-if>
+          <sc-if value="{{t.isPossible}}" hint-placeholder-val="{{false}}"><div style="display:flex;gap:8px"><button class="btn btn-secondary" style="flex:1;min-height:44px" onClick="{{t.confirm}}">Confirm</button><button class="btn btn-secondary" style="flex:1;min-height:44px" onClick="{{t.reject}}">Not a match</button></div></sc-if>
+        </div>
+      </sc-for>
+    </sc-if>
+
+    <sc-if value="{{isExpenses}}" hint-placeholder-val="{{false}}">
+      <button class="btn btn-secondary btn-block" onClick="{{openReceiptBusiness}}">+ Add Receipt</button>
+      <sc-if value="{{exp.hasUnidentified}}" hint-placeholder-val="{{false}}"><div style="padding:8px 10px;border:1px solid var(--color-accent-300);background:var(--color-accent-100);color:var(--color-accent-900);font-size:12.5px">{{exp.unidentifiedLabel}} Choose a project, or it stays a business expense.</div></sc-if>
+      <sc-for list="{{exp.rows}}" as="x" hint-placeholder-count="6">
+        <div class="card blueprint" style="padding:var(--space-3);gap:6px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div style="display:flex;justify-content:space-between;gap:8px"><strong style="font-size:13px;flex:1;min-width:0">{{x.desc}}</strong><strong style="font-size:13px">{{x.amountFmt}}</strong></div>
+          <div class="text-muted" style="font-size:11.5px">{{x.dateFmt}} · {{x.source}}</div>
+          <select class="input" style="min-height:44px" key="{{x.selKey}}" onChange="{{x.assign}}"><sc-for list="{{x.options}}" as="o" hint-placeholder-count="4"><option value="{{o.value}}">{{o.label}}</option></sc-for></select>
+        </div>
+      </sc-for>
+    </sc-if>
+
+    <sc-if value="{{isUsers}}" hint-placeholder-val="{{false}}">
+      <button class="btn btn-primary btn-block" onClick="{{openInvite}}">+ Invite User</button>
+      <sc-for list="{{users}}" as="u" hint-placeholder-count="3">
+        <div class="card blueprint" style="padding:var(--space-3)">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div style="display:flex;justify-content:space-between"><strong style="font-size:14px">{{u.name}}</strong><span class="{{u.tagClass}}">{{u.status}}</span></div>
+          <div class="text-muted" style="font-size:12px">{{u.email}}</div>
+          <div style="font-size:12.5px">{{u.role}}</div>
+          <sc-if value="{{u.removable}}" hint-placeholder-val="{{false}}">
+            <div style="display:flex;gap:8px;margin-top:4px">
+              <sc-if value="{{u.invited}}" hint-placeholder-val="{{false}}"><button class="btn btn-secondary" style="flex:1;min-height:44px" onClick="{{u.resend}}">{{u.resendLabel}}</button></sc-if>
+              <button class="btn btn-secondary" style="flex:1;min-height:44px" onClick="{{u.remove}}">Remove</button>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </sc-if>
+
+  </main>
+
+  <nav style="display:flex;border-top:1px solid var(--color-divider);padding:4px 2px">
+    <div onClick="{{setScreenDatabase}}" style="{{tabStyleDatabase}}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"></path></svg><span>Projects</span></div>
+    <div onClick="{{setScreenEstimate}}" style="{{tabStyleEstimate}}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3h9l3 3v15H6z"></path><path d="M12 16v-6"></path></svg><span>Estimate</span></div>
+    <div onClick="{{setScreenScope}}" style="{{tabStyleScope}}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="16" rx="1"></rect><path d="M3 9h18"></path></svg><span>Scope</span></div>
+    <div onClick="{{setScreenContract}}" style="{{tabStyleContract}}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3h9l3 3v15H6z"></path></svg><span>Contract</span></div>
+    <div onClick="{{setScreenChangeOrder}}" style="{{tabStyleChangeOrder}}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="2"></circle><circle cx="6" cy="18" r="2"></circle><circle cx="18" cy="9" r="2"></circle></svg><span>Changes</span></div>
+    <div onClick="{{setScreenInvoice}}" style="{{tabStyleInvoice}}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3h12v18l-2.5-1.4L14 21l-2-1.4L10 21l-2.5-1.4L6 21Z"></path></svg><span>Invoices</span></div>
+    <div onClick="{{setScreenReconciliation}}" style="{{tabStyleReconciliation}}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"></circle><path d="M7.5 12.5 10 15l6.5-6.5"></path></svg><span>Recon.</span></div>
+  </nav>
+</div>
+</sc-if>
+
+<sc-if value="{{receiptOpen}}" hint-placeholder-val="{{false}}">
+  <div class="dialog-backdrop" style="z-index:50" onClick="{{closeReceipt}}">
+    <div class="dialog blueprint" style="position:relative;background:var(--color-bg);box-shadow:var(--shadow-lg);width:min(480px,100%)" onClick="{{stop}}">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <div class="dialog-title">Add Receipt</div>
+      <div class="dialog-body" style="opacity:1;display:flex;flex-direction:column;gap:var(--space-3)">
+        <div class="field"><label>Type</label>
+          <div class="seg">
+            <label class="seg-opt"><input type="radio" name="rtype" checked="{{rIsExpense}}" onChange="{{pickExpense}}">Job Expense</label>
+            <label class="seg-opt"><input type="radio" name="rtype" checked="{{rIsPayment}}" onChange="{{pickPayment}}">Customer Payment</label>
+          </div>
+        </div>
+        <div class="field"><label>Which project is this receipt for?</label>
+          <select class="input" key="{{rProjKey}}" onChange="{{setRProject}}"><sc-for list="{{receiptProjectOptions}}" as="o" hint-placeholder-count="5"><option value="{{o.value}}">{{o.label}}</option></sc-for></select>
+          <div class="text-muted" style="font-size:11.5px">{{rProjectHint}}</div>
+        </div>
+        <sc-if value="{{rShowMilestone}}" hint-placeholder-val="{{false}}">
+          <div class="field"><label>Apply to Milestone</label>
+            <select class="input" onChange="{{setRMilestone}}"><sc-for list="{{milestoneOptions}}" as="o" hint-placeholder-count="7"><option value="{{o.value}}">{{o.label}}</option></sc-for></select>
+          </div>
+        </sc-if>
+        <div style="display:grid;grid-template-columns:150px minmax(0,1fr);gap:var(--space-3)">
+          <div class="field"><label>Date</label><input class="input" type="date" value="{{rDate}}" onChange="{{setRDate}}"></div>
+          <div class="field"><label>Amount</label><input class="input" value="{{rAmount}}" onChange="{{setRAmount}}" placeholder="0.00"></div>
+        </div>
+        <div class="field"><label>Description</label><input class="input" value="{{rDesc}}" onChange="{{setRDesc}}" placeholder="e.g. Home Depot — tile adhesive"></div>
+        <div class="field"><label>Receipt File (optional)</label><input class="input" type="file" accept=".pdf,image/*"></div>
+        <sc-if value="{{rWarn}}" hint-placeholder-val="{{false}}">
+          <div style="padding:10px 12px;border:1px solid var(--color-accent-300);background:var(--color-accent-100);color:var(--color-accent-900);font-size:12.5px">No project selected. This receipt won't be attached to a project. It will be filed as a Cabrera Construction business expense. Choose a project above, or confirm.</div>
+        </sc-if>
+        <sc-if value="{{rError}}" hint-placeholder-val="{{false}}"><div style="font-size:12.5px;color:var(--color-accent-800)">{{rError}}</div></sc-if>
+      </div>
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" onClick="{{closeReceipt}}">Cancel</button>
+        <button class="btn btn-primary" onClick="{{addReceipt}}">{{rSubmitLabel}}</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{inviteOpen}}" hint-placeholder-val="{{false}}">
+  <div class="dialog-backdrop" style="z-index:50" onClick="{{closeInvite}}">
+    <div class="dialog blueprint" style="position:relative;background:var(--color-bg);box-shadow:var(--shadow-lg)" onClick="{{stop}}">
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <div class="dialog-title">Invite User</div>
+      <div class="dialog-body" style="opacity:1;display:flex;flex-direction:column;gap:var(--space-3)">
+        <div class="field"><label>Full Name</label><input class="input" value="{{inviteName}}" onChange="{{setInviteName}}" placeholder="e.g. Maria Lopez"></div>
+        <div class="field"><label>Email</label><input class="input" type="email" value="{{inviteEmail}}" onChange="{{setInviteEmail}}" placeholder="name@company.com"></div>
+        <div class="field">
+          <label>Role</label>
+          <div class="seg">
+            <label class="seg-opt"><input type="radio" name="inviterole" checked="{{rolePM}}" onChange="{{pickPM}}">Project Manager</label>
+            <label class="seg-opt"><input type="radio" name="inviterole" checked="{{roleAdmin}}" onChange="{{pickAdmin}}">Owner / Admin</label>
+          </div>
+          <div class="text-muted" style="font-size:12px;margin-top:4px">{{roleHint}}</div>
+        </div>
+        <sc-if value="{{inviteError}}" hint-placeholder-val="{{false}}">
+          <div style="font-size:12.5px;color:var(--color-accent-800)">{{inviteError}}</div>
+        </sc-if>
+      </div>
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" onClick="{{closeInvite}}">Cancel</button>
+        <button class="btn btn-primary" onClick="{{sendInvite}}">Send Invite</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  static MILESTONES = [
+    { n: 0, title: 'Initial Deposit', deliverable: 'Down payment', scope: 'Down payment on contract execution. Limited to the lesser of $1,000 or 10% of the contract price.', due: '2026-08-28', amount: 1000 },
+    { n: 1, title: 'Demolition & Prep', deliverable: 'Site cleared and protected', scope: 'Remove existing kitchen cabinets, counters and both bathrooms\u2019 fixtures; protect floors; haul debris. Verified by owner walkthrough.', due: '2026-09-21', amount: 11850 },
+    { n: 2, title: 'Structural Beam & MEP Rough-in', deliverable: 'Framing and rough-ins passed', scope: 'Install new header beam per engineer detail; plumbing and electrical rough-in. Verified by passed framing and rough inspections.', due: '2026-10-19', amount: 32125 },
+    { n: 3, title: 'Cabinets & Countertops', deliverable: 'Kitchen casework installed', scope: 'Set cabinets, install quartz countertops and backsplash. Verified by owner sign-off on install.', due: '2026-11-02', amount: 25700 },
+    { n: 4, title: 'Bathroom Remodel \u2014 Unit A', deliverable: 'Unit A complete', scope: 'Waterproofing, tile, vanity and fixtures in Unit A. Verified by flood test and owner walkthrough.', due: '2026-11-16', amount: 19275 },
+    { n: 5, title: 'Bathroom Remodel \u2014 Unit B', deliverable: 'Unit B complete', scope: 'Waterproofing, tile, vanity and fixtures in Unit B. Verified by flood test and owner walkthrough.', due: '2026-11-30', amount: 19275 },
+    { n: 6, title: 'Final Finishes & Walkthrough', deliverable: 'Punch list signed off', scope: 'Paint, trim, fixture trim-out and cleaning. Verified by final inspection and signed punch list.', due: '2026-12-15', amount: 19275 },
+  ];
+  static DESCRIPTION = 'Full kitchen remodel and two-unit bathroom remodel at 2583 35th Ave, San Francisco, CA 94116. Work includes demolition of existing kitchen and bathroom finishes; installation of a new structural header beam; plumbing and electrical rough-in; new shaker cabinets with quartz countertops and backsplash; and complete remodels of Bathroom Units A and B with waterproofing, porcelain tile, vanities and fixtures. Significant materials: LVL header beam, shaker cabinets, quartz countertops, porcelain tile. Equipment installed: owner-supplied kitchen appliances and bathroom exhaust fans. Work proceeds in Milestones 0\u20136 per Attachment 4, Project Scope & Payment Schedule.';
+
+  state = {
+    screen: 'database', mode: 'desktop',
+    estimateFile: '', estNumber: '1042', estSource: 'qb', estTried: '', estNotFound: false,
+    msAmounts: Component.MILESTONES.map(m => m.amount.toFixed(2)),
+    contractApproved: false,
+    contractDescription: Component.DESCRIPTION,
+    coSel: 'CO-02',
+    receipts: [
+      { id: 11, date: '2026-10-24', desc: 'Sunbelt Rentals \u2014 tile saw rental', type: 'Expense', ms: null, source: 'Drive \u203a Receipts', amount: 465, project: 'ortiz' },
+      { id: 12, date: '2026-11-05', desc: 'Home Depot \u2014 cabinet hardware', type: 'Expense', ms: null, source: 'Drive \u203a Receipts', amount: 412.88, project: 'yee' },
+      { id: 13, date: '2026-10-21', desc: 'Lowe\u2019s \u2014 framing lumber', type: 'Expense', ms: null, source: 'Manual', amount: 1289.33, project: 'chen' },
+      { id: 7, date: '2026-09-15', desc: 'Pacific Builders Comp Trust \u2014 Q3 workers\u2019 comp premium', type: 'Expense', ms: null, source: 'Manual', amount: 2640, project: null },
+      { id: 8, date: '2026-10-08', desc: 'Chevron \u2014 fuel, crew truck', type: 'Expense', ms: null, source: 'Drive \u203a Business Receipts', amount: 96.4, project: null, needsProject: true },
+      { id: 9, date: '2026-10-12', desc: 'Ferguson \u2014 shower valves (2)', type: 'Expense', ms: null, source: 'Drive \u203a Business Receipts', amount: 684.1, project: null, needsProject: true },
+      { id: 10, date: '2026-09-30', desc: 'Home Depot \u2014 Trex fascia boards (punch list)', type: 'Expense', ms: null, source: 'Manual', amount: 318.75, project: 'park' },
+      { id: 1, date: '2026-08-28', desc: 'Deposit \u2014 Check #1042', type: 'Payment', ms: 0, source: 'Drive \u203a Receipts', amount: 1000, project: 'yee' },
+      { id: 2, date: '2026-09-10', desc: 'Home Depot \u2014 demo supplies & floor protection', type: 'Expense', ms: null, source: 'Drive \u203a Receipts', amount: 3412.56, project: 'yee' },
+      { id: 3, date: '2026-09-22', desc: 'ACH payment \u2014 INV-1042', type: 'Payment', ms: 1, source: 'QuickBooks', amount: 11850, project: 'yee' },
+      { id: 4, date: '2026-10-03', desc: 'SF DBI \u2014 electrical permit fee', type: 'Expense', ms: null, source: 'Manual', amount: 1180, project: 'yee' },
+      { id: 5, date: '2026-10-21', desc: 'ACH payment \u2014 INV-1043', type: 'Payment', ms: 2, source: 'QuickBooks', amount: 36325, project: 'yee' },
+      { id: 6, date: '2026-11-04', desc: 'Check #1107 \u2014 INV-1044', type: 'Payment', ms: 3, source: 'Drive \u203a Receipts', amount: 25700, project: 'yee' },
+    ],
+    receiptOpen: false, rDate: '', rDesc: '', rAmount: '', rType: 'Expense', rProject: '', rMilestone: '0', rError: '', rWarn: false,
+    inviteOpen: false, inviteName: '', inviteEmail: '', inviteRole: 'Project Manager', inviteError: '',
+    users: [
+      { id: 1, name: 'Samuel Cabrera', email: 'admin@cabrera.construction', role: 'Owner / Admin', status: 'Active', lastActive: 'Today', owner: true },
+      { id: 2, name: 'Luis Cabrera', email: 'luis@cabrera.construction', role: 'Project Manager', status: 'Active', lastActive: 'Sep 26, 2026' },
+      { id: 3, name: 'Priya Shah', email: 'priya.shah@email.com', role: 'Project Manager', status: 'Invited', lastActive: '\u2014' },
+    ],
+    resent: {},
+  };
+
+  company = {
+    name: 'Cabrera Construction', owner: 'Samuel Cabrera', license: 'Lic. #1135927',
+    licenseClass: 'Lic. #1135927 \u00b7 B-General Building',
+    address: '2752 Capistrano St, Antioch, CA 94509', phone: '(415) 359-5394', email: 'admin@cabrera.construction',
+  };
+
+  money(n) { const s = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); return (n < 0 ? '\u2212$' : '$') + s; }
+  date(iso) { return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+  longDate(iso) { return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }); }
+  num(s) { const v = parseFloat(String(s).replace(/[$,\s]/g, '')); return isNaN(v) ? 0 : v; }
+
+  projects = [
+    { id: 'yee', label: 'Yee Kitchen & Bath Remodel' },
+    { id: 'ortiz', label: 'Ortiz Primary Bath Remodel' },
+    { id: 'chen', label: 'Chen Garage Conversion' },
+    { id: 'nguyen', label: 'Nguyen ADU Addition' },
+    { id: 'lee', label: 'Lee Roof & Siding Replacement' },
+    { id: 'park', label: 'Park Rear Deck & Patio' },
+  ];
+
+  static PIPELINE = [
+    { id: 'ortiz', name: 'Ortiz Primary Bath Remodel', customer: 'Rosa Ortiz', address: '1450 Grant St, Concord, CA 94520', type: 'Bathroom Remodel', signed: '2026-10-05', start: '2026-10-19', end: '2026-12-11', value: 46800, k: 4, status: 'signed' },
+    { id: 'chen', name: 'Chen Garage Conversion', customer: 'Kevin Chen', address: '315 Ashby Ln, Pleasant Hill, CA 94523', type: 'Garage Conversion', signed: '2026-11-09', start: '2026-11-30', end: '2027-03-05', value: 89400, k: 5, status: 'signed' },
+    { id: 'nguyen', name: 'Nguyen ADU Addition', customer: 'Nguyen Family', address: '940 Bayview Dr, Daly City, CA 94014', type: 'ADU / New Construction', signed: '2026-10-28', start: '2027-01-11', end: '2027-06-25', value: 214000, k: 7, status: 'signed' },
+    { id: 'lee', name: 'Lee Roof & Siding Replacement', customer: 'Grace Lee', address: '62 Oak Knoll Dr, Antioch, CA 94509', type: 'Roof & Siding', signed: null, start: '2027-01-18', end: '2027-03-12', value: 58250, k: 3, status: 'pending' },
+  ];
+
+  analyticsVals(yee) {
+    const today = '2026-11-16';
+    const D = s => new Date(s + 'T00:00:00').getTime();
+    const DAY = 86400000;
+    const t0 = D('2026-08-01'), t1 = D('2027-07-01');
+    const pct = t => Math.max(0, Math.min(100, ((t - t0) / (t1 - t0)) * 100));
+    const iso = t => new Date(t).toISOString().slice(0, 10);
+    const showPending = this.state.showPending !== false;
+    const kfmt = n => '$' + (n >= 1000 ? (Math.round(n / 100) / 10).toLocaleString('en-US') + 'k' : Math.round(n));
+
+    const projects = [
+      { id: 'yee', name: 'Yee Kitchen & Bath Remodel', customer: 'Amanda Yee', signed: '2026-08-28', start: '2026-09-08', end: '2026-12-20', value: yee.value, status: 'signed', schedule: yee.schedule },
+      ...Component.PIPELINE.map(p => {
+        const sched = [];
+        if (p.status === 'signed') {
+          sched.push({ date: p.signed, amount: 1000 });
+          const rest = p.value - 1000, span = D(p.end) - D(p.start);
+          for (let i = 1; i <= p.k; i++) sched.push({ date: iso(D(p.start) + span * (i / p.k)), amount: Math.round((rest / p.k) * 100) / 100 });
+          sched.forEach(s => { s.paid = s.date <= today; });
+        }
+        return { ...p, schedule: sched };
+      }),
+    ];
+    const visible = projects.filter(p => p.status === 'signed' || showPending);
+
+    const months = [];
+    for (let d = new Date(t0); d.getTime() < t1; d.setMonth(d.getMonth() + 1)) {
+      const a = d.getTime(); const nx = new Date(d); nx.setMonth(nx.getMonth() + 1);
+      months.push({ key: iso(a).slice(0, 7), a, b: nx.getTime(), label: d.toLocaleDateString('en-US', { month: 'short' }) + (d.getMonth() === 0 || months.length === 0 ? ' \u2019' + String(d.getFullYear()).slice(2) : '') });
+    }
+    const monthsOut = months.map(m => ({
+      label: m.label,
+      labelStyle: 'position:absolute;top:5px;left:' + pct(m.a) + '%;padding-left:5px;font-size:11px;color:var(--color-neutral-700);white-space:nowrap',
+      lineStyle: 'position:absolute;top:0;bottom:92px;width:1px;background:var(--color-divider);left:calc(210px + (100% - 210px) * ' + (pct(m.a) / 100) + ')',
+    }));
+
+    const bars = visible.map(p => {
+      const l = pct(D(p.start)), w = pct(D(p.end)) - l;
+      const signed = p.status === 'signed';
+      const active = p.start <= today && p.end >= today;
+      return {
+        name: p.name, sub: p.customer + (signed ? '' : ' \u00b7 pending'),
+        label: this.date(p.start).replace(', 2026', '').replace(', 2027', '') + ' \u2013 ' + this.date(p.end).replace(', 2026', '').replace(', 2027', ''),
+        tip: p.name + ': ' + this.date(p.start) + ' \u2013 ' + this.date(p.end),
+        style: 'position:absolute;top:10px;height:24px;left:' + l + '%;width:' + w + '%;display:flex;align-items:center;padding:0 8px;box-sizing:border-box;overflow:hidden;color:var(--color-accent-900);' + (signed ? 'background:' + (active ? 'var(--color-accent-300)' : 'var(--color-accent-200)') + ';border:1px solid var(--color-accent-700)' : 'border:1px dashed var(--color-accent-700);background:transparent'),
+      };
+    });
+
+    const weeks = []; let peak = 0; let peakWeeks = [];
+    for (let w = D('2026-08-03'); w < t1; w += 7 * DAY) {
+      const we = w + 6 * DAY;
+      const on = visible.filter(p => D(p.start) <= we && D(p.end) >= w);
+      if (on.length > peak) { peak = on.length; peakWeeks = [w]; } else if (on.length === peak && peak > 0) peakWeeks.push(w);
+      weeks.push({ w, n: on.length, names: on.map(p => p.name.split(' ')[0]).join(', ') });
+    }
+    const weeksOut = weeks.map(x => ({
+      tip: 'Week of ' + this.date(iso(x.w)) + ': ' + x.n + (x.n === 1 ? ' project' : ' projects') + (x.n ? ' (' + x.names + ')' : ''),
+      style: 'position:absolute;bottom:0;left:' + pct(x.w) + '%;width:calc(' + (pct(x.w + 7 * DAY) - pct(x.w)) + '% - 2px);height:' + (peak ? (x.n / peak) * 72 : 0) + 'px;background:' + (x.n === peak ? 'var(--color-accent-700)' : 'var(--color-accent-400)'),
+    }));
+    const pw = peakWeeks[0], pwl = peakWeeks[peakWeeks.length - 1];
+    const peakNote = peak >= 3 ? 'Heaviest load: ' + peak + ' projects at once, weeks of ' + this.date(iso(pw)) + (pwl !== pw ? ' through ' + this.date(iso(pwl)) : '') + '. Check crew availability before scheduling another start in this window.' : '';
+
+    const monthLoad = months.map(m => {
+      let mx = 0; weeks.forEach(x => { if (x.w >= m.a - 6 * DAY && x.w < m.b) mx = Math.max(mx, x.n); });
+      return { label: m.label, count: mx, style: 'height:100%;width:' + (peak ? (mx / peak) * 100 : 0) + '%;background:' + (mx === peak ? 'var(--color-accent-700)' : 'var(--color-accent-400)') };
+    });
+
+    const signedP = projects.filter(p => p.status === 'signed');
+    const bucket = {}; months.forEach(m => { bucket[m.key] = { paid: 0, due: 0 }; });
+    signedP.forEach(p => p.schedule.forEach(s => { const k = s.date.slice(0, 7); if (bucket[k]) bucket[k][s.paid ? 'paid' : 'due'] += s.amount; }));
+    const maxM = Math.max(...Object.values(bucket).map(b => b.paid + b.due), 1);
+    const step = maxM > 60000 ? 25000 : 10000; const top = Math.ceil(maxM / step) * step;
+    const revenue = months.map(m => {
+      const b = bucket[m.key], tot = b.paid + b.due;
+      return {
+        label: m.label, totalK: tot ? kfmt(tot) : '\u2014',
+        tip: m.label + ': ' + this.money(tot) + ' (' + this.money(b.paid) + ' collected)',
+        paidStyle: 'height:' + (b.paid / top) * 170 + 'px;background:var(--color-accent-700)',
+        projStyle: 'height:' + (b.due / top) * 170 + 'px;background:var(--color-accent-300)',
+        mPaidStyle: 'height:100%;width:' + (b.paid / maxM) * 100 + '%;background:var(--color-accent-700)',
+        mProjStyle: 'height:100%;width:' + (b.due / maxM) * 100 + '%;background:var(--color-accent-300)',
+      };
+    });
+    const yTicks = []; for (let v = 0; v <= top; v += step) yTicks.push({ label: kfmt(v).replace('$0', '$0'), labelStyle: 'position:absolute;right:0;font-size:10.5px;color:var(--color-neutral-700);bottom:' + ((v / top) * 170 - 6) + 'px', lineStyle: 'position:absolute;left:0;right:0;height:1px;background:var(--color-divider);bottom:' + (v / top) * 170 + 'px' });
+
+    const sum = (arr, f) => arr.reduce((a, x) => a + f(x), 0);
+    const signedTotal = sum(signedP, p => p.value);
+    const collected = sum(signedP, p => sum(p.schedule.filter(s => s.paid), s => s.amount));
+    const pending = projects.filter(p => p.status === 'pending');
+    const activeNow = projects.filter(p => p.status === 'signed' && p.start <= today && p.end >= today).length;
+    const next90 = sum(signedP, p => sum(p.schedule.filter(s => !s.paid && D(s.date) <= D(today) + 90 * DAY), s => s.amount));
+
+    const table = projects.map(p => {
+      const col = sum(p.schedule.filter(s => s.paid), s => s.amount);
+      const signed = p.status === 'signed';
+      const active = signed && p.start <= today && p.end >= today;
+      return {
+        name: p.name, customer: p.customer, dates: this.date(p.start) + ' \u2013 ' + this.date(p.end),
+        status: !signed ? 'Pending signature' : active ? 'In progress' : p.start > today ? 'Signed \u00b7 upcoming' : 'Complete',
+        cls: !signed ? 'tag tag-outline' : active ? 'tag tag-accent' : 'tag tag-neutral',
+        valueFmt: this.money(p.value) + (signed ? '' : ' *'), collectedFmt: signed ? this.money(col) : '\u2014', remainingFmt: signed ? this.money(p.value - col) : '\u2014',
+      };
+    });
+
+    return {
+      showPending, togglePending: () => this.setState(st => ({ showPending: st.showPending === false })),
+      rangeLabel: 'Aug 2026 \u2013 Jun 2027', todayLabel: 'Nov 16', monthCount: months.length,
+      todayStyle: 'position:absolute;top:26px;bottom:0;width:0;border-left:2px solid var(--color-accent-800);z-index:2;left:calc(210px + (100% - 210px) * ' + pct(D(today)) / 100 + ')',
+      months: monthsOut, bars, weeks: weeksOut, peak, monthLoad, hasPeakNote: !!peakNote, peakNote,
+      revenue, yTicks, table,
+      signedFmt: this.money(signedTotal), collectedFmt: this.money(collected), remainingFmt: this.money(signedTotal - collected),
+      kpis: [
+        { label: 'In Progress Today', value: String(activeNow), sub: 'Peak ' + peak + ' at once in the period shown' },
+        { label: 'Signed Contract Value', value: this.money(signedTotal), sub: signedP.length + ' contracts, incl. signed change orders' },
+        { label: 'Projected Remaining', value: this.money(signedTotal - collected), sub: this.money(next90) + ' due in the next 90 days' },
+        { label: 'Collected to Date', value: this.money(collected), sub: pending.length + ' pending (' + this.money(sum(pending, p => p.value)) + ') not included' },
+      ],
+    };
+  }
+
+  static BANK = [
+    { id: 'b01', date: '2026-08-28', desc: 'MOBILE DEPOSIT CHECK 1042', vendor: 'Check deposit', amount: 1000 },
+    { id: 'b02', date: '2026-09-11', desc: 'THE HOME DEPOT #0631 CONCORD CA', vendor: 'Home Depot', amount: -3412.56 },
+    { id: 'b03', date: '2026-09-16', desc: 'PACIFIC BUILDERS COMP DES:PREMIUM', vendor: 'Pacific Builders Comp Trust', amount: -2640 },
+    { id: 'b04', date: '2026-09-22', desc: 'YEE AMANDA DES:ACH PMT', vendor: 'ACH \u2014 Amanda Yee', amount: 11850 },
+    { id: 'b05', date: '2026-09-30', desc: 'THE HOME DEPOT #1822 WALNUT CRK CA', vendor: 'Home Depot', amount: -318.75 },
+    { id: 'b06', date: '2026-10-05', desc: 'SF DBI PERMIT SVCS SAN FRANCISCO CA', vendor: 'SF DBI', amount: -1180 },
+    { id: 'b07', date: '2026-10-09', desc: 'CHEVRON 0204587 ANTIOCH CA', vendor: 'Chevron', amount: -96.4 },
+    { id: 'b08', date: '2026-10-13', desc: 'FERGUSON ENT #1234 CONCORD CA', vendor: 'Ferguson', amount: -684.1 },
+    { id: 'b09', date: '2026-10-15', desc: 'FLOOR & DECOR #212 SAN LEANDRO CA', vendor: 'Floor & Decor', amount: -2215.4 },
+    { id: 'b10', date: '2026-10-21', desc: 'YEE AMANDA DES:ACH PMT', vendor: 'ACH \u2014 Amanda Yee', amount: 36325 },
+    { id: 'b11', date: '2026-10-22', desc: 'SUNBELT RENTALS #778 CONCORD CA', vendor: 'Sunbelt Rentals', amount: -465 },
+    { id: 'b12', date: '2026-10-27', desc: 'BAY AREA DUMPSTER CO 925-555-0199', vendor: 'Bay Area Dumpster Co', amount: -540 },
+    { id: 'b13', date: '2026-10-31', desc: 'VERIZON WIRELESS DES:PAYMENTS', vendor: 'Verizon Wireless', amount: -186.22 },
+    { id: 'b14', date: '2026-11-02', desc: 'LOWES #01945 PLEASANT HILL CA', vendor: 'Lowe\u2019s', amount: -1289.33 },
+    { id: 'b15', date: '2026-11-04', desc: 'MOBILE DEPOSIT CHECK 1107', vendor: 'Check deposit', amount: 25700 },
+    { id: 'b16', date: '2026-11-06', desc: 'HOME DEPOT CRC 800-677-0232', vendor: 'Home Depot', amount: -412.88 },
+  ];
+
+  bankVals() {
+    const s = this.state;
+    const D = x => new Date(x + 'T00:00:00').getTime();
+    const days = (a, b) => Math.round(Math.abs(D(a) - D(b)) / 86400000);
+    const norm = x => String(x).toLowerCase().replace(/^the /, '').replace(/[^a-z]/g, '');
+    const projLabel = id => (this.projects.find(p => p.id === id) || {}).label;
+    const decisions = s.bankDecisions || {};
+    const used = new Set();
+    const tx = [...Component.BANK].sort((a, b) => a.date.localeCompare(b.date));
+    const results = tx.map(t => {
+      const credit = t.amount > 0; const amt = Math.abs(t.amount);
+      const pool = s.receipts.filter(r => r.type === (credit ? 'Payment' : 'Expense') && Math.abs(r.amount - amt) < 0.005 && !used.has(r.id) && decisions[t.id] !== 'reject:' + r.id);
+      let best = null;
+      pool.forEach(r => {
+        const vendorR = norm(r.desc.split(' \u2014 ')[0]);
+        const vOk = credit ? true : (norm(t.desc).includes(vendorR) || vendorR.includes(norm(t.vendor)));
+        const d = days(r.date, t.date);
+        const dOk = d <= 3;
+        const score = (vOk ? 2 : 0) + (dOk ? 2 : d <= 14 ? 1 : 0);
+        const kind = vOk && dOk ? 'exact' : ((vOk && d <= 14) || (!vOk && dOk)) ? 'possible' : null;
+        if (kind && (!best || score > best.score)) best = { r, vOk, dOk, d, kind, score };
+      });
+      if (best && best.kind === 'possible' && decisions[t.id] === 'confirm') best.kind = 'exact';
+      if (best) used.add(best.r.id);
+      return { t, credit, amt, best };
+    });
+    const filter = s.bankFilter || 'all';
+    let open = 0, openAmt = 0, matched = 0;
+    const rows = results.map(({ t, credit, amt, best }) => {
+      const r = best && best.r;
+      const exact = best && best.kind === 'exact', possible = best && best.kind === 'possible';
+      const noReceipt = !best && !credit;
+      const needsProject = !credit && ((exact && !r.project && r.needsProject) || noReceipt);
+      const fromBank = r && r.bankTx;
+      let status, statusCls;
+      if (credit) { status = exact ? 'Matched \u00b7 payment' : 'Deposit \u00b7 unmatched'; statusCls = exact ? 'tag tag-accent' : 'tag tag-outline'; }
+      else if (possible) { status = 'Possible match'; statusCls = 'tag tag-outline'; }
+      else if (needsProject) { status = 'Needs project'; statusCls = 'tag tag-outline'; }
+      else if (fromBank) { status = 'Assigned \u00b7 no receipt'; statusCls = 'tag tag-neutral'; }
+      else { status = 'Matched to receipt'; statusCls = 'tag tag-accent'; }
+      if (needsProject || possible) { open++; openAmt += amt; }
+      if (exact && !fromBank && !needsProject) matched++;
+      const group = credit ? 'deposits' : (needsProject || possible) ? 'open' : 'matched';
+      const checks = r && !fromBank ? [
+        { label: credit ? 'Payment' : (best.vOk ? '\u2713 Vendor' : '\u2715 Vendor'), cls: best.vOk ? 'tag tag-accent' : 'tag tag-outline' },
+        { label: '\u2713 Amount', cls: 'tag tag-accent' },
+        { label: (best.dOk ? '\u2713 Date' : '\u2715 Date') + (best.d ? ' \u00b1' + best.d + 'd' : ''), cls: best.dOk ? 'tag tag-accent' : 'tag tag-outline' },
+      ] : [];
+      const pid = r ? r.project : null;
+      const projectLabel = credit ? (r && r.project ? projLabel(r.project) + (r.ms !== null && r.ms !== undefined ? ' \u00b7 Milestone ' + r.ms : '') : '\u2014') : pid ? projLabel(pid) : 'Business expense';
+      return {
+        group, dateFmt: this.date(t.date), desc: t.desc, vendor: t.vendor,
+        amountFmt: (credit ? '+' : '\u2212') + this.money(amt),
+        hasMatch: !!r && !fromBank, noMatch: !r || fromBank,
+        matchDesc: r ? r.desc : '', matchMeta: r ? 'Receipt \u00b7 ' + this.date(r.date) + ' \u00b7 ' + r.source : '',
+        matchShort: r && !fromBank ? 'Receipt: ' + r.desc.split(' \u2014 ')[0] + ' \u00b7 ' + this.date(r.date) : 'No receipt uploaded',
+        checks, status, statusCls, isPossible: !!possible,
+        canAssign: !credit && (needsProject || fromBank), showProject: credit || !(needsProject || fromBank),
+        projectLabel, projectVal: pid || (needsProject ? '' : 'company'),
+        selKey: t.id + ':' + (pid || (needsProject ? 'none' : 'company')),
+        options: (() => { const cur = pid || (needsProject ? '' : 'company'); const all = [{ value: '', label: '\u2014 Select project \u2014' }, ...this.projects.map(p => ({ value: p.id, label: p.label })), { value: 'company', label: 'No project \u2014 business expense' }]; return [all.find(o => o.value === cur), ...all.filter(o => o.value !== cur)]; })(),
+        rowStyle: (needsProject || possible) ? 'background:color-mix(in srgb, var(--color-accent) 7%, transparent)' : '',
+        confirm: () => this.setState(st => ({ bankDecisions: { ...(st.bankDecisions || {}), [t.id]: 'confirm' } })),
+        reject: () => this.setState(st => ({ bankDecisions: { ...(st.bankDecisions || {}), [t.id]: 'reject:' + r.id } })),
+        assign: e => {
+          const v = e.target.value; if (v === '') return;
+          const proj = v === 'company' ? null : v;
+          if (r) this.setState(st => ({ receipts: st.receipts.map(x => x.id === r.id ? { ...x, project: proj, needsProject: false } : x) }));
+          else this.setState(st => ({ receipts: [...st.receipts, { id: 'bank-' + t.id, bankTx: t.id, date: t.date, desc: t.vendor + ' \u2014 bank transaction (no receipt)', type: 'Expense', ms: null, source: 'Bank of America \u00b7 no receipt', amount: amt, project: proj }] }));
+        },
+      };
+    });
+    const shown = rows.filter(r => filter === 'all' || r.group === filter);
+    const debits = results.filter(x => !x.credit);
+    const filters = [['all', 'All', 'All'], ['open', 'Needs attention (' + open + ')', 'Needs (' + open + ')'], ['matched', 'Matched', 'Matched'], ['deposits', 'Deposits', 'Deposits']];
+    return {
+      file: s.bankFile || 'BofA_BusinessChecking_x4417_Aug-Nov2026.csv',
+      fileMeta: tx.length + ' transactions \u00b7 ' + this.date(tx[0].date) + ' \u2013 ' + this.date(tx[tx.length - 1].date),
+      imported: 'Nov 16, 2026',
+      upload: e => { const f = e.target.files && e.target.files[0]; if (f) this.setState({ bankFile: f.name }); },
+      hasOpen: open > 0, openLabel: open + (open === 1 ? ' transaction needs' : ' transactions need') + ' attention (' + this.money(openAmt) + ').',
+      filters: filters.map(([k, label, short]) => ({ label, short, on: filter === k, pick: () => this.setState({ bankFilter: k }) })),
+      rows: shown,
+      assignOptions: [{ value: '', label: '\u2014 Select project \u2014' }, ...this.projects.map(p => ({ value: p.id, label: p.label })), { value: 'company', label: 'No project \u2014 business expense' }],
+      kpis: [
+        { label: 'Transactions', value: String(tx.length), sub: debits.length + ' debits \u00b7 ' + (tx.length - debits.length) + ' deposits', style: 'font-family:var(--font-heading);font-weight:600;font-size:22px' },
+        { label: 'Matched to Receipts', value: String(matched), sub: 'Vendor + amount + date', style: 'font-family:var(--font-heading);font-weight:600;font-size:22px' },
+        { label: 'Needs Attention', value: String(open), sub: 'No receipt, no project, or possible match', style: 'font-family:var(--font-heading);font-weight:600;font-size:22px;color:var(--color-accent-700)' },
+        { label: 'Unresolved Amount', value: this.money(openAmt), sub: 'Business expense unless assigned', style: 'font-family:var(--font-heading);font-weight:600;font-size:22px' },
+      ],
+    };
+  }
+
+  fetchEstimate() {
+    const raw = String(this.state.estNumber || '').trim();
+    const n = raw.replace(/^est[-\s#]*/i, '').replace(/^#/, '');
+    if (!n) return this.setState({ estNotFound: true, estTried: '(blank)' });
+    if (n === '1042') this.setState({ estSource: 'qb', estNotFound: false, estTried: '' });
+    else this.setState({ estNotFound: true, estTried: raw });
+  }
+
+  expenseVals() {
+    const list = this.state.receipts.filter(r => r.type === 'Expense').sort((a, b) => b.date.localeCompare(a.date));
+    const total = list.reduce((a, r) => a + r.amount, 0);
+    const assigned = list.filter(r => r.project).reduce((a, r) => a + r.amount, 0);
+    const unidentified = list.filter(r => r.needsProject).length;
+    return {
+      hasUnidentified: unidentified > 0,
+      unidentifiedLabel: unidentified + (unidentified === 1 ? ' receipt has' : ' receipts have') + ' no project identified.',
+      cards: [
+        { label: 'Total Expenses \u00b7 2026', value: this.money(total), sub: list.length + ' receipts' },
+        { label: 'Assigned to Projects', value: this.money(assigned), sub: 'Shown in each project\u2019s reconciliation' },
+        { label: 'Business Expenses', value: this.money(total - assigned), sub: 'No project \u00b7 company overhead' },
+      ],
+      rows: list.map(r => ({
+        dateFmt: this.date(r.date), desc: r.desc, source: r.source, amountFmt: this.money(r.amount),
+        needsProject: !!r.needsProject, projectVal: r.project || 'company',
+        selKey: r.id + ':' + (r.project || 'company'),
+        options: (() => { const cur = r.project || 'company'; const all = [{ value: 'company', label: 'Business expense (no project)' }, ...this.projects.map(p => ({ value: p.id, label: p.label }))]; return [all.find(o => o.value === cur), ...all.filter(o => o.value !== cur)]; })(),
+        assign: e => { const v = e.target.value; this.setState(st => ({ receipts: st.receipts.map(x => x.id === r.id ? { ...x, project: v === 'company' ? null : v, needsProject: false } : x) })); },
+      })),
+    };
+  }
+
+  userVals() {
+    const s = this.state;
+    const users = s.users || [];
+    return {
+      users: users.map(u => ({
+        ...u,
+        tagClass: u.status === 'Active' ? 'tag tag-accent' : 'tag tag-outline',
+        removable: !u.owner, invited: u.status === 'Invited',
+        resendLabel: s.resent && s.resent[u.id] ? 'Invite Resent' : 'Resend',
+        resend: () => this.setState(st => ({ resent: { ...st.resent, [u.id]: true } })),
+        remove: () => this.setState(st => ({ users: st.users.filter(x => x.id !== u.id) })),
+      })),
+      inviteOpen: s.inviteOpen, inviteName: s.inviteName, inviteEmail: s.inviteEmail, inviteError: s.inviteError,
+      rolePM: s.inviteRole === 'Project Manager', roleAdmin: s.inviteRole === 'Owner / Admin',
+      roleHint: s.inviteRole === 'Owner / Admin' ? 'Full access, including integrations, users and closing projects.' : 'Estimates, scope, contract review and approval, change orders, invoices and receipts. Cannot manage users or close projects.',
+      pickPM: () => this.setState({ inviteRole: 'Project Manager' }),
+      pickAdmin: () => this.setState({ inviteRole: 'Owner / Admin' }),
+      setInviteName: e => this.setState({ inviteName: e.target.value, inviteError: '' }),
+      setInviteEmail: e => this.setState({ inviteEmail: e.target.value, inviteError: '' }),
+      openInvite: () => this.setState({ inviteOpen: true, inviteName: '', inviteEmail: '', inviteRole: 'Project Manager', inviteError: '' }),
+      closeInvite: () => this.setState({ inviteOpen: false }),
+      stop: e => e.stopPropagation(),
+      sendInvite: () => {
+        const name = s.inviteName.trim(), email = s.inviteEmail.trim().toLowerCase();
+        if (!name) return this.setState({ inviteError: 'Enter a name.' });
+        if (!/^\S+@\S+\.\S+$/.test(email)) return this.setState({ inviteError: 'Enter a valid email address.' });
+        if (users.some(u => u.email.toLowerCase() === email)) return this.setState({ inviteError: 'A user with this email already exists.' });
+        this.setState(st => ({ inviteOpen: false, users: [...st.users, { id: Date.now(), name, email, role: st.inviteRole, status: 'Invited', lastActive: '\u2014' }] }));
+      },
+    };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const screenDefs = [
+      ['database', 'Database', 'Customers & Projects'],
+      ['estimate', 'Estimate', 'Estimate Upload'],
+      ['scope', 'Scope', 'Project Scope & Payment Schedule'],
+      ['contract', 'Contract', 'Contract Package'],
+      ['changeorder', 'ChangeOrder', 'Change Orders'],
+      ['invoice', 'Invoice', 'Invoices'],
+      ['reconciliation', 'Reconciliation', 'Reconciliation & Closing'],
+      ['users', 'Users', 'Team & Users'],
+      ['expenses', 'Expenses', 'Business Expenses'],
+      ['analytics', 'Analytics', 'Analytics'],
+      ['bankrec', 'Bankrec', 'Operational Reconciliation'],
+    ];
+    const active = 'display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius-md);background:var(--color-accent-100);color:var(--color-accent-800);font-size:13px;font-weight:600;border:1px solid var(--color-accent-300);cursor:pointer;text-align:left;width:100%';
+    const inactive = 'display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius-md);background:transparent;color:var(--color-text);font-size:13px;font-weight:500;border:1px solid transparent;cursor:pointer;text-align:left;width:100%';
+    const tabActive = 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--color-accent-700);font-size:9px;font-weight:600;flex:1;min-height:48px;cursor:pointer';
+    const tabInactive = 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--color-neutral-600);font-size:9px;font-weight:500;flex:1;min-height:48px;cursor:pointer';
+    const dyn = {}; let title = '';
+    for (const [key, Cap, label] of screenDefs) {
+      const on = s.screen === key;
+      dyn['is' + Cap] = on;
+      dyn['navStyle' + Cap] = on ? active : inactive;
+      dyn['tabStyle' + Cap] = on ? tabActive : tabInactive;
+      dyn['setScreen' + Cap] = () => this.setState({ screen: key, menuOpen: false });
+      if (on) title = label;
+    }
+
+    const contractTotal = 128500;
+    const project = {
+      name: 'Yee Kitchen & Bath Remodel', customerName: 'Amanda Yee',
+      address: '2583 35th Ave, San Francisco, CA 94116', street: '2583 35th Ave', cityStateZip: 'San Francisco, CA 94116',
+      phone: '(415) 555-0148', email: 'amanda.yee@email.com',
+      type: 'Kitchen Remodel + Two-Unit Bathroom Remodel',
+      description: 'Full kitchen remodel including structural beam modifications, MEP labor, cabinets, and countertops, plus a comprehensive two-unit bathroom remodel.',
+    };
+    const folderName = 'Amanda Yee \u2013 2583 35th Ave';
+    const estimate = { number: 'EST-1042', label: 'EST-1042 \u00b7 Aug 1, 2026', totalFmt: this.money(contractTotal) };
+
+    // Change orders
+    const coDefs = [
+      { no: 'CO-01', date: '2026-10-01', title: 'Upgrade electrical panel to 200A service', added: 4200, subtracted: 0, days: 5, status: 'Signed', signed: 'Oct 2, 2026',
+        parts: ['Scope', 'Price', 'Payment schedule', 'Completion date'],
+        scope: 'Replace existing 100A electrical panel with new 200A service panel, including utility coordination, permit and inspection. Existing panel is insufficient for the new appliance load discovered during rough-in.',
+        payments: [{ ms: 2, delta: 4200 }], priorDate: 'Dec 15, 2026', newDate: 'Dec 20, 2026', subs: 'No' },
+      { no: 'CO-02', date: '2026-11-05', title: 'Unit B shower walls: porcelain slab in place of tile', added: 1850, subtracted: 0, days: 0, status: 'Draft', signed: null,
+        parts: ['Scope', 'Price', 'Payment schedule', 'Materials'],
+        scope: 'At Owner\u2019s request, replace the specified 12\u00d724 porcelain wall tile in the Unit B shower with large-format porcelain slab panels (owner-selected), including additional waterproofing detail and trim. Floor tile unchanged.',
+        payments: [{ ms: 5, delta: 1850 }], priorDate: 'Dec 20, 2026', newDate: 'Dec 20, 2026 (no change)', subs: 'No' },
+    ];
+    const allParts = ['Scope', 'Price', 'Payment schedule', 'Completion date', 'Materials', 'Subcontractors'];
+    const signedCOs = coDefs.filter(c => c.status === 'Signed');
+    const coTotal = signedCOs.reduce((a, c) => a + c.added - c.subtracted, 0);
+    const coDelta = {}; signedCOs.forEach(c => c.payments.forEach(p => { coDelta[p.ms] = (coDelta[p.ms] || 0) + p.delta; }));
+
+    // Milestones (scope draft = original contract amounts, editable)
+    const amounts = s.msAmounts.map(a => this.num(a));
+    const sum = amounts.reduce((a, b) => a + b, 0);
+    const milestones = Component.MILESTONES.map((m, i) => ({
+      n: m.n, title: m.title, deliverable: m.deliverable, scope: m.scope,
+      dueFmt: m.n === 0 ? 'Upon signing' : this.date(m.due),
+      amountStr: s.msAmounts[i], amountFmt: this.money(amounts[i]),
+      percentFmt: ((amounts[i] / contractTotal) * 100).toFixed(1) + '%',
+      statusLabel: 'Pending', tagClass: 'tag tag-neutral',
+      setAmount: e => { const v = e.target.value; this.setState(st => { const a = [...st.msAmounts]; a[i] = v; return { msAmounts: a }; }); },
+    }));
+    const diff = Math.round((sum - contractTotal) * 100) / 100;
+    const balanceCheck = diff === 0 ? { cls: 'tag tag-accent', label: '\u2713 Balanced \u2014 100% of contract' } : { cls: 'tag tag-outline', label: (diff > 0 ? 'Over by ' : 'Short by ') + this.money(Math.abs(diff)) };
+    const depLimit = Math.min(1000, contractTotal * 0.1);
+    const depositCheck = amounts[0] <= depLimit ? { cls: 'tag tag-accent', label: '\u2713 Deposit within $1,000 / 10% limit' } : { cls: 'tag tag-outline', label: 'Deposit exceeds ' + this.money(depLimit) + ' limit' };
+
+    const materials = [
+      { cat: 'Structural', desc: 'LVL header beam, 3\u00bd\u2033 \u00d7 11\u00be\u2033, with hangers', qty: '1 beam, 14 lf', supplied: 'Contractor', installed: 'Contractor', notes: 'Per engineer detail; framing inspection required' },
+      { cat: 'Cabinets', desc: 'Shaker style, painted, soft-close', qty: '22 lf base / 18 lf upper', supplied: 'Contractor', installed: 'Contractor', notes: 'Owner approves door style and color before order' },
+      { cat: 'Countertops', desc: 'Quartz, 3 cm, eased edge', qty: '58 sq ft', supplied: 'Contractor', installed: 'Contractor (fabricator)', notes: 'Template after cabinets set' },
+      { cat: 'Tile', desc: 'Porcelain floor and wall tile, both bathrooms', qty: '310 sq ft', supplied: 'Owner', installed: 'Contractor', notes: 'Owner delivers by Oct 26; 10% overage' },
+      { cat: 'Appliances', desc: 'Range, hood, refrigerator, dishwasher', qty: '4 units', supplied: 'Owner', installed: 'Contractor', notes: 'Hookup only; manufacturer warranty applies' },
+      { cat: 'Debris', desc: 'Demolition debris and packaging', qty: '2 \u00d7 10-yd bins', supplied: 'Contractor', installed: 'Contractor (hauled)', notes: 'Recycled where accepted' },
+    ];
+
+    // Contract package
+    const approved = s.contractApproved;
+    const contractSteps = [
+      { label: '\u2713 Draft generated', short: '\u2713 Draft', cls: 'tag tag-neutral' },
+      { label: approved ? '\u2713 Reviewed' : '\u25cf Review draft', short: approved ? '\u2713 Review' : '\u25cf Review', cls: approved ? 'tag tag-neutral' : 'tag tag-accent' },
+      { label: approved ? '\u25cf Approved & saved to Drive' : 'Approve & save to Drive', short: 'Saved', cls: approved ? 'tag tag-accent' : 'tag tag-outline' },
+      { label: 'Sent for signature', short: 'Sign', cls: 'tag tag-outline' },
+    ];
+    const packageDocs = [
+      { kicker: 'Contract', label: 'Home Improvement Contract', pages: 'pp. 1\u20134' },
+      { kicker: 'Attachment 1', label: 'Notice of Cancellation (duplicate)', pages: 'p. 5' },
+      { kicker: 'Attachment 2', label: 'Home Improvement Change Order Form', pages: 'p. 6' },
+      { kicker: 'Attachment 3', label: 'CA Required Attachments & Checklist', pages: 'p. 7' },
+      { kicker: 'Attachment 4', label: 'Project Scope & Payment Schedule', pages: 'pp. 8\u20139' },
+      { kicker: 'Attachment 5', label: 'QuickBooks Estimate ' + estimate.number, pages: 'pp. 10\u201312' },
+    ];
+    const packageFile = 'Amanda Yee \u2013 2583 35th Ave \u2013 Contract Package.pdf';
+    const folderFiles = [packageFile, 'Estimate ' + estimate.number + '.pdf', 'Project Scope & Payment Schedule.xlsx', 'Change Orders /', 'Invoices /', 'Receipts /'];
+
+    // Selected change order
+    const sel = coDefs.find(c => c.no === s.coSel) || coDefs[1];
+    const priorCO = coDefs.filter(c => c.status === 'Signed' && c.no !== sel.no && c.date < sel.date).reduce((a, c) => a + c.added - c.subtracted, 0);
+    const baseAmt = i => Component.MILESTONES[i].amount + (sel.status === 'Draft' ? (coDelta[i] || 0) : 0);
+    const co = {
+      no: sel.no, dateFmt: this.date(sel.date), status: sel.status,
+      tagClass: sel.status === 'Signed' ? 'tag tag-accent' : 'tag tag-outline',
+      isDraft: sel.status === 'Draft', isSigned: sel.status === 'Signed', signedFmt: sel.signed,
+      parts: allParts.map(p => ({ label: p, cls: sel.parts.includes(p) ? 'tag tag-accent' : 'tag tag-outline' })),
+      scope: sel.scope,
+      originalFmt: this.money(contractTotal), priorFmt: priorCO ? '+' + this.money(priorCO) : '$0.00',
+      addedFmt: this.money(sel.added), subtractedFmt: this.money(sel.subtracted),
+      newFmt: this.money(contractTotal + priorCO + sel.added - sel.subtracted),
+      payments: sel.payments.map(p => ({ label: 'Milestone ' + p.ms + ' \u00b7 ' + Component.MILESTONES[p.ms].title, before: this.money(baseAmt(p.ms)), after: this.money(baseAmt(p.ms) + p.delta) })),
+      priorDate: sel.priorDate, newDate: sel.newDate, subs: sel.subs,
+      newDateShort: sel.newDate.replace(' (no change)', ''),
+      beforeNum: this.money(contractTotal + priorCO).slice(1), originalNum: this.money(contractTotal).slice(1), beforeFmt: this.money(contractTotal + priorCO),
+      priorLabel: priorCO ? coDefs.filter(c => c.status === 'Signed' && c.no !== sel.no && c.date < sel.date).map(c => c.no).join(', ') : 'no prior change orders', addedNum: this.money(sel.added).slice(1), subtractedNum: this.money(sel.subtracted).slice(1),
+      newNum: this.money(contractTotal + priorCO + sel.added - sel.subtracted).slice(1),
+      netFmt: (sel.added - sel.subtracted >= 0 ? '+' : '') + this.money(sel.added - sel.subtracted),
+      paymentsText: sel.payments.map(p => 'Milestone ' + p.ms + ' \u2014 ' + Component.MILESTONES[p.ms].title + ' changes from ' + this.money(baseAmt(p.ms)) + ' to ' + this.money(baseAmt(p.ms) + p.delta) + '.').join(' ') + ' All other progress payments are unchanged.',
+      subsYes: sel.subs === 'Yes' ? '\u2612' : '\u2610', subsNo: sel.subs === 'Yes' ? '\u2610' : '\u2612',
+      ownerSig: sel.status === 'Signed' ? 'Amanda Yee (signed electronically)' : '', contractorSig: sel.status === 'Signed' ? 'Samuel Cabrera (signed electronically)' : '',
+      ownerDate: sel.status === 'Signed' ? sel.signed : '', contractorDate: sel.status === 'Signed' ? sel.signed : '',
+      approvals: [
+        { party: 'Owner (Customer)', name: 'Amanda Yee', status: sel.status === 'Signed' ? 'Signed ' + sel.signed : 'Awaiting signature', cls: sel.status === 'Signed' ? 'tag tag-accent' : 'tag tag-outline' },
+        { party: 'Contractor', name: 'Cabrera Construction \u00b7 Samuel Cabrera', status: sel.status === 'Signed' ? 'Signed ' + sel.signed : 'Awaiting signature', cls: sel.status === 'Signed' ? 'tag tag-accent' : 'tag tag-outline' },
+      ],
+      summary: 'Change Order ' + sel.no + ' modifies the Home Improvement Contract dated ' + this.longDate('2026-08-28') + '. ' + sel.scope.split('. ')[0] + '. This adds ' + this.money(sel.added) + ' to Milestone ' + sel.payments[0].ms + ', bringing the contract price to ' + this.money(contractTotal + priorCO + sel.added - sel.subtracted) + '. ' + (sel.days ? 'The approximate completion date moves ' + sel.days + ' days to ' + sel.newDate + '.' : 'The approximate completion date is unchanged.'),
+    };
+    const changeOrders = coDefs.map(c => ({
+      no: c.no, dateFmt: this.date(c.date), title: c.title, status: c.status,
+      priceFmt: '+' + this.money(c.added - c.subtracted), daysLabel: c.days ? '+' + c.days + ' days' : 'No change',
+      tagClass: c.status === 'Signed' ? 'tag tag-accent' : 'tag tag-outline',
+      rowStyle: c.no === sel.no ? 'background:color-mix(in srgb, var(--color-accent) 8%, transparent);cursor:pointer' : 'cursor:pointer',
+      select: () => this.setState({ coSel: c.no }),
+    }));
+
+    // Reconciliation
+    const invoices = { 0: ['INV-1041', '2026-08-28'], 1: ['INV-1042', '2026-09-21'], 2: ['INV-1043', '2026-10-19'], 3: ['INV-1044', '2026-11-02'] };
+    const receipts = s.receipts.filter(r => r.project === 'yee').sort((a, b) => a.date.localeCompare(b.date));
+    const recvByMs = {}; receipts.filter(r => r.type === 'Payment' && r.ms !== null).forEach(r => { recvByMs[r.ms] = (recvByMs[r.ms] || 0) + r.amount; });
+    let invoicedTotal = 0;
+    const rows = Component.MILESTONES.map((m, i) => {
+      const amt = amounts[i] + (coDelta[i] || 0);
+      const inv = invoices[i]; const rec = recvByMs[i] || 0;
+      if (inv) invoicedTotal += amt;
+      const status = rec >= amt - 0.005 ? 'Paid' : rec > 0 ? 'Partial' : inv ? 'Invoiced' : 'Scheduled';
+      return {
+        n: m.n, title: m.title, amountFmt: this.money(amt), invoice: inv ? inv[0] : '\u2014', issuedFmt: inv ? this.date(inv[1]) : '\u2014',
+        receivedFmt: rec ? this.money(rec) : '\u2014', status,
+        tagClass: status === 'Paid' ? 'tag tag-accent' : status === 'Scheduled' ? 'tag tag-neutral' : 'tag tag-outline',
+        note: coDelta[i] ? 'Includes ' + signedCOs.filter(c => c.payments.some(p => p.ms === i)).map(c => c.no).join(', ') + ' +' + this.money(coDelta[i]) : '',
+      };
+    });
+    const received = receipts.filter(r => r.type === 'Payment').reduce((a, r) => a + r.amount, 0);
+    const expenses = receipts.filter(r => r.type === 'Expense').reduce((a, r) => a + r.amount, 0);
+    const revised = contractTotal + coTotal;
+    const heading = 'font-family:var(--font-heading);font-weight:600;font-size:20px';
+    const recon = {
+      triggerNote: 'Updated Nov 4, 2026 \u2014 payment receipt for INV-1044 (Milestone 3) found in Projects \u203a ' + folderName + ' \u203a Receipts.',
+      cards: [
+        { label: 'Original Contract', value: this.money(contractTotal), style: heading },
+        { label: 'Change Orders', value: '+' + this.money(coTotal), style: heading },
+        { label: 'Revised Contract', value: this.money(revised), style: heading },
+        { label: 'Invoiced to Date', value: this.money(invoicedTotal), style: heading },
+        { label: 'Payments Received', value: this.money(received), style: heading },
+        { label: 'Balance Due', value: this.money(revised - received), style: heading + ';color:var(--color-accent-700)' },
+      ],
+      rows,
+      receipts: receipts.map(r => ({
+        dateFmt: this.date(r.date), desc: r.desc, type: r.type, typeCls: r.type === 'Payment' ? 'tag tag-accent' : 'tag tag-neutral',
+        applied: r.type === 'Payment' && r.ms !== null ? 'Milestone ' + r.ms : 'Job cost', source: r.source, amountFmt: this.money(r.amount),
+      })),
+    };
+    recon.expensesFmt = this.money(expenses);
+
+    const invoice = {
+      number: 'INV-1045', milestone: 4, dateIssuedFmt: 'Nov 16, 2026', dueDateFmt: 'Dec 1, 2026',
+      description: 'Milestone 4 \u2014 Bathroom Remodel, Unit A (per contract schedule)', amountFmt: this.money(amounts[4] + (coDelta[4] || 0)),
+    };
+
+    const customers = [
+      { projectName: project.name, customerName: 'Amanda Yee', address: project.address, type: 'Kitchen + Bath Remodel', statusLabel: 'Active', tagClass: 'tag tag-accent', startFmt: 'Sep 8, 2026', contractFmt: this.money(revised), rowStyle: 'background:color-mix(in srgb, var(--color-accent) 8%, transparent)' },
+      { projectName: 'Park Rear Deck & Patio', customerName: 'Daniel Park', address: '118 Ord Ct, Oakland, CA 94611', type: 'Deck & Patio', statusLabel: 'Completed', tagClass: 'tag tag-neutral', startFmt: 'Apr 1, 2026', contractFmt: '$38,900.00', rowStyle: '' },
+      ...Component.PIPELINE.map(p => ({ projectName: p.name, customerName: p.customer, address: p.address, type: p.type, statusLabel: p.status === 'pending' ? 'Contract Sent' : p.start <= '2026-11-16' ? 'Active' : 'Signed', tagClass: p.status === 'pending' ? 'tag tag-outline' : p.start <= '2026-11-16' ? 'tag tag-accent' : 'tag tag-neutral', startFmt: this.date(p.start), contractFmt: this.money(p.value), rowStyle: '' })),
+    ];
+    const projectDocs = [
+      { label: 'Estimate ' + estimate.number, status: s.estSource === 'pdf' ? 'Uploaded PDF' : 'From QuickBooks', cls: 'tag tag-neutral' },
+      { label: 'Project Scope & Payment Schedule', status: 'Final', cls: 'tag tag-neutral' },
+      { label: 'Contract Package', status: approved ? 'Approved' : 'Draft', cls: approved ? 'tag tag-accent' : 'tag tag-outline' },
+      { label: 'Change Orders', status: '1 signed \u00b7 1 draft', cls: 'tag tag-outline' },
+    ];
+    const pipeline = [
+      { n: 1, label: 'Project record', detail: project.name + ' \u00b7 ' + project.customerName, status: 'Created', cls: 'tag tag-accent' },
+      { n: 2, label: 'Google Drive folder', detail: 'Projects \u203a ' + folderName, status: 'Created', cls: 'tag tag-accent' },
+      { n: 3, label: 'Project Scope & Payment Schedule', detail: 'Enter milestones and amounts next', status: 'Needs milestones', cls: 'tag tag-outline' },
+      { n: 4, label: 'Contract Package (combined PDF)', detail: 'Contract + attachments + scope + estimate', status: 'Awaits approval', cls: 'tag tag-outline' },
+    ];
+
+    const r = s;
+    return {
+      isDesktop: s.mode === 'desktop', isMobile: s.mode === 'mobile',
+      selectDesktop: () => this.setState({ mode: 'desktop' }), selectMobile: () => this.setState({ mode: 'mobile' }),
+      screenTitle: title, projectContext: project.name + ' \u00b7 ' + project.customerName + ' \u00b7 ' + estimate.number,
+      ...dyn,
+      company: this.company, project, folderName, estimate, customers, projectDocs, pipeline,
+      estimateFile: s.estimateFile,
+      uploadEstimate: e => { const f = e.target.files && e.target.files[0]; if (f) this.setState({ estimateFile: f.name, estSource: 'pdf', estNotFound: false }); },
+      estNumber: s.estNumber, estTried: s.estTried, estNotFound: !!s.estNotFound,
+      estFound: s.estSource === 'qb' && !s.estNotFound, estFromPdf: s.estSource === 'pdf',
+      estDocNumber: '1042', estRetrieved: 'Nov 16, 2026, 9:12 AM',
+      estSourceLabel: s.estSource === 'pdf' ? 'Extracted from ' + s.estimateFile : 'Imported from QuickBooks \u00b7 Estimate #1042',
+      setEstNumber: e => this.setState({ estNumber: e.target.value }),
+      estKey: e => { if (e.key === 'Enter') this.fetchEstimate(); },
+      fetchEstimate: () => this.fetchEstimate(),
+      estimateSections: [
+        { name: 'DEMOLITION / PREPARATION', itemsCount: 5, subtotalFmt: '$9,400.00' },
+        { name: 'MATERIALS', itemsCount: 11, subtotalFmt: '$46,200.00' },
+        { name: 'LABOR', itemsCount: 8, subtotalFmt: '$58,900.00' },
+        { name: 'ADDITIONAL WORK', itemsCount: 3, subtotalFmt: '$14,000.00' },
+      ],
+      contractDateFmt: 'Aug 28, 2026', startFmt: 'Sep 8, 2026', completionFmt: 'Dec 15, 2026', completionLongFmt: 'December 15, 2026',
+      durationFmt: 'Sep 8 \u2013 Dec 15, 2026', milestoneRange: 'Milestones 0 through 6',
+      milestones, balanceCheck, depositCheck, materials,
+      scopeTotalFmt: this.money(contractTotal), depositFmt: this.money(amounts[0]),
+      scopeSumFmt: this.money(sum), scopePctFmt: ((sum / contractTotal) * 100).toFixed(1) + '%',
+      projectNameAddress: project.name + ', ' + project.address,
+      contractDescription: s.contractDescription,
+      setContractDescription: e => this.setState({ contractDescription: e.target.value }),
+      regenerateDescription: () => this.setState({ contractDescription: Component.DESCRIPTION }),
+      contractSteps, packageDocs, packageFile, folderFiles,
+      contractApproved: approved, contractDraft: !approved,
+      approveContract: () => this.setState({ contractApproved: true }),
+      revertContract: () => this.setState({ contractApproved: false }),
+      changeOrders, co,
+      invoice, recon,
+      rProjKey: 'rp-' + r.rType + '-' + (r.receiptOpen ? 'o' : 'c'),
+      rDate: r.rDate, rDesc: r.rDesc, rAmount: r.rAmount, rMilestone: r.rMilestone, rError: r.rError, rWarn: r.rWarn, rProject: r.rProject,
+      receiptOpen: r.receiptOpen,
+      rIsPayment: r.rType === 'Payment', rIsExpense: r.rType === 'Expense',
+      rShowMilestone: r.rType === 'Payment' && r.rProject === 'yee',
+      rSubmitLabel: r.rWarn ? 'File as Business Expense' : 'Add Receipt',
+      rProjectHint: r.rType === 'Payment' ? 'Payments must be applied to a project and milestone.' : 'Pick the project this expense belongs to. If none is chosen, it is filed as a Cabrera Construction business expense.',
+      receiptProjectOptions: [{ value: '', label: '\u2014 Select project \u2014' }, ...this.projects.map(p => ({ value: p.id, label: p.label })), ...(r.rType === 'Expense' ? [{ value: 'company', label: 'No project \u2014 business expense' }] : [])],
+      assignOptions: [{ value: 'company', label: 'Business expense (no project)' }, ...this.projects.map(p => ({ value: p.id, label: p.label }))],
+      pickPayment: () => this.setState({ rType: 'Payment', rWarn: false, rError: '', rProject: '' }),
+      pickExpense: () => this.setState({ rType: 'Expense', rWarn: false, rError: '', rProject: '' }),
+      setRProject: e => this.setState({ rProject: e.target.value, rWarn: false, rError: '' }),
+      setRDate: e => this.setState({ rDate: e.target.value, rError: '' }),
+      setRDesc: e => this.setState({ rDesc: e.target.value, rError: '' }),
+      setRAmount: e => this.setState({ rAmount: e.target.value, rError: '' }),
+      setRMilestone: e => this.setState({ rMilestone: e.target.value }),
+      milestoneOptions: Component.MILESTONES.map(m => ({ value: String(m.n), label: m.n + ' \u00b7 ' + m.title })),
+      openReceiptProject: () => this.setState({ receiptOpen: true, rType: 'Expense', rProject: '', rDate: '', rDesc: '', rAmount: '', rError: '', rWarn: false }),
+      openReceiptBusiness: () => this.setState({ receiptOpen: true, rType: 'Expense', rProject: '', rDate: '', rDesc: '', rAmount: '', rError: '', rWarn: false }),
+      closeReceipt: () => this.setState({ receiptOpen: false }),
+      goExpenses: e => { e.preventDefault(); this.setState({ screen: 'expenses' }); },
+      addReceipt: () => {
+        const amt = this.num(r.rAmount);
+        if (!r.rDate) return this.setState({ rError: 'Enter the receipt date.' });
+        if (!r.rDesc.trim()) return this.setState({ rError: 'Enter a description.' });
+        if (!(amt > 0)) return this.setState({ rError: 'Enter an amount greater than $0.' });
+        if (r.rType === 'Payment' && (!r.rProject || r.rProject === 'company')) return this.setState({ rError: 'Select the project this payment belongs to.' });
+        if (r.rType === 'Expense' && r.rProject === '' && !r.rWarn) return this.setState({ rWarn: true });
+        const project = r.rProject && r.rProject !== 'company' ? r.rProject : null;
+        this.setState(st => ({
+          receiptOpen: false, rDate: '', rDesc: '', rAmount: '', rError: '', rWarn: false,
+          receipts: [...st.receipts, { id: Date.now(), date: st.rDate, desc: st.rDesc.trim(), type: st.rType, ms: st.rType === 'Payment' && project === 'yee' ? +st.rMilestone : null, source: 'Manual', amount: amt, project }],
+        }));
+      },
+      exp: this.expenseVals(),
+      bank: this.bankVals(),
+      menuOpen: !!s.menuOpen,
+      toggleMenu: () => this.setState(st => ({ menuOpen: !st.menuOpen })),
+      menuItems: [['analytics', 'Analytics'], ['bankrec', 'Operational Reconciliation'], ['expenses', 'Business Expenses'], ['users', 'Team & Users']].map(([k, label]) => ({ label, go: () => this.setState({ screen: k, menuOpen: false }), style: 'text-align:left;padding:12px 10px;min-height:44px;border:0;background:' + (s.screen === k ? 'var(--color-accent-100)' : 'transparent') + ';color:' + (s.screen === k ? 'var(--color-accent-800)' : 'var(--color-text)') + ';font:inherit;font-size:14px;cursor:pointer' })),
+      an: this.analyticsVals({ value: revised, schedule: Component.MILESTONES.map((m, i) => ({ date: m.due, amount: amounts[i] + (coDelta[i] || 0), paid: rows[i].status === 'Paid' })) }),
+      ...this.userVals(),
+    };
+  }
+}
+</script>
+</body>
+</html>
