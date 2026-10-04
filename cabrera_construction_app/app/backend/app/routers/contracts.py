@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..db import get_db
-from ..services import documents
-from ..services import mock_integrations
+from ..services import documents, google_service, mock_integrations
+from ..services import google_oauth as g_oauth
 from .projects import get_project_or_404
 
 router = APIRouter(prefix="/api", tags=["contracts"])
@@ -63,7 +63,23 @@ def approve_contract_package(project_id: int, payload: schemas.ApproveContractPa
     cp.status = "approved"
     cp.approved_by = payload.approved_by
     cp.approved_at = dt.datetime.now()
-    cp.drive_file_id = cp.drive_file_id or mock_integrations.create_drive_folder(project.customer_name, "contract-package")
+
+    if g_oauth.get_connection(db):
+        # Real save: generate the actual combined PDF and upload it into the
+        # project's own Drive folder (not a separate folder — the template
+        # README's layout is one file per project folder).
+        try:
+            pdf_bytes = documents.build_contract_package_pdf(
+                project=project, estimate=project.estimate, scope_schedule=project.scope_schedule, contract_package=cp
+            )
+            filename = f"{project.customer_name} – {project.property_address.split(',')[0]} – Contract Package.pdf"
+            cp.drive_file_id = google_service.upload_file(
+                db, filename, pdf_bytes, "application/pdf", project.drive_folder_id
+            )
+        except (g_oauth.GoogleNotConnected, google_service.GoogleApiError) as exc:
+            raise HTTPException(502, f"Google Drive error: {exc}") from exc
+    else:
+        cp.drive_file_id = cp.drive_file_id or mock_integrations.create_drive_folder(project.customer_name, "contract-package")
     db.commit()
     db.refresh(cp)
     return cp

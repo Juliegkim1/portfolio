@@ -1,0 +1,195 @@
+import type {
+  AnalyticsResponse,
+  BankTransactionsResponse,
+  BusinessExpensesResponse,
+  ChangeOrder,
+  ContractPackage,
+  Estimate,
+  EstimateFetchResult,
+  GoogleStatus,
+  IntegrationsStatus,
+  Invoice,
+  NextInvoiceDraft,
+  Project,
+  ProjectReconciliation,
+  QuickBooksStatus,
+  Receipt,
+  ScopeSchedule,
+  ScopeScheduleIn,
+  User,
+} from "./types";
+
+class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+  }
+}
+
+// Dev: proxied by Vite to localhost:8000 (see vite.config.ts). Production
+// (app.cabrera.construction): FastAPI serves the built frontend and the API
+// from the same origin (see app/backend/app/main.py's static-file mount),
+// so "/api" is correct in both cases — no separate base path needed.
+const API_BASE = "/api";
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: init?.body instanceof FormData ? init.headers : { "Content-Type": "application/json", ...init?.headers },
+  });
+  if (!res.ok) {
+    let message = res.statusText;
+    try {
+      const body = await res.json();
+      message = body.detail ?? message;
+    } catch {
+      // ignore
+    }
+    throw new ApiError(res.status, message);
+  }
+  if (res.status === 204) return undefined as T;
+  const text = await res.text();
+  return text ? JSON.parse(text) : (undefined as T);
+}
+
+const get = <T>(path: string) => request<T>(path);
+const post = <T>(path: string, body?: unknown) => request<T>(path, { method: "POST", body: body !== undefined ? JSON.stringify(body) : undefined });
+const put = <T>(path: string, body: unknown) => request<T>(path, { method: "PUT", body: JSON.stringify(body) });
+const patch = <T>(path: string, body: unknown) => request<T>(path, { method: "PATCH", body: JSON.stringify(body) });
+const del = <T>(path: string) => request<T>(path, { method: "DELETE" });
+
+export const api = {
+  integrationsStatus: () => get<IntegrationsStatus>("/integrations/status"),
+
+  quickbooks: {
+    status: () => get<QuickBooksStatus>("/integrations/quickbooks/status"),
+    connectUrl: `${API_BASE}/integrations/quickbooks/connect`,
+    disconnect: () => post<{ connected: boolean }>("/integrations/quickbooks/disconnect"),
+  },
+
+  google: {
+    status: () => get<GoogleStatus>("/integrations/google/status"),
+    connectUrl: `${API_BASE}/integrations/google/connect`,
+    disconnect: () => post<{ connected: boolean }>("/integrations/google/disconnect"),
+  },
+
+  projects: {
+    list: () => get<Project[]>("/projects"),
+    get: (id: number) => get<Project>(`/projects/${id}`),
+    createFromEstimate: (projectType: string, estimate: EstimateFetchResult) =>
+      post<Project>("/projects", { project_type: projectType, estimate }),
+  },
+
+  estimates: {
+    fetch: (estimateNumber: string) => post<EstimateFetchResult>("/estimates/fetch", { estimate_number: estimateNumber }),
+    upload: (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      return request<EstimateFetchResult>("/estimates/upload", { method: "POST", body: form });
+    },
+    get: (projectId: number) => get<Estimate>(`/projects/${projectId}/estimate`),
+  },
+
+  scopeSchedule: {
+    get: (projectId: number) => get<ScopeSchedule>(`/projects/${projectId}/scope-schedule`),
+    validate: (projectId: number, payload: ScopeScheduleIn) =>
+      post<{ balanced: boolean; balance_note: string; deposit_ok: boolean; deposit_note: string; total_amount: number; contract_total: number }>(
+        `/projects/${projectId}/scope-schedule/validate`,
+        payload
+      ),
+    save: (projectId: number, payload: ScopeScheduleIn) => put<ScopeSchedule>(`/projects/${projectId}/scope-schedule`, payload),
+  },
+
+  contractPackage: {
+    get: (projectId: number) => get<ContractPackage>(`/projects/${projectId}/contract-package`),
+    update: (projectId: number, payload: { description?: string; disclosures?: Record<string, unknown> }) =>
+      patch<ContractPackage>(`/projects/${projectId}/contract-package`, payload),
+    regenerateSummary: (projectId: number) => post<ContractPackage>(`/projects/${projectId}/contract-package/regenerate-summary`),
+    approve: (projectId: number, approvedBy: string) =>
+      post<ContractPackage>(`/projects/${projectId}/contract-package/approve`, { approved_by: approvedBy }),
+    sendForSignature: (projectId: number) => post<ContractPackage>(`/projects/${projectId}/contract-package/send-for-signature`),
+    revertToDraft: (projectId: number) => post<ContractPackage>(`/projects/${projectId}/contract-package/revert-to-draft`),
+    markSigned: (projectId: number) => post<ContractPackage>(`/projects/${projectId}/contract-package/mark-signed`),
+    pdfUrl: (projectId: number) => `${API_BASE}/projects/${projectId}/contract-package/pdf`,
+  },
+
+  changeOrders: {
+    list: (projectId: number) => get<ChangeOrder[]>(`/projects/${projectId}/change-orders`),
+    create: (
+      projectId: number,
+      payload: {
+        parts_changed: string[];
+        scope: string;
+        amount_added: number;
+        amount_subtracted: number;
+        milestone_changes: { milestone_id: number; delta: number }[];
+        new_completion_date?: string | null;
+        uses_subcontractors?: boolean;
+      }
+    ) => post<ChangeOrder>(`/projects/${projectId}/change-orders`, payload),
+    send: (id: number) => post<ChangeOrder>(`/change-orders/${id}/send`),
+    sign: (id: number, party: "owner" | "contractor") => post<ChangeOrder>(`/change-orders/${id}/sign`, { party }),
+    pdfUrl: (id: number) => `${API_BASE}/change-orders/${id}/pdf`,
+  },
+
+  invoices: {
+    list: (projectId: number) => get<Invoice[]>(`/projects/${projectId}/invoices`),
+    nextDraft: (projectId: number) => get<NextInvoiceDraft | null>(`/projects/${projectId}/invoices/next-draft`),
+    create: (milestoneId: number) => post<Invoice>("/invoices", { milestone_id: milestoneId }),
+  },
+
+  receipts: {
+    list: (filters: { project_id?: number; type?: string; needs_project?: boolean } = {}) => {
+      const params = new URLSearchParams();
+      if (filters.project_id !== undefined) params.set("project_id", String(filters.project_id));
+      if (filters.type) params.set("type", filters.type);
+      if (filters.needs_project !== undefined) params.set("needs_project", String(filters.needs_project));
+      const qs = params.toString();
+      return get<Receipt[]>(`/receipts${qs ? `?${qs}` : ""}`);
+    },
+    create: (payload: {
+      project_id?: number | null;
+      milestone_id?: number | null;
+      date: string;
+      description: string;
+      amount: number;
+      type: "payment" | "expense";
+    }) => post<Receipt>("/receipts", payload),
+    assignProject: (id: number, projectId: number | null) => patch<Receipt>(`/receipts/${id}/assign-project`, { project_id: projectId }),
+  },
+
+  businessExpenses: {
+    get: () => get<BusinessExpensesResponse>("/business-expenses"),
+  },
+
+  reconciliation: {
+    project: (projectId: number) => get<ProjectReconciliation>(`/projects/${projectId}/reconciliation`),
+    close: (projectId: number) => post<{ status: string }>(`/projects/${projectId}/close`),
+    bankTransactions: (status?: string) => get<BankTransactionsResponse>(`/reconciliation/bank-transactions${status ? `?status=${status}` : ""}`),
+    importBankFile: (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      return request<{ imported: number; skipped_duplicates: number; matched: number; possible: number; needs_attention: number }>(
+        "/reconciliation/bank-import",
+        { method: "POST", body: form }
+      );
+    },
+    confirmMatch: (txnId: number, receiptId: number) =>
+      post(`/reconciliation/bank-transactions/${txnId}/confirm`, { receipt_id: receiptId }),
+    rejectMatch: (txnId: number) => post(`/reconciliation/bank-transactions/${txnId}/reject`),
+    assignProject: (txnId: number, projectId: number | null) =>
+      post(`/reconciliation/bank-transactions/${txnId}/assign-project`, { project_id: projectId }),
+  },
+
+  analytics: {
+    get: (includePending: boolean) => get<AnalyticsResponse>(`/analytics?include_pending=${includePending}`),
+  },
+
+  users: {
+    list: () => get<User[]>("/users"),
+    invite: (payload: { name: string; email: string; role: "owner" | "project_manager" }) => post<User>("/users", payload),
+    resend: (id: number) => post<User>(`/users/${id}/resend`),
+    remove: (id: number) => del(`/users/${id}`),
+  },
+};
+
+export { ApiError };

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repository is
 
-This is a **handoff package for an app that does not exist yet** — there is no production codebase, no build system, no tests, and no package manager here. It contains only:
+`app/` contains a working implementation (FastAPI + PostgreSQL backend, React + TypeScript frontend) built against the handoff package described below — see "Running the app" for commands. Everything outside `app/` is the original handoff package:
 
 - `README.md` — the handoff doc. Read it first; it is the primary source of truth for scope, business rules and integration setup.
 - `design/` — HTML **design references**, not code to copy or run as an app:
@@ -23,13 +23,40 @@ template = json.loads(re.search(r'<script type="__bundler/template">(.*?)</scrip
 - `templates/` — real business documents: the Home Improvement Contract PDF (plus Notice of Cancellation, Change Order form, CA checklist) and the Project Scope & Payment Schedule .xlsx. In production these live in Google Drive at `Projects › Templates`.
 - `assets/` — company logo files.
 
-There is no lint/build/test command to run because there is no application code. If asked to scaffold the real app, propose a stack and file layout rather than assuming one exists.
+## Running the app
 
-## Suggested stack 
+```
+cd app/backend
+docker compose up -d db                 # Postgres on localhost:5432
+uv run python -m app.seed               # idempotent; skips if projects already exist
+uv run uvicorn app.main:app --reload    # http://localhost:8000, docs at /docs
 
-- **Backend:** Python FastAPI + PostgreSQL (SQLAlchemy/Alembic). A prior repo (`Juliegkim1/portfolio` → `construction_app/`) has Python dataclasses (`models/project.py`, `estimate.py`, `invoice.py`, `work_breakdown.py`) and a `services/google_sheets_service.py` intended as a starting point — reuse/extend rather than rewrite from scratch. Use `pypdf` for PDF merge/form-fill and `pdfplumber` for parsing the QuickBooks estimate PDF fallback.
-- **Frontend:** React + TypeScript (Vite or Next.js), using the design tokens in `design/styles.css` / README as CSS variables.
-- A single full-stack Next.js app is an acceptable alternative (use `pdf-lib`/`pdf-parse` instead of the Python PDF libs in that case).
+cd app/frontend
+npm install
+npm run dev                             # http://localhost:5173, proxies /api -> :8000
+```
+
+To wipe and reseed: `uv run python -c "from app import models; from app.db import Base, engine; Base.metadata.drop_all(bind=engine)"` then rerun the seed command (the one-liner must import `app.models` first — `Base.metadata` is empty, and `drop_all` a silent no-op, otherwise). Backend type/lint: none configured yet. Frontend: `npx tsc -b` (type-check) and `npm run build` (full build) in `app/frontend`.
+
+The `uv`-managed `pyproject.toml` pins `tool.uv.index` to plain PyPI — this environment's default index (a Databricks proxy) is unreachable from here, so don't remove that override.
+
+## Stack
+
+- **Backend** (`app/backend`): FastAPI + SQLAlchemy 2.0 + PostgreSQL, managed with `uv`. `app/models.py` has the ORM models, `app/schemas.py` the Pydantic I/O types, `app/services/` the business-rule and document-generation logic (see below), `app/routers/` the REST endpoints, `app/seed.py` the demo data. The old `construction_app/` repo's plain dataclasses (now only in git history, see `git show HEAD:construction_app/models/project.py` etc.) informed field naming but weren't reused directly — this is a richer schema with real relationships.
+- **Frontend** (`app/frontend`): Vite + React + TypeScript + React Router + TanStack Query, built against `app/frontend/src/styles/tokens.css` (a verbatim copy of `design/styles.css` — don't fork it; if the design system changes, recopy). `src/nav.ts` defines the 7 numbered workflow steps + 4 Company items shared by the desktop sidebar and mobile tab bar/menu. `src/context/ProjectContext.tsx` tracks the "currently selected project" (persisted to localStorage) that steps 3–7 operate on.
+- **QuickBooks is real, not mocked** — `app/backend/app/services/quickbooks_oauth.py` (OAuth2: connect/callback/refresh/disconnect, tokens in the single-row `quickbooks_connection` table) and `quickbooks_service.py` (estimate + customer lookup only — no invoice/payment writes, deliberately, since this is wired to the real production company). `routers/projects.py`'s `fetch_estimate` uses the real service once connected, falling back to `mock_integrations.py`'s fixtures (`1042`, `2091`) otherwise so the screen still works pre-connection.
+- **Google Drive/Sheets and Adobe Sign are still mocked** — `app/backend/app/services/mock_integrations.py` returns fake Drive folder/Sheet IDs; Adobe Sign's `mark-signed` endpoint simulates the webhook. A Google Cloud project + OAuth client exist (console set up, Drive/Sheets APIs enabled, consent screen configured) but the backend OAuth integration code mirroring `quickbooks_oauth.py` hasn't been built yet — that's the next piece, once the user shares the Google client ID/secret the same way as QuickBooks (via `.env`, never in chat).
+- **Contract/change-order PDFs are real**, not mocked: `templates/Cabrera_Construction_Home_Improvement_Contract.pdf` has genuine AcroForm fields (confirmed via `pypdf`), filled in `app/backend/app/services/documents.py`. The Scope & Payment Schedule and Estimate pages are generated with `reportlab` and merged in.
+
+## Production deployment (app.cabrera.construction on Google Cloud Run)
+
+`cabrera.construction` (root domain) is hosted on **Squarespace**, which cannot run a custom backend or proxy a subpath to one — there is no `/app` path under the Squarespace site. The app instead gets its own **subdomain**, `app.cabrera.construction`, pointed at a separate host: **Google Cloud Run** (the user already has a GCP project for the Drive/Sheets integration). This is a plain root-domain deployment on that subdomain, not a subpath one — don't reintroduce `/app`-prefix handling (a Vite `base`, a router `basename`, a separate `VITE_API_BASE`) if asked to revisit this; it was tried and deliberately reverted once the Squarespace constraint came up.
+
+- **One Cloud Run service serves both the API and the frontend**, same-origin — no reverse proxy needed. `Dockerfile` lives at the repo root (`cabrera_construction_app/Dockerfile`, **not** `app/Dockerfile`) — its build context has to be `cabrera_construction_app/`, because it needs to see both `app/` and `templates/`, which are siblings, not parent/child (`gcloud builds submit --tag <image> .` run from `cabrera_construction_app/`, not from `app/`). It builds the frontend in a Node stage, then copies `frontend/dist` into the Python runtime image alongside `templates/`. `.gcloudignore` (same directory) keeps the upload small by excluding `design/`, `node_modules/`, etc. `app/backend/app/main.py` mounts the built frontend: `/assets/*` as static files, and a catch-all route serves `index.html` for anything else not under `/api/*` (so a hard refresh on e.g. `/projects` still works — SPA fallback). This mount is gated on the `FRONTEND_DIST_DIR` env var, so it's a no-op in local dev (where the Vite dev server serves the frontend instead).
+- **Database**: Cloud Run is stateless — Postgres needs to be **Cloud SQL**, connected via the Cloud SQL Auth Proxy socket Cloud Run provides automatically when you pass `--add-cloudsql-instances`. `DATABASE_URL` becomes `postgresql+psycopg2://USER:PASSWORD@/DBNAME?host=/cloudsql/PROJECT:REGION:INSTANCE` (note: no host/port before `?host=` — it's a Unix socket).
+- **Env vars for the Cloud Run service** (set via `--set-env-vars` or `--update-secrets` for the sensitive ones): `DATABASE_URL`, `FRONTEND_BASE_URL=https://app.cabrera.construction`, `FRONTEND_DIST_DIR=/app/frontend_dist` (matches the Dockerfile), `QUICKBOOKS_REDIRECT_URI=https://app.cabrera.construction/api/integrations/quickbooks/callback`, `QUICKBOOKS_CLIENT_ID`, `QUICKBOOKS_CLIENT_SECRET`, `QUICKBOOKS_ENVIRONMENT=production`, `CORS_ORIGINS=["https://app.cabrera.construction"]`.
+- **QuickBooks app URLs** (developer.intuit.com → Keys & OAuth / App URLs): Host Domain `app.cabrera.construction`; Launch URL `https://app.cabrera.construction`; Connect/Reconnect URL `https://app.cabrera.construction/api/integrations/quickbooks/connect`; Disconnect URL `https://app.cabrera.construction/api/integrations/quickbooks/disconnect-callback` (handled by `routers/quickbooks.py`'s `disconnect_callback` — Intuit redirects here when a user disconnects from inside QuickBooks itself, as opposed to this app's own Disconnect button). Register the production redirect URI *alongside* the `localhost` one in Keys & OAuth, not instead of it.
+- **DNS**: once `gcloud run domain-mappings create` gives back its target records, add them wherever `cabrera.construction`'s DNS is actually managed (confirm this — Squarespace may have taken over DNS when the site was set up there, even if the domain was originally registered through Google Domains) as a record for the `app` subdomain specifically. The root domain and Squarespace's own records are untouched.
 
 ## Domain model (build against this, not intuition)
 
@@ -75,16 +102,16 @@ All OAuth secrets and refresh tokens must stay server-side/encrypted; verify web
 
 ## Implementation order (Design Document §09, decided Sep 28, 2026)
 
-These decisions are already reflected in the "Business rules" and domain-model sections above; the notable addition here is the **build order**, since integrations are interdependent (Drive folders are needed before documents can be filed, etc.):
-1. QuickBooks estimate import (API by `DocNumber`, PDF-parse fallback).
-2. Drive folder creation/naming and document filing.
-3. Scope & Payment Schedule rendering from the `.xlsx` template.
-4. Contract/change-order field-filling from templates in `Projects › Templates` (verbatim text), description summarizer, PDF merge, PM/Owner approval.
-5. Adobe Acrobat Sign send-after-approval, with Owner/Contractor signatures tracked separately on change orders.
-6. Receipts: folder scans (project + Business Receipts) and manual entry with project identification; reconciliation and business-expense report in Sheets.
-7. Analytics: timeline, concurrency, revenue projection (signed contracts only), Sheets export.
-8. Operational Reconciliation: BofA CSV/QFX parser, vendor normalization, matching, re-import dedupe, Sheets export.
-9. Empty/loading/error states and device testing.
+These decisions are already reflected in the "Business rules" and domain-model sections above; the notable addition here is the **build order**, since integrations are interdependent (Drive folders are needed before documents can be filed, etc.). Status against the current `app/` build:
+1. ~~QuickBooks estimate import~~ — **mocked** (fixture lookup + canned PDF-parse result; see "No real external integrations yet" above). Real API call is the next step here.
+2. ~~Drive folder creation/naming and document filing~~ — **mocked** (fake IDs; no real Drive writes).
+3. ~~Scope & Payment Schedule rendering~~ — **done**, generated as a real PDF page (not from the `.xlsx` template directly).
+4. Contract/change-order field-filling — **done and real** (fills the actual template's AcroForm fields, verbatim text); description summarizer is a simple concatenation, not NLG — regenerate it by hand if it reads awkwardly. PM/Owner approval flow is implemented; Adobe Acrobat Sign itself is not (see next).
+5. Adobe Acrobat Sign — **mocked** (`mark-signed` endpoint simulates the completion webhook; no real agreement is created).
+6. Receipts — manual entry and reassignment are **done**; Drive folder/Business Receipts scanning is **not built** (receipts can only be created via the API/UI, not discovered from Drive).
+7. Analytics — **done** against local data (timeline, concurrency, revenue projection); no Sheets export.
+8. Operational Reconciliation — **done**: CSV import (BofA-style, header-row auto-detect), vendor normalization, exact/possible matching, re-import dedupe by fingerprint, confirm/reject, assign-project. QFX/OFX parsing and Sheets export are **not built** (CSV only).
+9. Empty/loading/error states — basic coverage via TanStack Query's loading/error states on every page; not exhaustively polished. Device testing — verified at a 390×844 mobile viewport and desktop; not tested on a real device.
 
 ## Design fidelity
 

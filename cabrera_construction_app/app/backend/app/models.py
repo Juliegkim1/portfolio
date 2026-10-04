@@ -50,6 +50,14 @@ class Project(Base):
     change_orders: Mapped[list["ChangeOrder"]] = relationship(back_populates="project", cascade="all, delete-orphan")
     receipts: Mapped[list["Receipt"]] = relationship(back_populates="project")
 
+    @property
+    def estimate_total(self) -> float | None:
+        return self.estimate.total if self.estimate else None
+
+    @property
+    def contract_status(self) -> str | None:
+        return self.contract_package.status if self.contract_package else None
+
 
 class Estimate(Base):
     __tablename__ = "estimates"
@@ -242,3 +250,42 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(20))  # owner|project_manager
     status: Mapped[str] = mapped_column(String(20), default="invited")  # active|invited
     last_active_at: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class QuickBooksConnection(Base):
+    """Single-row table: this app connects to exactly one QuickBooks company at a time.
+
+    Tokens are the live credential, not a secret-at-rest exercise for a demo —
+    access_token is short-lived (~1hr) and refresh_token rotates on every use
+    and expires after ~100 days of inactivity (Intuit's OAuth2 behavior).
+    """
+
+    __tablename__ = "quickbooks_connection"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    realm_id: Mapped[str] = mapped_column(String(50))
+    access_token: Mapped[str] = mapped_column(Text)
+    refresh_token: Mapped[str] = mapped_column(Text)
+    access_token_expires_at: Mapped[dt.datetime] = mapped_column(DateTime)
+    refresh_token_expires_at: Mapped[dt.datetime] = mapped_column(DateTime)
+    connected_at: Mapped[dt.datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class GoogleConnection(Base):
+    """Single-row table: this app connects to one Google Workspace account at a
+    time (Drive + Sheets scopes). Unlike QuickBooks, Google's refresh token
+    doesn't expire on a fixed schedule — it's valid until revoked or unused
+    for ~6 months — so there's no refresh_token_expires_at to track here.
+    `projects_root_folder_id` caches the "Projects" Drive folder's ID after
+    the first lookup/creation, so we don't search for it on every call.
+    """
+
+    __tablename__ = "google_connection"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    account_email: Mapped[str] = mapped_column(String(200))
+    access_token: Mapped[str] = mapped_column(Text)
+    refresh_token: Mapped[str] = mapped_column(Text)
+    access_token_expires_at: Mapped[dt.datetime] = mapped_column(DateTime)
+    projects_root_folder_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    connected_at: Mapped[dt.datetime] = mapped_column(DateTime, server_default=func.now())

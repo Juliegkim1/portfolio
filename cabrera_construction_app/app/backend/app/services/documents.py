@@ -21,8 +21,19 @@ from reportlab.pdfgen import canvas
 
 from ..config import settings
 
-_DEFAULT_TEMPLATES_DIR = Path(__file__).resolve().parents[4] / "templates"
-TEMPLATE_PATH = Path(settings.templates_dir or _DEFAULT_TEMPLATES_DIR) / "Cabrera_Construction_Home_Improvement_Contract.pdf"
+
+def _default_templates_dir() -> Path:
+    # Only valid for local dev, where this file sits 4 levels under
+    # cabrera_construction_app/ — a packaged/deployed layout (e.g. the
+    # Cloud Run image) doesn't have that many parent directories and must
+    # set TEMPLATES_DIR instead, which is why this is computed lazily
+    # (only called below when settings.templates_dir is unset) rather than
+    # eagerly at import time — eagerly, it would crash on import in prod
+    # before the "or" even got a chance to prefer the env var.
+    return Path(__file__).resolve().parents[4] / "templates"
+
+
+TEMPLATE_PATH = Path(settings.templates_dir or _default_templates_dir()) / "Cabrera_Construction_Home_Improvement_Contract.pdf"
 
 _CANCEL_DAY_FIELDS = {3: ("rc_three", "noc_three"), 5: ("rc_five", "noc_five"), 7: ("rc_seven", "noc_seven")}
 

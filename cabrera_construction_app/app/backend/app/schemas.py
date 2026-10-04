@@ -38,6 +38,8 @@ class ProjectOut(ORMBase):
     status: Literal["active", "completed", "on_hold"]
     drive_folder_id: str | None
     sheet_id: str | None
+    estimate_total: float | None
+    contract_status: Literal["draft", "approved", "out_for_signature", "signed"] | None
 
 
 # --- Estimate ---------------------------------------------------------------
