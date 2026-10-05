@@ -28,6 +28,22 @@ export function EstimateUploadPage() {
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [projectType, setProjectType] = useState("Kitchen Remodel");
 
+  // Editable, not just display — extraction (QuickBooks or Gemini) can come
+  // back with gaps, and the user needs to be able to fill those in rather
+  // than get silently blocked or, worse, let an incomplete project through.
+  const [customerName, setCustomerName] = useState("");
+  const [propertyAddress, setPropertyAddress] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+
+  function applyResult(data: EstimateFetchResult) {
+    setResult(data);
+    setCustomerName(data.customer_name ?? "");
+    setPropertyAddress(data.property_address ?? "");
+    setCustomerPhone(data.customer_phone ?? "");
+    setCustomerEmail(data.customer_email ?? "");
+  }
+
   const qbStatus = useQuery({ queryKey: ["quickbooks-status"], queryFn: api.quickbooks.status });
   const qbDisconnect = useMutation({
     mutationFn: api.quickbooks.disconnect,
@@ -74,7 +90,7 @@ export function EstimateUploadPage() {
     mutationFn: () => api.estimates.fetch(estimateNumber),
     onSuccess: (data) => {
       if (data.found) {
-        setResult(data);
+        applyResult(data);
         setNotFound(false);
       } else {
         setResult(null);
@@ -86,14 +102,29 @@ export function EstimateUploadPage() {
   const uploadEstimate = useMutation({
     mutationFn: (file: File) => api.estimates.upload(file),
     onSuccess: (data, file) => {
-      setResult(data);
+      applyResult(data);
       setUploadedFileName(file.name);
       setNotFound(false);
     },
   });
 
+  const missingFields = result
+    ? [
+        !customerName.trim() && "Customer name",
+        !propertyAddress.trim() && "Property address",
+        result.line_items.length === 0 && "At least one line item",
+      ].filter((x): x is string => Boolean(x))
+    : [];
+
   const createProject = useMutation({
-    mutationFn: () => api.projects.createFromEstimate(projectType, result!),
+    mutationFn: () =>
+      api.projects.createFromEstimate(projectType, {
+        ...result!,
+        customer_name: customerName,
+        property_address: propertyAddress,
+        customer_phone: customerPhone,
+        customer_email: customerEmail,
+      }),
     onSuccess: (project) => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       setSelectedProjectId(project.id);
@@ -159,6 +190,12 @@ export function EstimateUploadPage() {
             {googleRedirectNotice.kind === "connected"
               ? "Google Workspace connected. New projects now get a real Drive folder and reconciliation Sheet."
               : `Google connection failed${googleRedirectNotice.reason ? ` (${googleRedirectNotice.reason})` : ""}. Check the client ID/secret and redirect URI in app/backend/.env, then try again.`}
+          </div>
+        )}
+        {googleStatus.data?.connected && (
+          <div className="muted" style={{ fontSize: 13, marginTop: "var(--space-2)" }}>
+            Importing a project that already existed in Drive before this app? That's a separate flow — see{" "}
+            <a href="/import-from-drive">Import from Drive</a> in the Company menu.
           </div>
         )}
       </div>
@@ -260,20 +297,20 @@ export function EstimateUploadPage() {
             <div className="card" style={{ padding: "var(--space-4)", opacity: 0.95 }}>
               <div className="form-grid">
                 <div className="field">
-                  <label>Customer</label>
-                  <input className="input" value={result.customer_name ?? ""} readOnly style={{ opacity: 0.85 }} />
+                  <label>Customer {!customerName.trim() && <span style={{ color: "#b4432f" }}>— required</span>}</label>
+                  <input className="input" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Enter the customer's name" />
                 </div>
                 <div className="field">
-                  <label>Address</label>
-                  <input className="input" value={result.property_address ?? ""} readOnly style={{ opacity: 0.85 }} />
+                  <label>Address {!propertyAddress.trim() && <span style={{ color: "#b4432f" }}>— required</span>}</label>
+                  <input className="input" value={propertyAddress} onChange={(e) => setPropertyAddress(e.target.value)} placeholder="Enter the property address" />
                 </div>
                 <div className="field">
                   <label>Phone</label>
-                  <input className="input" value={result.customer_phone ?? ""} readOnly style={{ opacity: 0.85 }} />
+                  <input className="input" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Not found — optional" />
                 </div>
                 <div className="field">
                   <label>Email</label>
-                  <input className="input" value={result.customer_email ?? ""} readOnly style={{ opacity: 0.85 }} />
+                  <input className="input" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} placeholder="Not found — optional" />
                 </div>
                 <div className="field">
                   <label>Estimate # / Date</label>
@@ -307,8 +344,10 @@ export function EstimateUploadPage() {
           <div className="section">
             <h3>The app creates</h3>
             <ul style={{ margin: 0, paddingLeft: 20, fontSize: 14 }}>
-              <li>A project record for {result.customer_name}</li>
-              <li>A Google Drive folder: Projects › {result.customer_name} – {result.property_address?.split(",")[0]}</li>
+              <li>A project record for {customerName || "—"}</li>
+              <li>
+                A Google Drive folder: Projects › {customerName || "—"} – {propertyAddress?.split(",")[0] || "—"} › {projectType || "—"}
+              </li>
               <li>A Project Scope & Payment Schedule</li>
               <li>A Contract Package draft</li>
             </ul>
@@ -318,9 +357,19 @@ export function EstimateUploadPage() {
                 <input className="input" value={projectType} onChange={(e) => setProjectType(e.target.value)} />
               </div>
             </div>
+            {missingFields.length > 0 && (
+              <div className="banner banner-attention icon-text">
+                <AlertTriangle size={16} strokeWidth={1.5} />
+                Fill in before creating the project: {missingFields.join(", ")}.
+              </div>
+            )}
             {createProject.isError && <div className="error-state">{(createProject.error as Error).message}</div>}
-            <button className="btn btn-primary btn-block" disabled={createProject.isPending} onClick={() => createProject.mutate()}>
-              Create Project & Continue to Scope
+            <button
+              className="btn btn-primary btn-block"
+              disabled={createProject.isPending || missingFields.length > 0}
+              onClick={() => createProject.mutate()}
+            >
+              {createProject.isPending ? "Creating…" : "Create Project & Continue to Scope"}
             </button>
           </div>
         </>

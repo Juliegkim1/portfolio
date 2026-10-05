@@ -43,6 +43,12 @@ class Project(Base):
     drive_folder_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
     sheet_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, server_default=func.now())
+    # Set only when this project came from POST /projects/drive-import/{id}/confirm
+    # (a pre-existing, already-signed project read from an existing Drive
+    # folder) — null for a project created from a fresh QuickBooks estimate.
+    # Distinguishes the two in the UI (see routers/projects.py's
+    # list_drive_import_history) and records when the import happened.
+    imported_at: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True)
 
     estimate: Mapped["Estimate"] = relationship(back_populates="project", uselist=False, cascade="all, delete-orphan")
     scope_schedule: Mapped["ScopeSchedule"] = relationship(back_populates="project", uselist=False, cascade="all, delete-orphan")

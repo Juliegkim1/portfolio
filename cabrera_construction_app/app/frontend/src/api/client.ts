@@ -4,6 +4,9 @@ import type {
   BusinessExpensesResponse,
   ChangeOrder,
   ContractPackage,
+  DriveImportableProject,
+  DriveImportHistoryItem,
+  DriveImportPreview,
   Estimate,
   EstimateFetchResult,
   GoogleStatus,
@@ -31,6 +34,25 @@ class ApiError extends Error {
 // so "/api" is correct in both cases — no separate base path needed.
 const API_BASE = "/api";
 
+// FastAPI's `detail` is usually a plain string (our own HTTPException calls),
+// but on a 422 it's an array of pydantic error objects ([{msg, loc, type}]),
+// and a handful of other error sources (a proxy, IAP) use other shapes
+// entirely. Passing any of those straight into `new Error(...)` silently
+// stringifies to "[object Object]" instead of throwing — coerce explicitly
+// so the UI always shows something a user can read.
+function errorDetailToMessage(detail: unknown, fallback: string): string {
+  if (typeof detail === "string" && detail) return detail;
+  if (Array.isArray(detail) && detail.length) {
+    const msgs = detail.map((d) => (d && typeof d === "object" && "msg" in d ? String((d as { msg: unknown }).msg) : JSON.stringify(d)));
+    return msgs.join("; ");
+  }
+  if (detail && typeof detail === "object") {
+    if ("message" in detail) return String((detail as { message: unknown }).message);
+    return JSON.stringify(detail);
+  }
+  return fallback;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
@@ -40,7 +62,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     let message = res.statusText;
     try {
       const body = await res.json();
-      message = body.detail ?? message;
+      message = errorDetailToMessage(body?.detail, message);
     } catch {
       // ignore
     }
@@ -77,6 +99,15 @@ export const api = {
     get: (id: number) => get<Project>(`/projects/${id}`),
     createFromEstimate: (projectType: string, estimate: EstimateFetchResult) =>
       post<Project>("/projects", { project_type: projectType, estimate }),
+    driveImportable: () => get<DriveImportableProject[]>("/projects/drive-importable"),
+    // Separate pipeline from createFromEstimate above: a folder found here
+    // predates this app, so it's previewed (read the contract/estimate/
+    // schedule docs already in it) then confirmed as a complete, already-
+    // signed historical project, not run through the new-estimate wizard.
+    previewDriveImport: (folderId: string) => post<DriveImportPreview>(`/projects/drive-import/${encodeURIComponent(folderId)}`),
+    confirmDriveImport: (folderId: string, projectType: string, preview: DriveImportPreview) =>
+      post<Project>(`/projects/drive-import/${encodeURIComponent(folderId)}/confirm`, { project_type: projectType, preview }),
+    driveImportHistory: () => get<DriveImportHistoryItem[]>("/projects/drive-imports"),
   },
 
   estimates: {

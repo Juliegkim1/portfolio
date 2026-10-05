@@ -4,6 +4,7 @@ import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { BusinessExpensesPage } from "./pages/BusinessExpensesPage";
 import { ChangeOrdersPage } from "./pages/ChangeOrdersPage";
 import { ContractPackagePage } from "./pages/ContractPackagePage";
+import { DriveImportPage } from "./pages/DriveImportPage";
 import { EstimateUploadPage } from "./pages/EstimateUploadPage";
 import { InvoicesPage } from "./pages/InvoicesPage";
 import { OperationalReconciliationPage } from "./pages/OperationalReconciliationPage";
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/" element={<Navigate to="/projects" replace />} />
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/estimate-upload" element={<EstimateUploadPage />} />
+        <Route path="/import-from-drive" element={<DriveImportPage />} />
         <Route path="/projects/:projectId/scope" element={<ScopeSchedulePage />} />
         <Route path="/projects/:projectId/contract" element={<ContractPackagePage />} />
         <Route path="/projects/:projectId/change-orders" element={<ChangeOrdersPage />} />

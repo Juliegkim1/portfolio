@@ -1,5 +1,10 @@
 export type ProjectStatus = "active" | "completed" | "on_hold";
 
+export interface DriveImportableProject {
+  folder_id: string;
+  name: string;
+}
+
 export interface Project {
   id: number;
   name: string;
@@ -15,6 +20,7 @@ export interface Project {
   sheet_id: string | null;
   estimate_total: number | null;
   contract_status: ContractPackageStatus | null;
+  imported_at: string | null;
 }
 
 export interface EstimateLineItem {
@@ -65,6 +71,51 @@ export interface EstimateFetchResult {
   line_items: EstimateLineItemIn[];
   total?: number | null;
   retrieved_at?: string | null;
+}
+
+// Importing a pre-existing Drive project folder is a separate pipeline from
+// EstimateFetchResult/the new-project wizard above: a folder found here
+// predates this app, so it's read as a complete historical record (already
+// signed, possibly already partially paid) rather than a fresh lead.
+export interface MilestonePreview {
+  number: number;
+  title: string;
+  amount: number;
+  due_date?: string | null;
+}
+
+export interface DriveImportPreview {
+  folder_id: string;
+  folder_name: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_email: string;
+  property_address: string;
+  scope_text: string;
+  total: number;
+  line_items: EstimateLineItemIn[];
+  contract_date?: string | null;
+  payment_terms: string;
+  warranty_terms: string;
+  milestones: MilestonePreview[];
+}
+
+// One row of the Import from Drive page's history — what was actually
+// extracted and imported for a project, read back from the records that
+// were created (not a separate extraction log).
+export interface DriveImportHistoryItem {
+  project_id: number;
+  project_name: string;
+  customer_name: string;
+  property_address: string;
+  project_type: string;
+  imported_at: string;
+  drive_folder_id: string | null;
+  scope_text: string;
+  total: number;
+  line_items: EstimateLineItem[];
+  milestones: Milestone[];
+  contract_status: ContractPackageStatus;
 }
 
 export type MilestoneStatus = "scheduled" | "invoiced" | "partial" | "paid";

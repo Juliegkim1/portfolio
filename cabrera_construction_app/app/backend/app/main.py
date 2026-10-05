@@ -5,6 +5,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from .config import settings
@@ -60,9 +61,20 @@ for router in (
     app.include_router(router)
 
 
+def _run_light_migrations() -> None:
+    """There's no Alembic wired up in this project — create_all() above only
+    creates missing tables, it never alters an existing one, so a new
+    column on a table that's already live in production (like this one)
+    needs a manual ALTER. IF NOT EXISTS makes it safe to run on every
+    startup rather than needing a one-off migration step."""
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS imported_at TIMESTAMP"))
+
+
 @app.on_event("startup")
 def on_startup() -> None:
     Base.metadata.create_all(bind=engine)
+    _run_light_migrations()
     if settings.seed_on_startup:
         from .seed import run_seed
 

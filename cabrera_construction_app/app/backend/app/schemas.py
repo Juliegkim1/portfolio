@@ -40,6 +40,7 @@ class ProjectOut(ORMBase):
     sheet_id: str | None
     estimate_total: float | None
     contract_status: Literal["draft", "approved", "out_for_signature", "signed"] | None
+    imported_at: dt.datetime | None
 
 
 # --- Estimate ---------------------------------------------------------------
@@ -101,6 +102,61 @@ class EstimateFetchResult(BaseModel):
 class CreateProjectFromEstimate(BaseModel):
     project_type: str
     estimate: EstimateFetchResult
+
+
+# --- Drive import (pre-existing, already-signed projects) ------------------
+#
+# Deliberately a separate pipeline from CreateProjectFromEstimate above: a
+# folder found in Drive › Projects predates this app, so it's read as a
+# complete historical record (contract already signed, a payment schedule
+# that may be partially paid) rather than as a fresh lead to walk through
+# the estimate -> scope -> draft-contract wizard.
+
+class MilestonePreview(BaseModel):
+    number: int
+    title: str
+    amount: float
+    due_date: dt.date | None = None
+
+
+class DriveImportPreview(BaseModel):
+    folder_id: str
+    folder_name: str
+    customer_name: str = ""
+    customer_phone: str = ""
+    customer_email: str = ""
+    property_address: str = ""
+    scope_text: str = ""
+    total: float = 0
+    line_items: list[EstimateLineItemIn] = []
+    contract_date: dt.date | None = None
+    payment_terms: str = ""
+    warranty_terms: str = ""
+    milestones: list[MilestonePreview] = []
+
+
+class DriveImportConfirm(BaseModel):
+    project_type: str
+    preview: DriveImportPreview
+
+
+class DriveImportHistoryItem(BaseModel):
+    """One row of the Import from Drive page's history — what was actually
+    extracted and imported for a project, read back from the records
+    confirm_drive_import created (not a separate extraction log)."""
+
+    project_id: int
+    project_name: str
+    customer_name: str
+    property_address: str
+    project_type: str
+    imported_at: dt.datetime
+    drive_folder_id: str | None
+    scope_text: str
+    total: float
+    line_items: list[EstimateLineItemOut]
+    milestones: list[MilestoneOut]
+    contract_status: Literal["draft", "approved", "out_for_signature", "signed"]
 
 
 # --- Scope & Payment Schedule -------------------------------------------------

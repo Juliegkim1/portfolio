@@ -96,7 +96,10 @@ def save_scope_schedule(project_id: int, payload: schemas.ScopeScheduleIn, db: S
     ss.contract_type = payload.contract_type
     ss.payment_terms = payload.payment_terms
     ss.warranty_terms = payload.warranty_terms
-    ss.drive_file_id = ss.drive_file_id or f"drive-file-scope-{project.id}"
+    # No separate Drive file for the schedule on its own — its content is
+    # one section of the combined Contract Package PDF, uploaded once on
+    # Approve (see contracts.py's approve_contract_package), not duplicated
+    # here as a standalone file.
 
     for m in payload.milestones:
         ss.milestones.append(models.Milestone(**m.model_dump()))

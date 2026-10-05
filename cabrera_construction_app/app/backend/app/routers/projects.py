@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import datetime as dt
+import logging
+
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
@@ -10,6 +14,8 @@ from ..services import gemini_service, google_service, mock_integrations
 from ..services import google_oauth as g_oauth
 from ..services import quickbooks_oauth as qb_oauth
 from ..services import quickbooks_service
+
+logger = logging.getLogger("cabrera.projects")
 
 router = APIRouter(prefix="/api", tags=["projects"])
 
@@ -24,6 +30,59 @@ def get_project_or_404(db: Session, project_id: int) -> models.Project:
 @router.get("/projects", response_model=list[schemas.ProjectOut])
 def list_projects(db: Session = Depends(get_db)):
     return db.query(models.Project).order_by(models.Project.created_at.desc()).all()
+
+
+@router.get("/projects/drive-importable")
+def list_drive_importable_projects(db: Session = Depends(get_db)):
+    """Subfolders under Drive -> Projects that don't belong to a project in
+    this app yet — e.g. real project folders from before this app existed.
+
+    Registered ahead of GET /projects/{project_id} below: FastAPI matches
+    routes in registration order, and "drive-importable" would otherwise be
+    swallowed by {project_id}'s int parsing and 422 before ever reaching
+    this handler."""
+    if not g_oauth.get_connection(db):
+        raise HTTPException(409, "Connect Google Workspace first to import existing projects from Drive.")
+    existing_folder_ids = {
+        row[0] for row in db.query(models.Project.drive_folder_id).filter(models.Project.drive_folder_id.isnot(None))
+    }
+    try:
+        folders = google_service.list_importable_project_folders(db, existing_folder_ids)
+    except (g_oauth.GoogleNotConnected, google_service.GoogleApiError) as exc:
+        raise HTTPException(502, f"Google Drive error: {exc}") from exc
+    return [{"folder_id": f["id"], "name": f["name"]} for f in folders]
+
+
+@router.get("/projects/drive-imports", response_model=list[schemas.DriveImportHistoryItem])
+def list_drive_import_history(db: Session = Depends(get_db)):
+    """Every project that came from POST .../confirm, newest first — the
+    confirmation that a given Drive folder was actually imported, and what
+    was extracted from it, for the dedicated Import from Drive page.
+    Registered ahead of GET /projects/{project_id} for the same route-
+    ordering reason as drive-importable above."""
+    projects = (
+        db.query(models.Project)
+        .filter(models.Project.imported_at.isnot(None))
+        .order_by(models.Project.imported_at.desc())
+        .all()
+    )
+    return [
+        schemas.DriveImportHistoryItem(
+            project_id=p.id,
+            project_name=p.name,
+            customer_name=p.customer_name,
+            property_address=p.property_address,
+            project_type=p.project_type,
+            imported_at=p.imported_at,
+            drive_folder_id=p.drive_folder_id,
+            scope_text=p.estimate.scope_text if p.estimate else "",
+            total=p.estimate.total if p.estimate else 0,
+            line_items=[schemas.EstimateLineItemOut.model_validate(li) for li in (p.estimate.line_items if p.estimate else [])],
+            milestones=[schemas.MilestoneOut.model_validate(m) for m in (p.scope_schedule.milestones if p.scope_schedule else [])],
+            contract_status=p.contract_package.status if p.contract_package else "draft",
+        )
+        for p in projects
+    ]
 
 
 @router.get("/projects/{project_id}", response_model=schemas.ProjectOut)
@@ -67,22 +126,182 @@ async def upload_estimate(file: UploadFile):
         raise HTTPException(422, str(exc)) from exc
 
 
+def _read_folder_documents(db: Session, folder_id: str) -> list[tuple[bytes, str, str]]:
+    try:
+        files_meta = google_service.list_folder_documents(db, folder_id)
+        if not files_meta:
+            raise HTTPException(422, "No PDF or DOCX files found in this Drive folder to read.")
+        # Capped at 5 files: keeps the request fast/cheap and covers the
+        # realistic case (contract, estimate, a payment schedule) comfortably.
+        return [(google_service.download_file(db, f["id"]), f["name"], f.get("mimeType", "")) for f in files_meta[:5]]
+    except (g_oauth.GoogleNotConnected, google_service.GoogleApiError) as exc:
+        raise HTTPException(502, f"Google Drive error: {exc}") from exc
+
+
+@router.post("/projects/drive-import/{folder_id}", response_model=schemas.DriveImportPreview)
+def preview_drive_import(folder_id: str, db: Session = Depends(get_db)):
+    """Reads a pre-existing Drive project folder (contract/estimate/payment
+    schedule — whatever's in there) for review before import. Deliberately
+    separate from the QuickBooks/upload estimate flow above: a folder found
+    here predates this app, so it's a complete historical record (already
+    signed, possibly already partially paid), not a fresh lead to run
+    through the new-project wizard. See POST .../confirm for the second
+    step, which actually creates the project from this preview."""
+    if not g_oauth.get_connection(db):
+        raise HTTPException(409, "Connect Google Workspace first.")
+    if not settings.gemini_api_key:
+        raise HTTPException(400, "GEMINI_API_KEY is not set in app/backend/.env — required to read documents from Drive.")
+
+    documents = _read_folder_documents(db, folder_id)
+    try:
+        folder_name = google_service.get_file_name(db, folder_id)
+    except (g_oauth.GoogleNotConnected, google_service.GoogleApiError):
+        folder_name = folder_id
+    try:
+        return gemini_service.extract_historical_project(folder_id, folder_name, documents)
+    except gemini_service.GeminiExtractionError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+def _missing_import_fields(preview: schemas.DriveImportPreview) -> list[str]:
+    missing = []
+    if not preview.customer_name.strip():
+        missing.append("Customer name")
+    if not preview.property_address.strip():
+        missing.append("Property address")
+    if not preview.line_items:
+        missing.append("At least one line item")
+    return missing
+
+
+@router.post("/projects/drive-import/{folder_id}/confirm", response_model=schemas.ProjectOut)
+def confirm_drive_import(folder_id: str, payload: schemas.DriveImportConfirm, db: Session = Depends(get_db)):
+    """Creates a full historical project from a reviewed/edited preview —
+    Project, Estimate, Scope & Payment Schedule (with whatever milestones
+    were found), and a Contract Package already marked "signed" (skipping
+    draft/approve/send-for-signature entirely, since this project's contract
+    was already signed before this app existed). Reuses the existing Drive
+    folder rather than creating a new one, so receipts/reconciliation
+    already filed there keep working once this project exists in the app."""
+    preview = payload.preview
+    missing = _missing_import_fields(preview)
+    if missing:
+        raise HTTPException(422, f"Missing required information before this project can be imported: {', '.join(missing)}.")
+
+    customer_name = preview.customer_name
+    street = preview.property_address.split(",")[0] if preview.property_address else ""
+
+    project = models.Project(
+        name=f"{customer_name} — {street}" if street else customer_name,
+        project_type=payload.project_type,
+        customer_name=customer_name,
+        customer_phone=preview.customer_phone,
+        customer_email=preview.customer_email,
+        property_address=preview.property_address,
+        drive_folder_id=folder_id,
+        imported_at=dt.datetime.now(),
+    )
+    db.add(project)
+    db.flush()
+
+    estimate = models.Estimate(
+        project_id=project.id,
+        estimate_number=f"IMPORTED-{folder_id[:12]}",
+        scope_text=preview.scope_text,
+    )
+    db.add(estimate)
+    db.flush()
+    for li in preview.line_items:
+        db.add(models.EstimateLineItem(estimate_id=estimate.id, **li.model_dump()))
+
+    # A historical project with no extractable payment schedule still needs
+    # *some* milestone for invoicing/reconciliation to hang off of — fall
+    # back to one covering the full amount rather than leaving the schedule
+    # empty. Status stays "scheduled", not "paid": a signed contract doesn't
+    # mean every milestone has actually been paid yet, and that's exactly
+    # what Reconciliation (bank/receipt matching) is for, on this project
+    # like any other.
+    scope_schedule = models.ScopeSchedule(
+        project_id=project.id,
+        contract_date=preview.contract_date,
+        payment_terms=preview.payment_terms or "Due on milestone completion, net 15",
+        warranty_terms=preview.warranty_terms,
+    )
+    db.add(scope_schedule)
+    db.flush()
+    milestones = preview.milestones or [schemas.MilestonePreview(number=0, title="Full Contract Amount", amount=preview.total)]
+    for m in milestones:
+        db.add(models.Milestone(scope_schedule_id=scope_schedule.id, number=m.number, title=m.title, amount=m.amount, due_date=m.due_date))
+
+    contract_package = models.ContractPackage(
+        project_id=project.id,
+        description=preview.scope_text,
+        status="signed",
+        approved_by="Imported from Drive",
+        approved_at=dt.datetime.now(),
+        attachments=[
+            {"label": "Contract pp. 1-4", "kind": "contract"},
+            {"label": "Att. 1 Notice of Cancellation", "kind": "noc"},
+            {"label": "Att. 2 Change Order Form", "kind": "change_order_form"},
+            {"label": "Att. 3 CA Checklist", "kind": "ca_checklist"},
+            {"label": "Att. 4 Scope & Payment Schedule", "kind": "scope_schedule"},
+            {"label": "Att. 5 QuickBooks Estimate", "kind": "estimate"},
+        ],
+    )
+    db.add(contract_package)
+    db.commit()
+    db.refresh(project)
+
+    # Best-effort, same reasoning as create_project_from_estimate below: the
+    # project is already fully usable even if the Sheet write fails. Catches
+    # httpx.HTTPError too, not just our own exception types — a raw httpx
+    # error (e.g. token refresh hitting an unexpected status, a network
+    # blip) previously escaped this except clause entirely, crashing the
+    # whole request with a 500 *after* the project/estimate/schedule/
+    # contract package were already committed above — so the record really
+    # was created, but the response never confirmed it and the frontend had
+    # no way to know.
+    try:
+        project.sheet_id = google_service.create_sheet(db, f"{customer_name} Reconciliation", parent_folder_id=folder_id)
+        db.commit()
+        db.refresh(project)
+    except (g_oauth.GoogleNotConnected, google_service.GoogleApiError, httpx.HTTPError) as exc:
+        db.rollback()
+        logger.error("Reconciliation Sheet creation failed for imported project %s (%s): %s", project.id, project.name, exc)
+
+    return project
+
+
+def _missing_required_fields(est: schemas.EstimateFetchResult) -> list[str]:
+    missing = []
+    if not (est.customer_name or "").strip():
+        missing.append("Customer name")
+    if not (est.property_address or "").strip():
+        missing.append("Property address")
+    if not est.line_items:
+        missing.append("At least one line item")
+    return missing
+
+
 @router.post("/projects", response_model=schemas.ProjectOut)
 def create_project_from_estimate(payload: schemas.CreateProjectFromEstimate, db: Session = Depends(get_db)):
     est = payload.estimate
+
+    # Prompt for missing info rather than silently creating a broken/unusable
+    # project — these fields are load-bearing for the Scope & Payment
+    # Schedule and Contract Package screens further down the flow.
+    missing = _missing_required_fields(est)
+    if missing:
+        raise HTTPException(422, f"Missing required information before this project can be created: {', '.join(missing)}.")
+
     street = est.property_address.split(",")[0] if est.property_address else ""
     customer_name = est.customer_name or "Customer"
 
-    if g_oauth.get_connection(db):
-        try:
-            drive_folder_id = google_service.create_project_folder(db, customer_name, street)
-            sheet_id = google_service.create_sheet(db, f"{customer_name} Reconciliation", parent_folder_id=drive_folder_id)
-        except (g_oauth.GoogleNotConnected, google_service.GoogleApiError) as exc:
-            raise HTTPException(502, f"Google Drive/Sheets error: {exc}") from exc
-    else:
-        drive_folder_id = mock_integrations.create_drive_folder(customer_name, street)
-        sheet_id = mock_integrations.create_sheet(f"{customer_name} Reconciliation")
-
+    # Database work happens first and commits as one unit — only AFTER that
+    # succeeds do we touch Google Drive/Sheets. Doing it in this order (not
+    # the reverse) means a failure here can never leave an orphaned Drive
+    # folder/Sheet with no project behind it, and a later Drive/Sheets
+    # failure can't lose an already-valid project record either.
     project = models.Project(
         name=f"{customer_name} — {street}" if street else customer_name,
         project_type=payload.project_type,
@@ -90,8 +309,6 @@ def create_project_from_estimate(payload: schemas.CreateProjectFromEstimate, db:
         customer_phone=est.customer_phone or "",
         customer_email=est.customer_email or "",
         property_address=est.property_address or "",
-        drive_folder_id=drive_folder_id,
-        sheet_id=sheet_id,
     )
     db.add(project)
     db.flush()
@@ -123,7 +340,26 @@ def create_project_from_estimate(payload: schemas.CreateProjectFromEstimate, db:
         ],
     )
     db.add(contract_package)
-
     db.commit()
     db.refresh(project)
+
+    # Best-effort: the project/estimate/contract package already exist and
+    # are usable even if this fails, so a Drive/Sheets hiccup here doesn't
+    # lose anything — it just leaves drive_folder_id/sheet_id unset (shown
+    # as "Not yet created" in the UI) for the user to retry later.
+    try:
+        if g_oauth.get_connection(db):
+            drive_folder_id = google_service.create_project_folder(db, customer_name, street, payload.project_type)
+            sheet_id = google_service.create_sheet(db, f"{customer_name} Reconciliation", parent_folder_id=drive_folder_id)
+        else:
+            drive_folder_id = mock_integrations.create_drive_folder(customer_name, street, payload.project_type)
+            sheet_id = mock_integrations.create_sheet(f"{customer_name} Reconciliation")
+        project.drive_folder_id = drive_folder_id
+        project.sheet_id = sheet_id
+        db.commit()
+        db.refresh(project)
+    except (g_oauth.GoogleNotConnected, google_service.GoogleApiError, httpx.HTTPError) as exc:
+        db.rollback()
+        logger.error("Drive folder/Sheet creation failed for project %s (%s): %s — project itself was still created.", project.id, project.name, exc)
+
     return project

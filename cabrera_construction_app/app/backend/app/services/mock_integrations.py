@@ -120,8 +120,8 @@ def _fake_id(*parts: str) -> str:
     return digest
 
 
-def create_drive_folder(customer_name: str, street: str) -> str:
-    return f"drive-folder-{_fake_id('folder', customer_name, street)}"
+def create_drive_folder(customer_name: str, street: str, project_type: str) -> str:
+    return f"drive-folder-{_fake_id('folder', customer_name, street, project_type)}"
 
 
 def create_sheet(name: str) -> str:

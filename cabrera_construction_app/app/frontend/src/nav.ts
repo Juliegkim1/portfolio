@@ -3,6 +3,7 @@ import {
   Building2,
   FileSignature,
   FileSpreadsheet,
+  FolderInput,
   GitPullRequest,
   Landmark,
   Receipt,
@@ -40,6 +41,7 @@ export interface CompanyNavItem {
 export const COMPANY_NAV: CompanyNavItem[] = [
   { label: "Analytics", icon: BarChart3, path: "/analytics" },
   { label: "Operational Reconciliation", icon: Landmark, path: "/operational-reconciliation" },
+  { label: "Import from Drive", icon: FolderInput, path: "/import-from-drive" },
   { label: "Team & Users", icon: Users, path: "/team" },
   { label: "Business Expenses", icon: Wallet, path: "/business-expenses" },
 ];
