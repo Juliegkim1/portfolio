@@ -296,6 +296,7 @@ class ChangeOrderOut(ORMBase):
     is_signed: bool
     previously_signed_contract_price: float
     new_contract_price: float
+    drive_file_id: str | None
 
 
 class ChangeOrderSign(BaseModel):
@@ -317,6 +318,20 @@ class InvoiceOut(ORMBase):
 
 class InvoiceCreate(BaseModel):
     milestone_id: int
+
+
+class QuickBooksInvoiceOut(BaseModel):
+    """A real invoice as QuickBooks has it on file — read-only, shown next
+    to this app's own local Invoice records for comparison, never written
+    by this app. See services/quickbooks_service.list_invoices_for_customer."""
+
+    doc_number: str
+    txn_date: str | None = None
+    due_date: str | None = None
+    total_amt: float
+    balance: float
+    status: Literal["paid", "partial", "open"]
+    email_status: str
 
 
 # --- Receipts ----------------------------------------------------------------

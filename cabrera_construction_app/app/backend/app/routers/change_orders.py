@@ -1,15 +1,20 @@
 from __future__ import annotations
 
 import datetime as dt
+import logging
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..db import get_db
 from ..services import change_orders as co_rules
-from ..services import documents
+from ..services import documents, google_service
+from ..services import google_oauth as g_oauth
 from .projects import get_project_or_404
+
+logger = logging.getLogger("cabrera.change_orders")
 
 router = APIRouter(prefix="/api", tags=["change-orders"])
 
@@ -42,6 +47,7 @@ def _build_out(co: models.ChangeOrder, estimate_total: float, all_cos: list[mode
         is_signed=co_rules.is_signed(co),
         previously_signed_contract_price=prev,
         new_contract_price=new_price,
+        drive_file_id=co.drive_file_id,
     )
 
 
@@ -87,6 +93,23 @@ def send_change_order(co_id: int, db: Session = Depends(get_db)):
     return _build_out(co, co.project.estimate.total, all_cos)
 
 
+def _generate_co_pdf(co: models.ChangeOrder) -> bytes:
+    project = co.project
+    all_cos = sorted(project.change_orders, key=lambda c: c.number)
+    original_price = project.estimate.total
+    previously_signed = co_rules.previously_signed_contract_price(original_price, all_cos, co.number)
+    new_price = co_rules.new_contract_price_for(original_price, all_cos, co)
+    contract_date = project.scope_schedule.contract_date if project.scope_schedule else None
+    return documents.fill_change_order_pages(
+        project=project,
+        change_order=co,
+        contract_date=contract_date,
+        original_price=original_price,
+        previously_signed_price=previously_signed,
+        new_price=new_price,
+    )
+
+
 @router.post("/change-orders/{co_id}/sign", response_model=schemas.ChangeOrderOut)
 def sign_change_order(co_id: int, payload: schemas.ChangeOrderSign, db: Session = Depends(get_db)):
     co = _get_co_or_404(db, co_id)
@@ -111,6 +134,23 @@ def sign_change_order(co_id: int, payload: schemas.ChangeOrderSign, db: Session 
 
     db.commit()
     db.refresh(co)
+
+    # Best-effort, same reasoning as the Contract Package's Approve step:
+    # the change order itself is already fully usable (signed, totals
+    # applied) even if this fails — it just leaves drive_file_id unset for
+    # the user to retry later (re-signing isn't possible once signed, but
+    # re-running this block isn't exposed yet; worth adding if this ever
+    # proves to actually fail in practice).
+    if co.status == "signed" and co.project.drive_folder_id and g_oauth.get_connection(db):
+        try:
+            pdf_bytes = _generate_co_pdf(co)
+            filename = f"CO-{co.number:02d} – {co.project.customer_name} – signed.pdf"
+            co.drive_file_id = google_service.upload_file(db, filename, pdf_bytes, "application/pdf", co.project.drive_folder_id)
+            db.commit()
+        except (g_oauth.GoogleNotConnected, google_service.GoogleApiError, httpx.HTTPError) as exc:
+            db.rollback()
+            logger.error("Signed Change Order PDF upload failed for CO %s (project %s): %s", co.id, co.project_id, exc)
+
     all_cos = sorted(co.project.change_orders, key=lambda c: c.number)
     return _build_out(co, co.project.estimate.total, all_cos)
 
@@ -118,20 +158,7 @@ def sign_change_order(co_id: int, payload: schemas.ChangeOrderSign, db: Session 
 @router.get("/change-orders/{co_id}/pdf")
 def download_change_order_pdf(co_id: int, db: Session = Depends(get_db)):
     co = _get_co_or_404(db, co_id)
-    project = co.project
-    all_cos = sorted(project.change_orders, key=lambda c: c.number)
-    original_price = project.estimate.total
-    previously_signed = co_rules.previously_signed_contract_price(original_price, all_cos, co.number)
-    new_price = co_rules.new_contract_price_for(original_price, all_cos, co)
-    contract_date = project.scope_schedule.contract_date if project.scope_schedule else None
-    pdf_bytes = documents.fill_change_order_pages(
-        project=project,
-        change_order=co,
-        contract_date=contract_date,
-        original_price=original_price,
-        previously_signed_price=previously_signed,
-        new_price=new_price,
-    )
+    pdf_bytes = _generate_co_pdf(co)
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

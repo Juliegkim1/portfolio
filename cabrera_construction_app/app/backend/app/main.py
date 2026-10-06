@@ -77,6 +77,7 @@ def _run_light_migrations() -> None:
         conn.execute(text("ALTER TABLE milestones ALTER COLUMN title TYPE TEXT"))
         conn.execute(text("ALTER TABLE estimate_line_items ALTER COLUMN description TYPE TEXT"))
         conn.execute(text("ALTER TABLE estimates ADD COLUMN IF NOT EXISTS total_override NUMERIC(12,2)"))
+        conn.execute(text("ALTER TABLE change_orders ADD COLUMN IF NOT EXISTS drive_file_id VARCHAR(200)"))
 
 
 @app.on_event("startup")

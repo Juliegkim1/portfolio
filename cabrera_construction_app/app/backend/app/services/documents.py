@@ -46,6 +46,20 @@ def _fmt_date(d) -> str:
     return d.strftime("%m/%d/%Y") if d else ""
 
 
+def _split_street_csz(address: str) -> tuple[str, str]:
+    """Splits "148 Willow Creek Dr, Fremont, CA 94536" into the street line
+    and the city/state/zip line — the template has these as two separate
+    fields (owner_street, owner_csz), and dumping the whole address into
+    owner_street while leaving owner_csz blank was a real bug on signed
+    contracts. property_address is always "street, city, state zip" (see
+    how it's constructed throughout routers/projects.py), so the first
+    comma is the real split point."""
+    if "," not in address:
+        return address, ""
+    street, _, rest = address.partition(",")
+    return street.strip(), rest.strip()
+
+
 def _fill_template(field_values: dict) -> bytes:
     reader = PdfReader(str(TEMPLATE_PATH))
     writer = PdfWriter()
@@ -70,6 +84,7 @@ def fill_contract_pages(*, project, estimate, scope_schedule, contract_package, 
 
     down_payment = float(milestones[0].amount) if milestones else 0.0
     contract_date = scope_schedule.contract_date
+    owner_street, owner_csz = _split_street_csz(project.property_address)
 
     cancel_field, noc_field = _CANCEL_DAY_FIELDS.get(cancel_days, _CANCEL_DAY_FIELDS[3])
 
@@ -77,8 +92,8 @@ def fill_contract_pages(*, project, estimate, scope_schedule, contract_package, 
         "project": project.name,
         "description": contract_package.description,
         "owner_name": project.customer_name,
-        "owner_street": project.property_address,
-        "owner_csz": "",
+        "owner_street": owner_street,
+        "owner_csz": owner_csz,
         "contract_price": _fmt_money(estimate.total),
         "down_payment": _fmt_money(down_payment),
         "finance_charge": _fmt_money(0.0),

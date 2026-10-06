@@ -1,14 +1,16 @@
-"""Real QuickBooks Online estimate lookup (read-only).
+"""Real QuickBooks Online estimate lookup and invoice lookup (both read-only).
 
 Per CLAUDE.md / README "QuickBooks Online" integration notes: the number a
 user types is the estimate's DocNumber, not its internal Id — looked up via
 the query endpoint, accepting "1042", "EST-1042" or "#1042". Customer phone
 isn't on the Estimate itself, so a second call fetches the Customer.
 
-This intentionally does NOT implement invoice creation or the payment
-webhook (write operations) — only the estimate-extraction path that was
-asked for. Those are still in app/services/mock_integrations.py / the
-CLAUDE.md implementation order as a later step.
+This intentionally does NOT implement invoice *creation* or the payment
+webhook (write operations) — this app's own "Send Invoice" button only ever
+creates a local record (see routers/invoices.py), never a real QuickBooks
+invoice. list_invoices_for_customer() below is a genuine API call, but a
+read: it shows what's actually been sent in QuickBooks, for comparison
+against (not replacement of) this app's own invoice records.
 """
 
 from __future__ import annotations
@@ -191,3 +193,59 @@ def lookup_estimate(db: Session, raw_number: str) -> EstimateFetchResult:
         total=total_amt,
         retrieved_at=dt.datetime.now(),
     )
+
+
+def _escape_qb_query_literal(value: str) -> str:
+    """QBO's query language escapes an embedded quote by doubling it (SQL-
+    style), not backslash-escaping — same reasoning as the Drive API query
+    escaping in google_service.py: unescaped, a customer name with an
+    apostrophe (e.g. "O'Brien") breaks the query, and worse, unescaped
+    user-derived text in a query string is an injection vector."""
+    return value.replace("'", "''")
+
+
+def list_invoices_for_customer(db: Session, customer_name: str) -> list[dict]:
+    """Real, read-only: what QuickBooks actually has on file as sent for
+    this customer — shown on the Invoices page next to this app's own
+    local invoice records, not instead of them (this app never writes
+    invoices to QuickBooks — see this module's docstring). Returns []
+    rather than erroring when there's no matching QuickBooks customer,
+    e.g. a Drive-imported project whose customer was never in QuickBooks
+    at all — that's an expected case here, not a failure."""
+    safe_name = _escape_qb_query_literal(customer_name)
+    cust_resp = _request(
+        db, "GET", "/query", params={"query": f"select Id from Customer where DisplayName = '{safe_name}'", "minorversion": "75"}
+    )
+    customers = cust_resp.json().get("QueryResponse", {}).get("Customer", [])
+    if not customers:
+        return []
+    customer_id = customers[0]["Id"]
+
+    inv_resp = _request(
+        db,
+        "GET",
+        "/query",
+        params={
+            "query": f"select * from Invoice where CustomerRef = '{customer_id}' orderby TxnDate desc maxresults 50",
+            "minorversion": "75",
+        },
+    )
+    invoices = inv_resp.json().get("QueryResponse", {}).get("Invoice", [])
+
+    results = []
+    for inv in invoices:
+        total = float(inv.get("TotalAmt", 0))
+        balance = float(inv.get("Balance", 0))
+        status = "paid" if balance <= 0 else ("partial" if balance < total else "open")
+        results.append(
+            {
+                "doc_number": inv.get("DocNumber", ""),
+                "txn_date": inv.get("TxnDate"),
+                "due_date": inv.get("DueDate"),
+                "total_amt": total,
+                "balance": balance,
+                "status": status,
+                "email_status": inv.get("EmailStatus", ""),
+            }
+        )
+    return results

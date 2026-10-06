@@ -3,14 +3,33 @@ import { useState } from "react";
 import { api } from "../api/client";
 import type { ReceiptType } from "../api/types";
 import { useProjectContext } from "../context/ProjectContext";
+import { money } from "../format";
 
-export function AddReceiptDialog({ onClose, defaultProjectId }: { onClose: () => void; defaultProjectId?: number | null }) {
+export function AddReceiptDialog({
+  onClose,
+  defaultProjectId,
+  defaultMilestoneId,
+  milestoneContext,
+}: {
+  onClose: () => void;
+  defaultProjectId?: number | null;
+  // Pre-selects both the project and this milestone, and switches straight
+  // to "Customer Payment" — the entry point for clicking a milestone row
+  // directly on the Reconciliation page, rather than opening a blank
+  // dialog and having to pick project + milestone from scratch.
+  defaultMilestoneId?: number | null;
+  // Shown as a hint when adding a payment against a specific milestone —
+  // helps decide the amount when a payment doesn't exactly match the
+  // milestone (a partial payment, or one that combines two milestones'
+  // worth) rather than forcing an exact-match amount.
+  milestoneContext?: { title: string; amount: number; received: number } | null;
+}) {
   const { projects } = useProjectContext();
   const queryClient = useQueryClient();
 
-  const [type, setType] = useState<ReceiptType>("expense");
+  const [type, setType] = useState<ReceiptType>(defaultMilestoneId ? "payment" : "expense");
   const [projectId, setProjectId] = useState<number | "">(defaultProjectId ?? "");
-  const [milestoneId, setMilestoneId] = useState<number | "">("");
+  const [milestoneId, setMilestoneId] = useState<number | "">(defaultMilestoneId ?? "");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -92,6 +111,14 @@ export function AddReceiptDialog({ onClose, defaultProjectId }: { onClose: () =>
                 </option>
               ))}
             </select>
+          </div>
+        )}
+
+        {milestoneContext && (
+          <div className="muted" style={{ fontSize: 13 }}>
+            {milestoneContext.title}: {money(milestoneContext.received)} received of {money(milestoneContext.amount)} —{" "}
+            {money(milestoneContext.amount - milestoneContext.received)} remaining. This payment doesn't need to match that exactly — partial
+            payments and payments that combine more than one milestone are both fine; add one receipt per payment as it comes in.
           </div>
         )}
 

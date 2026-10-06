@@ -5,6 +5,15 @@ export interface DriveImportableProject {
   name: string;
 }
 
+// A PDF/DOCX found anywhere in the connected Drive account (not scoped to
+// the Projects folder) — for the Estimate Upload screen's "choose from
+// Google Drive" route.
+export interface DriveDocument {
+  id: string;
+  name: string;
+  modified_time: string | null;
+}
+
 export interface Project {
   id: number;
   name: string;
@@ -221,6 +230,7 @@ export interface ChangeOrder {
   is_signed: boolean;
   previously_signed_contract_price: number;
   new_contract_price: number;
+  drive_file_id: string | null;
 }
 
 export type InvoiceStatus = "draft" | "open" | "paid" | "void";
@@ -243,6 +253,19 @@ export interface NextInvoiceDraft {
   date_issued: string;
   due_date: string;
   amount: number;
+}
+
+// Real, read-only: what QuickBooks actually has on file as sent for this
+// project's customer — shown next to, not instead of, this app's own local
+// Invoice records above (this app never writes invoices to QuickBooks).
+export interface QuickBooksInvoice {
+  doc_number: string;
+  txn_date: string | null;
+  due_date: string | null;
+  total_amt: number;
+  balance: number;
+  status: "paid" | "partial" | "open";
+  email_status: string;
 }
 
 export type ReceiptType = "payment" | "expense";

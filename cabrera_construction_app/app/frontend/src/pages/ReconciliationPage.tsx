@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, Plus } from "lucide-react";
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
+import type { ProjectReconciliation } from "../api/types";
 import { AddReceiptDialog } from "../components/AddReceiptDialog";
 import { AppShell } from "../components/AppShell";
 import { ErrorState, LoadingState, StatusTag } from "../components/StateViews";
@@ -12,10 +13,16 @@ import { dateFmt, money } from "../format";
 export function ReconciliationPage() {
   const { projectId: param } = useParams();
   const projectId = Number(param);
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+  // Every project shows here — whether created fresh or imported from
+  // Drive — ProjectContext's list is never filtered by imported_at, so
+  // switching between any of them (not just the one the sidebar happened
+  // to link to) is just a matter of surfacing the picker on this page too.
   const { projects } = useProjectContext();
   const project = projects.find((p) => p.id === projectId);
   const [showAddReceipt, setShowAddReceipt] = useState(false);
+  const [paymentMilestone, setPaymentMilestone] = useState<ProjectReconciliation["milestones"][number] | null>(null);
 
   const query = useQuery({ queryKey: ["project-reconciliation", projectId], queryFn: () => api.reconciliation.project(projectId) });
   const closeMutation = useMutation({
@@ -45,6 +52,20 @@ export function ReconciliationPage() {
 
   return (
     <AppShell title="Reconciliation & Closing" context={project ? `${project.name} · ${project.property_address}` : undefined}>
+      <div className="section">
+        <div className="field" style={{ maxWidth: 360 }}>
+          <label>Project</label>
+          <select className="input" value={projectId} onChange={(e) => navigate(`/projects/${e.target.value}/reconciliation`)}>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+                {p.imported_at ? " (imported)" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       <div className="kpi-grid section">
         <div className="card">
           <div className="card-kicker">Original</div>
@@ -73,7 +94,12 @@ export function ReconciliationPage() {
       </div>
 
       <div className="section">
-        <h3>Milestones</h3>
+        <div className="row-between">
+          <h3>Milestones</h3>
+          <div className="muted" style={{ fontSize: 13 }}>
+            Click a milestone to add a payment against it
+          </div>
+        </div>
         <div className="table-scroll">
           <table className="table">
             <thead>
@@ -88,7 +114,7 @@ export function ReconciliationPage() {
             </thead>
             <tbody>
               {data.milestones.map((m) => (
-                <tr key={m.milestone_id}>
+                <tr key={m.milestone_id} style={{ cursor: "pointer" }} onClick={() => setPaymentMilestone(m)}>
                   <td>{m.title}</td>
                   <td>{money(m.amount)}</td>
                   <td className="muted">{m.invoice_number ?? "—"}</td>
@@ -155,6 +181,14 @@ export function ReconciliationPage() {
       </div>
 
       {showAddReceipt && <AddReceiptDialog onClose={() => setShowAddReceipt(false)} defaultProjectId={projectId} />}
+      {paymentMilestone && (
+        <AddReceiptDialog
+          onClose={() => setPaymentMilestone(null)}
+          defaultProjectId={projectId}
+          defaultMilestoneId={paymentMilestone.milestone_id}
+          milestoneContext={{ title: paymentMilestone.title, amount: paymentMilestone.amount, received: paymentMilestone.received }}
+        />
+      )}
     </AppShell>
   );
 }

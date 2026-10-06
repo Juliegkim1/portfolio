@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { ExternalLink, Plus } from "lucide-react";
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import { AppShell } from "../components/AppShell";
 import { ErrorState, LoadingState, StatusTag } from "../components/StateViews";
@@ -13,7 +13,11 @@ const PARTS = ["scope", "price", "payments", "completion", "materials", "subcont
 export function ChangeOrdersPage() {
   const { projectId: param } = useParams();
   const projectId = Number(param);
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+  // Every project shows here, imported or freshly created — same reasoning
+  // as the Reconciliation/Invoices pages' switchers: this page used to only
+  // ever show whatever project the sidebar link happened to point to.
   const { projects } = useProjectContext();
   const project = projects.find((p) => p.id === projectId);
 
@@ -81,7 +85,17 @@ export function ChangeOrdersPage() {
   return (
     <AppShell title="Change Orders" context={project ? `${project.name} · ${project.property_address}` : undefined}>
       <div className="page-header">
-        <div />
+        <div className="field" style={{ maxWidth: 360 }}>
+          <label>Project</label>
+          <select className="input" value={projectId} onChange={(e) => navigate(`/projects/${e.target.value}/change-orders`)}>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+                {p.imported_at ? " (imported)" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="page-header-actions">
           <button className="btn btn-primary" onClick={() => setShowForm((v) => !v)}>
             <Plus size={14} strokeWidth={1.5} /> New Change Order
@@ -224,6 +238,11 @@ export function ChangeOrdersPage() {
               <a className="btn btn-secondary" style={{ marginTop: "var(--space-3)" }} href={api.changeOrders.pdfUrl(selected.id)} target="_blank" rel="noreferrer">
                 Preview PDF
               </a>
+              {selected.status === "signed" && (
+                <div className="muted icon-text" style={{ fontSize: 13, marginTop: "var(--space-2)" }}>
+                  <ExternalLink size={14} strokeWidth={1.5} /> Filed in Drive: {selected.drive_file_id ?? "Not yet filed"}
+                </div>
+              )}
             </div>
           </div>
 

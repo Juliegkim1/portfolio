@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..db import get_db
+from ..services import quickbooks_oauth as qb_oauth
+from ..services import quickbooks_service
 from .projects import get_project_or_404
 
 router = APIRouter(prefix="/api", tags=["invoices"])
@@ -23,6 +25,23 @@ def list_invoices(project_id: int, db: Session = Depends(get_db)):
     if not project.scope_schedule:
         return []
     return [m.invoice for m in project.scope_schedule.milestones if m.invoice]
+
+
+@router.get("/projects/{project_id}/invoices/quickbooks", response_model=list[schemas.QuickBooksInvoiceOut])
+def list_quickbooks_invoices(project_id: int, db: Session = Depends(get_db)):
+    """Real, read-only pull of what QuickBooks actually has on file as sent
+    for this project's customer — shown alongside (not instead of) this
+    app's own local Invoice records, since this app never writes invoices
+    to QuickBooks itself (see quickbooks_service's module docstring)."""
+    project = get_project_or_404(db, project_id)
+    if not qb_oauth.get_connection(db):
+        raise HTTPException(409, "Connect QuickBooks first.")
+    try:
+        return quickbooks_service.list_invoices_for_customer(db, project.customer_name)
+    except qb_oauth.QuickBooksNotConnected as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except quickbooks_service.QuickBooksApiError as exc:
+        raise HTTPException(502, str(exc)) from exc
 
 
 @router.get("/projects/{project_id}/invoices/next-draft")

@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, Upload, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FolderOpen, Upload, XCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ApiError, api } from "../api/client";
 import type { EstimateFetchResult } from "../api/types";
 import { AppShell } from "../components/AppShell";
+import { DriveFilePickerDialog } from "../components/DriveFilePickerDialog";
 import { useProjectContext } from "../context/ProjectContext";
 import { dateTimeFmt, money } from "../format";
 
@@ -43,6 +44,25 @@ export function EstimateUploadPage() {
     setCustomerPhone(data.customer_phone ?? "");
     setCustomerEmail(data.customer_email ?? "");
   }
+
+  // Debounced so editing the customer/address fields by hand doesn't fire a
+  // Drive lookup on every keystroke — this is advisory (warns before
+  // creating a project that an existing customer folder will get a new
+  // subfolder, per CLAUDE.md's Drive layout), not load-bearing.
+  const [debouncedCustomerName, setDebouncedCustomerName] = useState("");
+  const [debouncedStreet, setDebouncedStreet] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedCustomerName(customerName.trim());
+      setDebouncedStreet((propertyAddress.split(",")[0] || "").trim());
+    }, 400);
+    return () => clearTimeout(t);
+  }, [customerName, propertyAddress]);
+  const driveFolderCheck = useQuery({
+    queryKey: ["check-drive-folder", debouncedCustomerName, debouncedStreet],
+    queryFn: () => api.projects.checkDriveFolder(debouncedCustomerName, debouncedStreet),
+    enabled: !!debouncedCustomerName && !!debouncedStreet,
+  });
 
   const qbStatus = useQuery({ queryKey: ["quickbooks-status"], queryFn: api.quickbooks.status });
   const qbDisconnect = useMutation({
@@ -105,6 +125,17 @@ export function EstimateUploadPage() {
       applyResult(data);
       setUploadedFileName(file.name);
       setNotFound(false);
+    },
+  });
+
+  const [showDrivePicker, setShowDrivePicker] = useState(false);
+  const uploadFromDrive = useMutation({
+    mutationFn: ({ fileId }: { fileId: string; fileName: string }) => api.estimates.uploadFromDrive(fileId),
+    onSuccess: (data, { fileName }) => {
+      applyResult(data);
+      setUploadedFileName(fileName);
+      setNotFound(false);
+      setShowDrivePicker(false);
     },
   });
 
@@ -281,12 +312,35 @@ export function EstimateUploadPage() {
             }}
           />
         </div>
-        {uploadedFileName && !uploadEstimate.isError && <div className="muted">Parsed: {uploadedFileName}</div>}
+        {googleStatus.data?.connected && (
+          <button
+            className="btn btn-secondary btn-block"
+            style={{ marginTop: "var(--space-2)" }}
+            disabled={uploadFromDrive.isPending}
+            onClick={() => setShowDrivePicker(true)}
+          >
+            <FolderOpen size={14} strokeWidth={1.5} /> Or choose from Google Drive
+          </button>
+        )}
+        {uploadedFileName && !uploadEstimate.isError && !uploadFromDrive.isError && <div className="muted">Parsed: {uploadedFileName}</div>}
         {uploadEstimate.isError && (
           <div className="banner icon-text" style={{ marginTop: "var(--space-3)" }}>
             <XCircle size={16} strokeWidth={1.5} />
             {(uploadEstimate.error as Error).message}
           </div>
+        )}
+        {uploadFromDrive.isError && (
+          <div className="banner icon-text" style={{ marginTop: "var(--space-3)" }}>
+            <XCircle size={16} strokeWidth={1.5} />
+            {(uploadFromDrive.error as Error).message}
+          </div>
+        )}
+        {showDrivePicker && (
+          <DriveFilePickerDialog
+            onClose={() => setShowDrivePicker(false)}
+            picking={uploadFromDrive.isPending}
+            onPick={(fileId, fileName) => uploadFromDrive.mutate({ fileId, fileName })}
+          />
         )}
       </div>
 
@@ -339,6 +393,19 @@ export function EstimateUploadPage() {
                 </div>
               ))}
             </div>
+            {/* The section cards above group by a guessed category, which can
+                hide each phase's own amount when every line falls into one
+                section (routine for Cabrera's own QuickBooks estimates,
+                which are one line per payment phase, not a materials/labor
+                breakdown) — list every line item with its own amount too. */}
+            <div className="record-list" style={{ marginTop: "var(--space-3)" }}>
+              {result.line_items.map((li, i) => (
+                <div key={i} className="card row-between" style={{ padding: "var(--space-3)" }}>
+                  <span>{li.description}</span>
+                  <strong>{money(li.qty * li.unit_price)}</strong>
+                </div>
+              ))}
+            </div>
           </div>
 
           {result.total_mismatch && (
@@ -382,6 +449,16 @@ export function EstimateUploadPage() {
               </li>
               <li>A Contract Package draft</li>
             </ul>
+            {driveFolderCheck.data?.exists && (
+              <div className="banner banner-attention icon-text">
+                <AlertTriangle size={16} strokeWidth={1.5} />
+                {customerName} – {propertyAddress?.split(",")[0]} already has a Drive folder
+                {driveFolderCheck.data.existing_project_types.length > 0
+                  ? ` (${driveFolderCheck.data.existing_project_types.join(", ")})`
+                  : ""}
+                . This project will be filed as a new subfolder there, not a separate customer folder.
+              </div>
+            )}
             <div className="form-grid">
               <div className="field">
                 <label>Project Type</label>

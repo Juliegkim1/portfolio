@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, FolderOpen, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, FolderOpen, Plus, Trash2, XCircle } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
-import type { DriveImportPreview } from "../api/types";
+import type { DriveImportPreview, EstimateLineItemIn, MilestonePreview } from "../api/types";
 import { AppShell } from "../components/AppShell";
 import { useProjectContext } from "../context/ProjectContext";
 import { dateTimeFmt, money } from "../format";
@@ -68,6 +68,42 @@ export function DriveImportPage() {
   });
 
   const [expandedHistoryId, setExpandedHistoryId] = useState<number | null>(null);
+
+  // Extraction can come back empty (the folder's documents didn't contain
+  // what Gemini was looking for, or too many files meant something got
+  // deprioritized) — when that happens the user needs to be able to enter
+  // the scope/schedule by hand rather than being stuck unable to import at
+  // all, which is exactly what a read-only preview did before this.
+  function updateLineItem(index: number, patch: Partial<EstimateLineItemIn>) {
+    if (!importPreview) return;
+    setImportPreview({ ...importPreview, line_items: importPreview.line_items.map((li, i) => (i === index ? { ...li, ...patch } : li)) });
+  }
+  function addLineItem() {
+    if (!importPreview) return;
+    setImportPreview({
+      ...importPreview,
+      line_items: [...importPreview.line_items, { section: "additional_work", description: "", qty: 1, unit: "ea", unit_price: 0 }],
+    });
+  }
+  function removeLineItem(index: number) {
+    if (!importPreview) return;
+    setImportPreview({ ...importPreview, line_items: importPreview.line_items.filter((_, i) => i !== index) });
+  }
+  function updateMilestone(index: number, patch: Partial<MilestonePreview>) {
+    if (!importPreview) return;
+    setImportPreview({ ...importPreview, milestones: importPreview.milestones.map((m, i) => (i === index ? { ...m, ...patch } : m)) });
+  }
+  function addMilestone() {
+    if (!importPreview) return;
+    setImportPreview({ ...importPreview, milestones: [...importPreview.milestones, { number: importPreview.milestones.length, title: "", amount: 0 }] });
+  }
+  function removeMilestone(index: number) {
+    if (!importPreview) return;
+    setImportPreview({
+      ...importPreview,
+      milestones: importPreview.milestones.filter((_, i) => i !== index).map((m, i) => ({ ...m, number: i })),
+    });
+  }
 
   return (
     <AppShell title="Import from Drive" context="Bring a project that already existed in Drive before this app into the app">
@@ -176,46 +212,135 @@ export function DriveImportPage() {
               </div>
               <div className="field">
                 <label>Contract Date</label>
-                <input className="input" value={importPreview.contract_date ?? "Not found"} readOnly style={{ opacity: 0.85 }} />
+                <input
+                  className="input"
+                  type="date"
+                  value={importPreview.contract_date ?? ""}
+                  onChange={(e) => setImportPreview({ ...importPreview, contract_date: e.target.value || null })}
+                />
               </div>
               <div className="field">
                 <label>Total</label>
-                <input className="input" value={money(importPreview.total)} readOnly style={{ opacity: 0.85 }} />
+                <input
+                  className="input"
+                  type="number"
+                  step="0.01"
+                  value={importPreview.total}
+                  onChange={(e) => setImportPreview({ ...importPreview, total: Number(e.target.value) })}
+                />
               </div>
             </div>
             <div className="field" style={{ marginTop: "var(--space-3)" }}>
               <label>Project Scope</label>
-              <textarea className="input" readOnly value={importPreview.scope_text} style={{ opacity: 0.85 }} />
+              <textarea
+                className="input"
+                value={importPreview.scope_text}
+                placeholder="Not found in the documents — enter the project scope"
+                onChange={(e) => setImportPreview({ ...importPreview, scope_text: e.target.value })}
+              />
             </div>
             <div className="field" style={{ marginTop: "var(--space-3)" }}>
               <label>Payment Terms</label>
-              <input className="input" readOnly value={importPreview.payment_terms || "Not found"} style={{ opacity: 0.85 }} />
+              <input
+                className="input"
+                value={importPreview.payment_terms}
+                placeholder="Not found — enter the contract's payment terms"
+                onChange={(e) => setImportPreview({ ...importPreview, payment_terms: e.target.value })}
+              />
             </div>
             <div className="field" style={{ marginTop: "var(--space-3)" }}>
               <label>Warranty Terms</label>
-              <input className="input" readOnly value={importPreview.warranty_terms || "Not found"} style={{ opacity: 0.85 }} />
+              <input
+                className="input"
+                value={importPreview.warranty_terms}
+                placeholder="Not found — enter the contract's warranty terms"
+                onChange={(e) => setImportPreview({ ...importPreview, warranty_terms: e.target.value })}
+              />
             </div>
           </div>
 
-          <h3 style={{ marginTop: "var(--space-4)" }}>Payment schedule found ({importPreview.milestones.length} milestones)</h3>
-          {importPreview.milestones.length > 0 ? (
-            <div className="record-list">
-              {importPreview.milestones.map((m) => (
-                <div key={m.number} className="card row-between" style={{ padding: "var(--space-3)" }}>
-                  <span>
-                    {m.number}. {m.title}
-                    {m.due_date ? ` — due ${m.due_date}` : ""}
-                  </span>
-                  <strong>{money(m.amount)}</strong>
-                </div>
-              ))}
-            </div>
-          ) : (
+          <div className="row-between" style={{ marginTop: "var(--space-4)" }}>
+            <h3>Line items ({importPreview.line_items.length})</h3>
+            <button className="btn btn-secondary" onClick={addLineItem}>
+              <Plus size={14} strokeWidth={1.5} /> Add Line Item
+            </button>
+          </div>
+          {importPreview.line_items.length === 0 && (
+            <div className="empty-state">Nothing extracted — add at least one line item by hand to continue.</div>
+          )}
+          <div className="stack">
+            {importPreview.line_items.map((li, i) => (
+              <div key={i} className="card row" style={{ padding: "var(--space-3)", alignItems: "center" }}>
+                <input
+                  className="input"
+                  placeholder="Description"
+                  value={li.description}
+                  onChange={(e) => updateLineItem(i, { description: e.target.value })}
+                  style={{ flex: 3 }}
+                />
+                <input
+                  className="input"
+                  type="number"
+                  step="0.01"
+                  placeholder="Amount"
+                  value={li.qty * li.unit_price}
+                  onChange={(e) => updateLineItem(i, { qty: 1, unit_price: Number(e.target.value) })}
+                  style={{ flex: 1 }}
+                />
+                <button className="btn btn-icon" onClick={() => removeLineItem(i)}>
+                  <Trash2 size={14} strokeWidth={1.5} />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="row-between" style={{ marginTop: "var(--space-4)" }}>
+            <h3>Payment schedule ({importPreview.milestones.length} milestones)</h3>
+            <button className="btn btn-secondary" onClick={addMilestone}>
+              <Plus size={14} strokeWidth={1.5} /> Add Milestone
+            </button>
+          </div>
+          {importPreview.milestones.length === 0 && (
             <div className="empty-state">
               No payment schedule document found — a single milestone for the full contract amount ({money(importPreview.total)}) will
-              be created instead.
+              be created instead, or add the real phases below.
             </div>
           )}
+          <div className="stack">
+            {importPreview.milestones.map((m, i) => (
+              <div key={i} className="card row" style={{ padding: "var(--space-3)", alignItems: "center" }}>
+                <span className="muted" style={{ fontSize: 12 }}>
+                  #{m.number}
+                </span>
+                <input
+                  className="input"
+                  placeholder="Phase description"
+                  value={m.title}
+                  onChange={(e) => updateMilestone(i, { title: e.target.value })}
+                  style={{ flex: 3 }}
+                />
+                <input
+                  className="input"
+                  type="number"
+                  step="0.01"
+                  placeholder="Amount due"
+                  value={m.amount}
+                  onChange={(e) => updateMilestone(i, { amount: Number(e.target.value) })}
+                  style={{ flex: 1 }}
+                />
+                <input
+                  className="input"
+                  type="date"
+                  value={m.due_date ?? ""}
+                  onChange={(e) => updateMilestone(i, { due_date: e.target.value || null })}
+                  style={{ flex: 1 }}
+                />
+                <button className="btn btn-icon" onClick={() => removeMilestone(i)}>
+                  <Trash2 size={14} strokeWidth={1.5} />
+                </button>
+              </div>
+            ))}
+          </div>
 
           <div className="section" style={{ marginTop: "var(--space-4)" }}>
             <div className="form-grid">

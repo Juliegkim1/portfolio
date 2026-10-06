@@ -85,6 +85,27 @@ def list_drive_import_history(db: Session = Depends(get_db)):
     ]
 
 
+@router.get("/projects/check-drive-folder")
+def check_drive_folder(customer_name: str, street: str, db: Session = Depends(get_db)):
+    """Read-only lookup for the Estimate Upload screen: warns before
+    creating a project when a Drive folder for this customer+address
+    already exists, since the new project will land as a sibling subfolder
+    there (see google_service.create_project_folder), not get a folder of
+    its own. Registered ahead of GET /projects/{project_id} for the same
+    route-ordering reason as drive-importable above. Silently reports
+    "no existing folder" rather than erroring when Google isn't connected
+    or the check itself fails — this is advisory, not load-bearing."""
+    if not g_oauth.get_connection(db):
+        return {"exists": False, "existing_project_types": []}
+    try:
+        existing = google_service.find_existing_customer_folder(db, customer_name, street)
+    except (g_oauth.GoogleNotConnected, google_service.GoogleApiError):
+        return {"exists": False, "existing_project_types": []}
+    if not existing:
+        return {"exists": False, "existing_project_types": []}
+    return {"exists": True, "existing_project_types": existing["existing_project_types"]}
+
+
 @router.get("/projects/{project_id}", response_model=schemas.ProjectOut)
 def get_project(project_id: int, db: Session = Depends(get_db)):
     return get_project_or_404(db, project_id)
@@ -172,14 +193,61 @@ async def upload_estimate(file: UploadFile):
         raise HTTPException(422, str(exc)) from exc
 
 
+@router.get("/drive/documents")
+def search_drive_documents(search: str | None = None, db: Session = Depends(get_db)):
+    """PDF/DOCX files anywhere in the connected Drive account, for the
+    Estimate Upload screen's "choose from Google Drive" route — an
+    alternative to uploading from the local computer, not scoped to the
+    Projects folder (the document being picked usually isn't filed under a
+    project yet; that's the whole point of this screen)."""
+    if not g_oauth.get_connection(db):
+        raise HTTPException(409, "Connect Google Workspace first.")
+    try:
+        files = google_service.search_documents(db, search)
+    except (g_oauth.GoogleNotConnected, google_service.GoogleApiError) as exc:
+        raise HTTPException(502, f"Google Drive error: {exc}") from exc
+    return [{"id": f["id"], "name": f["name"], "modified_time": f.get("modifiedTime")} for f in files]
+
+
+@router.post("/estimates/upload-from-drive/{file_id}", response_model=schemas.EstimateFetchResult)
+def upload_estimate_from_drive(file_id: str, db: Session = Depends(get_db)):
+    """Same extraction as /estimates/upload, sourcing the document's bytes
+    from an existing Drive file (picked via /drive/documents) instead of a
+    local file upload."""
+    if not g_oauth.get_connection(db):
+        raise HTTPException(409, "Connect Google Workspace first.")
+    if not settings.gemini_api_key:
+        return mock_integrations.mock_parse_estimate_pdf(file_id)
+    try:
+        filename = google_service.get_file_name(db, file_id)
+        file_bytes = google_service.download_file(db, file_id)
+    except (g_oauth.GoogleNotConnected, google_service.GoogleApiError) as exc:
+        raise HTTPException(502, f"Google Drive error: {exc}") from exc
+    try:
+        return gemini_service.extract_estimate_from_document(file_bytes, filename, "")
+    except gemini_service.GeminiExtractionError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+_PRIORITY_FILENAME_KEYWORDS = ("estimate", "scope", "schedule", "payment", "contract")
+
+
 def _read_folder_documents(db: Session, folder_id: str) -> list[tuple[bytes, str, str]]:
     try:
         files_meta = google_service.list_folder_documents(db, folder_id)
         if not files_meta:
             raise HTTPException(422, "No PDF or DOCX files found in this Drive folder to read.")
-        # Capped at 5 files: keeps the request fast/cheap and covers the
-        # realistic case (contract, estimate, a payment schedule) comfortably.
-        return [(google_service.download_file(db, f["id"]), f["name"], f.get("mimeType", "")) for f in files_meta[:5]]
+        # The Drive API's default order isn't meaningful (not by relevance
+        # or name), so a plain [:N] slice on a folder with more files than
+        # the cap can silently drop the one document that actually has the
+        # estimate/line items — e.g. a folder with several signed/unsigned
+        # contract and change-order copies, where the real estimate happens
+        # to sort last. Rank filenames mentioning what we're actually
+        # looking for first, so those are never the ones dropped.
+        ranked = sorted(files_meta, key=lambda f: 0 if any(kw in f["name"].lower() for kw in _PRIORITY_FILENAME_KEYWORDS) else 1)
+        # Capped at 10 (was 5): keeps the request bounded while covering a
+        # folder with both signed and unsigned copies of several documents.
+        return [(google_service.download_file(db, f["id"]), f["name"], f.get("mimeType", "")) for f in ranked[:10]]
     except (g_oauth.GoogleNotConnected, google_service.GoogleApiError) as exc:
         raise HTTPException(502, f"Google Drive error: {exc}") from exc
 
@@ -392,7 +460,19 @@ def create_project_from_estimate(payload: schemas.CreateProjectFromEstimate, db:
     # generate a generic deposit/final-payment default — a plain QuickBooks
     # lookup never has milestones, so this is skipped there and that default
     # still applies, unchanged.
-    if est.milestones:
+    # Cabrera's own QuickBooks estimates are structured as one line item per
+    # payment phase (per real examples reviewed — "1. Demolition $5,000",
+    # "2. Rough Framing $10,000", ...), not a materials/labor cost
+    # breakdown — so when nothing already extracted a payment schedule
+    # (true of every QuickBooks-sourced estimate, since the QB API has no
+    # payment-schedule concept at all), each line item becomes one
+    # milestone directly rather than falling back to a generic, made-up
+    # deposit/final-walkthrough split that doesn't reflect the real phases.
+    milestone_sources = est.milestones or [
+        schemas.MilestonePreview(number=i, title=li.description, amount=round(li.qty * li.unit_price, 2))
+        for i, li in enumerate(est.line_items)
+    ]
+    if milestone_sources:
         scope_schedule = models.ScopeSchedule(
             project_id=project.id,
             contract_date=est.contract_date,
@@ -401,7 +481,7 @@ def create_project_from_estimate(payload: schemas.CreateProjectFromEstimate, db:
         )
         db.add(scope_schedule)
         db.flush()
-        for m in est.milestones:
+        for m in milestone_sources:
             db.add(models.Milestone(scope_schedule_id=scope_schedule.id, number=m.number, title=m.title, amount=m.amount, due_date=m.due_date))
 
     db.commit()

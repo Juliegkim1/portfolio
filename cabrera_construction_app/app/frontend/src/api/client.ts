@@ -4,6 +4,7 @@ import type {
   BusinessExpensesResponse,
   ChangeOrder,
   ContractPackage,
+  DriveDocument,
   DriveImportableProject,
   DriveImportHistoryItem,
   DriveImportPreview,
@@ -15,6 +16,7 @@ import type {
   NextInvoiceDraft,
   Project,
   ProjectReconciliation,
+  QuickBooksInvoice,
   QuickBooksStatus,
   Receipt,
   ScopeSchedule,
@@ -100,6 +102,10 @@ export const api = {
     createFromEstimate: (projectType: string, estimate: EstimateFetchResult) =>
       post<Project>("/projects", { project_type: projectType, estimate }),
     delete: (id: number) => del(`/projects/${id}`),
+    checkDriveFolder: (customerName: string, street: string) =>
+      get<{ exists: boolean; existing_project_types: string[] }>(
+        `/projects/check-drive-folder?${new URLSearchParams({ customer_name: customerName, street }).toString()}`
+      ),
     driveImportable: () => get<DriveImportableProject[]>("/projects/drive-importable"),
     // Separate pipeline from createFromEstimate above: a folder found here
     // predates this app, so it's previewed (read the contract/estimate/
@@ -121,6 +127,12 @@ export const api = {
     get: (projectId: number) => get<Estimate>(`/projects/${projectId}/estimate`),
     overrideTotal: (projectId: number, totalOverride: number | null) =>
       patch<Estimate>(`/projects/${projectId}/estimate`, { total_override: totalOverride }),
+    uploadFromDrive: (fileId: string) => post<EstimateFetchResult>(`/estimates/upload-from-drive/${encodeURIComponent(fileId)}`),
+  },
+
+  drive: {
+    searchDocuments: (search: string) =>
+      get<DriveDocument[]>(`/drive/documents${search.trim() ? `?search=${encodeURIComponent(search.trim())}` : ""}`),
   },
 
   scopeSchedule: {
@@ -169,6 +181,7 @@ export const api = {
     list: (projectId: number) => get<Invoice[]>(`/projects/${projectId}/invoices`),
     nextDraft: (projectId: number) => get<NextInvoiceDraft | null>(`/projects/${projectId}/invoices/next-draft`),
     create: (milestoneId: number) => post<Invoice>("/invoices", { milestone_id: milestoneId }),
+    quickbooks: (projectId: number) => get<QuickBooksInvoice[]>(`/projects/${projectId}/invoices/quickbooks`),
   },
 
   receipts: {

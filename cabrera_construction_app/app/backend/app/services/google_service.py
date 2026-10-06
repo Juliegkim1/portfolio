@@ -24,6 +24,7 @@ DRIVE_API = "https://www.googleapis.com/drive/v3"
 DRIVE_UPLOAD_API = "https://www.googleapis.com/upload/drive/v3"
 SHEETS_API = "https://sheets.googleapis.com/v4"
 FOLDER_MIME = "application/vnd.google-apps.folder"
+DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
 
 class GoogleApiError(Exception):
@@ -87,12 +88,17 @@ def _escape_query_literal(value: str) -> str:
     return value.replace("\\", "\\\\").replace("'", "\\'")
 
 
-def _find_or_create_subfolder(db: Session, parent_id: str, name: str) -> str:
+def _find_subfolder(db: Session, parent_id: str, name: str) -> str | None:
     query = f"'{parent_id}' in parents and name = '{_escape_query_literal(name)}' and mimeType = '{FOLDER_MIME}' and trashed = false"
     resp = _request(db, "GET", f"{DRIVE_API}/files", params={"q": query, "fields": "files(id,name)"})
     matches = resp.json().get("files", [])
-    if matches:
-        return matches[0]["id"]
+    return matches[0]["id"] if matches else None
+
+
+def _find_or_create_subfolder(db: Session, parent_id: str, name: str) -> str:
+    existing = _find_subfolder(db, parent_id, name)
+    if existing:
+        return existing
     create_resp = _request(db, "POST", f"{DRIVE_API}/files", json={"name": name, "mimeType": FOLDER_MIME, "parents": [parent_id]})
     return create_resp.json()["id"]
 
@@ -109,6 +115,22 @@ def create_project_folder(db: Session, customer_name: str, street: str, project_
     address_name = f"{customer_name} – {street}" if street else customer_name
     address_folder_id = _find_or_create_subfolder(db, projects_root, address_name)
     return _find_or_create_subfolder(db, address_folder_id, project_type)
+
+
+def find_existing_customer_folder(db: Session, customer_name: str, street: str) -> dict | None:
+    """Read-only check (no creation) used to warn the user before creating a
+    project: if a Drive folder for this customer+address already exists,
+    the new project will land as a sibling subfolder next to whatever
+    project types are already there, not get a folder of its own. Returns
+    None when no such folder exists yet (the common case — a brand-new
+    customer)."""
+    projects_root = _get_or_create_projects_root(db)
+    address_name = f"{customer_name} – {street}" if street else customer_name
+    folder_id = _find_subfolder(db, projects_root, address_name)
+    if not folder_id:
+        return None
+    existing_project_types = [f["name"] for f in _list_subfolders(db, folder_id)]
+    return {"folder_id": folder_id, "existing_project_types": existing_project_types}
 
 
 def create_sheet(db: Session, name: str, parent_folder_id: str | None = None) -> str:
@@ -186,3 +208,23 @@ def upload_file(db: Session, name: str, content: bytes, mime_type: str, parent_f
     }
     resp = _request(db, "POST", f"{DRIVE_UPLOAD_API}/files", params={"uploadType": "multipart"}, files=files)
     return resp.json()["id"]
+
+
+def search_documents(db: Session, search: str | None = None, limit: int = 20) -> list[dict]:
+    """PDF/DOCX files anywhere in the connected account's Drive (not scoped
+    to the Projects folder) — the "choose from Google Drive" route on the
+    Estimate Upload screen, for picking an estimate/job-notes document that
+    lives elsewhere in Drive rather than requiring a local download first.
+    `search` filters by filename (Drive's `contains` operator); omitted,
+    returns the most recently modified matching files."""
+    mime_clause = f"(mimeType = '{DOCX_MIME}' or mimeType = 'application/pdf')"
+    query = f"{mime_clause} and trashed = false"
+    if search and search.strip():
+        query += f" and name contains '{_escape_query_literal(search.strip())}'"
+    resp = _request(
+        db,
+        "GET",
+        f"{DRIVE_API}/files",
+        params={"q": query, "fields": "files(id,name,mimeType,modifiedTime)", "orderBy": "modifiedTime desc", "pageSize": limit},
+    )
+    return resp.json().get("files", [])

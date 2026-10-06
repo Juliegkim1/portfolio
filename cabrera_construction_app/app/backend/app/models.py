@@ -209,6 +209,9 @@ class ChangeOrder(Base):
     uses_subcontractors: Mapped[bool] = mapped_column(default=False)
     status: Mapped[str] = mapped_column(String(20), default="draft")  # draft|out_for_signature|signed
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, server_default=func.now())
+    # Set once fully signed (both parties) and uploaded to the project's
+    # Drive folder — see sign_change_order in routers/change_orders.py.
+    drive_file_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     project: Mapped[Project] = relationship(back_populates="change_orders")
 
