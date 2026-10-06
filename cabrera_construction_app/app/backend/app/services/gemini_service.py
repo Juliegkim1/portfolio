@@ -28,11 +28,16 @@ logger = logging.getLogger("cabrera.gemini")
 
 _API_URL_TEMPLATE = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
-_MAX_RETRIES = 3  # 4 attempts total
-_RETRY_BASE_DELAY_SECONDS = 2.0  # doubles each attempt (2s, 4s, 8s) — a 503
-# "high demand" error is usually a minutes-scale spike, not instantly over,
-# so a flat 2s delay between all attempts barely helps; backing off further
-# each time gives it more room to clear without the user having to retry by hand.
+_MAX_RETRIES = 2  # 3 attempts total
+_RETRY_BASE_DELAY_SECONDS = 2.0  # doubles each attempt (2s, 4s)
+# This runs synchronously inside a user-facing request (someone's waiting on
+# the Import from Drive or Estimate Upload screen) behind a load balancer
+# with its own timeout — a 503 "high demand" spike can genuinely last
+# minutes, and no amount of retrying here will out-wait that while someone
+# is staring at a spinner. So this budget is deliberately bounded (a few
+# retries, not enough to out-wait a real outage) rather than maximized:
+# fail with a clear "try again" error in under a couple of minutes, not
+# hang for six. See also the per-call `timeout` below.
 
 
 def _post_with_retry(url: str, json_body: dict, timeout: float) -> httpx.Response:
@@ -138,21 +143,37 @@ def _extract_docx_text(docx_bytes: bytes) -> str:
 
 _EXTRACTION_PROMPT = (
     "This document is either a QuickBooks-exported estimate or informal notes written by a "
-    "general contractor (sometimes handwritten-style, with typos, shorthand, or mixed "
-    "English/Spanish — extract the intent, don't fix or judge the writing). Extract a "
-    "structured project estimate from it.\n\n"
+    "general contractor (sometimes handwritten-style, with typos, OCR garbling, shorthand, or "
+    "mixed English/Spanish). Extract a structured project estimate from it.\n\n"
     "Rules:\n"
     "- Only extract information actually present in the document. Leave a field empty "
     "(or omit it) rather than inventing a customer name, address, phone, or email that "
     "isn't there.\n"
-    "- Every priced item becomes one line item. Classify each into exactly one section: "
-    "'demolition' (demo/removal/prep work), 'materials', 'labor', or 'additional_work' "
-    "(anything else, e.g. a line that's clearly a flat task without materials/labor split "
-    "out). If a line bundles labor and material together with one price, you can put it "
-    "under whichever section best matches its main description, or 'additional_work' if "
-    "ambiguous.\n"
-    "- qty defaults to 1 and unit to 'ea' when the document doesn't break those out "
-    "separately — put the full line price in unit_price in that case.\n"
+    "- line_items are the COST BREAKDOWN (materials/labor/demo), not the payment schedule. "
+    "Every priced item in a materials/labor/demo breakdown becomes one line item. Classify "
+    "each into exactly one section: 'demolition' (demo/removal/prep work), 'materials', "
+    "'labor', or 'additional_work' (anything else, e.g. a line that's clearly a flat task "
+    "without materials/labor split out). If a line bundles labor and material together with "
+    "one price, you can put it under whichever section best matches its main description, or "
+    "'additional_work' if ambiguous. qty defaults to 1 and unit to 'ea' when the document "
+    "doesn't break those out separately — put the full line price in unit_price in that case.\n"
+    "- milestones are the PAYMENT SCHEDULE (how/when the client pays), a SEPARATE concept from "
+    "line_items — a document can have a cost breakdown, a payment schedule, both, or neither. "
+    "If the document lists a deposit followed by numbered payments/phases with their own "
+    "dollar amounts (e.g. 'Deposit $1,000', '1. Payment $5,000 — demo and prep', '2. Rough "
+    "framing $10,000', ...), extract EACH as its own milestone: number starts at 0 for the "
+    "deposit and increases in the order listed; amount is that line's dollar figure; title is "
+    "a SHORT (under 60 characters) clean label for the phase — unlike payment_terms/"
+    "warranty_terms below, DO NOT copy garbled source text verbatim here: normalize obvious "
+    "typos/OCR errors into standard construction terms (e.g. 'FRAIMING RAUGE' -> 'Rough "
+    "Framing', 'INSOLATION AND DRAYWALL' -> 'Insulation & Drywall', 'PLUMBING AND ELECTRICAL "
+    "RAUGE' -> 'Plumbing & Electrical Rough-In'). Do not also duplicate these payment-schedule "
+    "entries as line_items — they're the same money described two different ways (what for vs. "
+    "when paid), not two different costs.\n"
+    "- contract_date, payment_terms, warranty_terms: contract metadata if present. Copy "
+    "payment_terms/warranty_terms language close to verbatim (these are terms, not prose to "
+    "polish) — garbled OCR text is fine here since it's quoting the source, unlike milestone "
+    "titles above which need to be scannable at a glance.\n"
     "- scope_text: write a clear 2-4 sentence project scope description covering the "
     "actual work, as if for a contract's project description field — not a copy of the "
     "line items verbatim.\n"
@@ -170,6 +191,9 @@ _EXTRACTION_SCHEMA = {
         "property_address": {"type": "STRING"},
         "scope_text": {"type": "STRING"},
         "total": {"type": "NUMBER"},
+        "contract_date": {"type": "STRING", "description": "ISO date (YYYY-MM-DD) if known"},
+        "payment_terms": {"type": "STRING"},
+        "warranty_terms": {"type": "STRING"},
         "line_items": {
             "type": "ARRAY",
             "items": {
@@ -184,9 +208,41 @@ _EXTRACTION_SCHEMA = {
                 "required": ["section", "description", "qty", "unit", "unit_price"],
             },
         },
+        "milestones": {
+            "type": "ARRAY",
+            "items": {
+                "type": "OBJECT",
+                "properties": {
+                    "number": {"type": "INTEGER"},
+                    "title": {"type": "STRING"},
+                    "amount": {"type": "NUMBER"},
+                    "due_date": {"type": "STRING", "description": "ISO date (YYYY-MM-DD) if known"},
+                },
+                "required": ["number", "title", "amount"],
+            },
+        },
     },
     "required": ["found", "line_items"],
 }
+
+
+def _total_mismatch_message(declared_total: float | None, line_item_subtotal: float) -> str | None:
+    """Flags when the document's own stated total disagrees with the sum of
+    the line items extracted from it — e.g. a missed/misread line item,
+    rather than silently picking one number over the other and hoping it's
+    right. Tolerance: the greater of $1 or 1%, to absorb rounding noise
+    without flagging genuinely matching totals."""
+    if declared_total is None or not line_item_subtotal:
+        return None
+    diff = declared_total - line_item_subtotal
+    if abs(diff) <= max(1.0, line_item_subtotal * 0.01):
+        return None
+    direction = "higher than" if diff > 0 else "lower than"
+    return (
+        f"The document states a total of ${declared_total:,.2f}, which is ${abs(diff):,.2f} "
+        f"{direction} the ${line_item_subtotal:,.2f} sum of its extracted line items — double-check "
+        f"before creating the project."
+    )
 
 
 _DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -238,7 +294,11 @@ def extract_estimate_from_documents(files: list[tuple[bytes, str, str]]) -> Esti
                 "contents": [{"parts": [*document_parts, {"text": prompt}]}],
                 "generationConfig": {"responseMimeType": "application/json", "responseSchema": _EXTRACTION_SCHEMA},
             },
-            timeout=90,
+            # Bounded well under the load balancer's request timeout even in
+            # the worst case (this + retry backoff) — someone's waiting on
+            # this screen, so failing clearly in ~2 min beats hanging in a
+            # spinner for six.
+            timeout=45,
         )
         if resp.status_code >= 400:
             message = _extract_error_message(resp)
@@ -252,14 +312,33 @@ def extract_estimate_from_documents(files: list[tuple[bytes, str, str]]) -> Esti
         logger.error("Gemini document extraction failed for %s: %s", names, exc)
         raise GeminiExtractionError(f"Could not extract an estimate from this: {exc}") from exc
 
-    if not data.get("found") or not data.get("line_items"):
+    # A document can be purely a payment schedule with no itemized cost
+    # breakdown (common for informal job notes like "Deposit $1,000, 1.
+    # Framing $10,000, ...") — that's still usable, so only reject when
+    # NEITHER a cost breakdown nor a payment schedule was found.
+    if not data.get("found") or (not data.get("line_items") and not data.get("milestones")):
         raise GeminiExtractionError("Gemini couldn't find usable estimate/job information in these documents.")
 
-    line_items = [EstimateLineItemIn(**li) for li in data["line_items"]]
-    subtotal = round(sum(li.qty * li.unit_price for li in line_items), 2)
-    total = float(data.get("total") or subtotal)
+    milestones = [
+        MilestonePreview(number=m["number"], title=m["title"], amount=m["amount"], due_date=_parse_date(m.get("due_date")))
+        for m in data.get("milestones", [])
+    ]
+    line_items = [EstimateLineItemIn(**li) for li in data.get("line_items", [])]
+    declared_total = data.get("total")
+    if line_items:
+        subtotal = round(sum(li.qty * li.unit_price for li in line_items), 2)
+    else:
+        # No cost breakdown — the payment schedule's own total stands in for
+        # it, and a single synthetic line item keeps the project-creation
+        # screen's "at least one line item" check satisfied without
+        # pretending there's a cost breakdown that was never extracted.
+        subtotal = round(sum(m.amount for m in milestones), 2)
+        total_for_synthetic = float(declared_total or subtotal)
+        line_items = [EstimateLineItemIn(section="additional_work", description="Project total (from payment schedule)", qty=1, unit="ea", unit_price=total_for_synthetic)]
+    total = float(declared_total or subtotal)
+    mismatch = _total_mismatch_message(declared_total, subtotal)
 
-    logger.info("Gemini extracted estimate from %s: %d line items, total=%.2f", names, len(line_items), total)
+    logger.info("Gemini extracted estimate from %s: %d line items, %d milestones, total=%.2f", names, len(line_items), len(milestones), total)
     return EstimateFetchResult(
         found=True,
         estimate_number=f"DOC-{files[0][1][:20]}",
@@ -273,6 +352,11 @@ def extract_estimate_from_documents(files: list[tuple[bytes, str, str]]) -> Esti
         discount=0.0,
         line_items=line_items,
         total=total,
+        milestones=milestones,
+        contract_date=_parse_date(data.get("contract_date")),
+        payment_terms=data.get("payment_terms") or None,
+        warranty_terms=data.get("warranty_terms") or None,
+        total_mismatch=mismatch,
     )
 
 
@@ -289,10 +373,15 @@ _HISTORICAL_PROMPT = (
     "aren't there.\n"
     "- Every priced item on the estimate becomes one line item, classified into 'demolition', "
     "'materials', 'labor', or 'additional_work' as best fits.\n"
-    "- milestones: the payment schedule's line items (e.g. 'Deposit', 'Rough-in complete', "
-    "'Final payment'), each with its own amount. number starts at 0 for the initial "
-    "deposit/payment and increases in the order they appear. If no payment schedule document is "
-    "present, leave milestones empty rather than guessing a schedule.\n"
+    "- milestones are the PAYMENT SCHEDULE (how/when the client pays), a SEPARATE concept from "
+    "line_items (what the work costs) — don't duplicate payment-schedule entries as line_items. "
+    "Each milestone (e.g. 'Deposit', 'Rough-in complete', 'Final payment') gets its own amount. "
+    "number starts at 0 for the initial deposit/payment and increases in the order they appear. "
+    "If no payment schedule document is present, leave milestones empty rather than guessing a "
+    "schedule. title is a SHORT (under 60 characters) clean label — normalize obvious typos/OCR "
+    "errors into standard construction terms (e.g. 'FRAIMING RAUGE' -> 'Rough Framing') rather "
+    "than copying garbled source text verbatim; that's for payment_terms/warranty_terms below, "
+    "not milestone titles, which need to be scannable at a glance.\n"
     "- contract_date: the date the contract was signed, if stated.\n"
     "- payment_terms / warranty_terms: copy the actual contract language if present, don't "
     "paraphrase.\n"
@@ -375,7 +464,11 @@ def extract_historical_project(folder_id: str, folder_name: str, files: list[tup
                 "contents": [{"parts": [*document_parts, {"text": _HISTORICAL_PROMPT}]}],
                 "generationConfig": {"responseMimeType": "application/json", "responseSchema": _HISTORICAL_SCHEMA},
             },
-            timeout=90,
+            # Bounded well under the load balancer's request timeout even in
+            # the worst case (this + retry backoff) — someone's waiting on
+            # this screen, so failing clearly in ~2 min beats hanging in a
+            # spinner for six.
+            timeout=45,
         )
         if resp.status_code >= 400:
             message = _extract_error_message(resp)
@@ -393,12 +486,14 @@ def extract_historical_project(folder_id: str, folder_name: str, files: list[tup
         raise GeminiExtractionError("Gemini couldn't find usable project information in this Drive folder.")
 
     line_items = [EstimateLineItemIn(**li) for li in data.get("line_items", [])]
-    subtotal = round(sum(li.qty * li.unit_price for li in line_items), 2)
-    total = float(data.get("total") or subtotal)
     milestones = [
         MilestonePreview(number=m["number"], title=m["title"], amount=m["amount"], due_date=_parse_date(m.get("due_date")))
         for m in data.get("milestones", [])
     ]
+    declared_total = data.get("total")
+    subtotal = round(sum(li.qty * li.unit_price for li in line_items), 2) or round(sum(m.amount for m in milestones), 2)
+    total = float(declared_total or subtotal)
+    mismatch = _total_mismatch_message(declared_total, subtotal)
 
     logger.info("Gemini extracted historical project from %s: %d line items, %d milestones, total=%.2f", names, len(line_items), len(milestones), total)
     return DriveImportPreview(
@@ -415,4 +510,5 @@ def extract_historical_project(folder_id: str, folder_name: str, files: list[tup
         payment_terms=data.get("payment_terms") or "",
         warranty_terms=data.get("warranty_terms") or "",
         milestones=milestones,
+        total_mismatch=mismatch,
     )

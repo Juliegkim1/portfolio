@@ -63,12 +63,20 @@ for router in (
 
 def _run_light_migrations() -> None:
     """There's no Alembic wired up in this project — create_all() above only
-    creates missing tables, it never alters an existing one, so a new
-    column on a table that's already live in production (like this one)
-    needs a manual ALTER. IF NOT EXISTS makes it safe to run on every
-    startup rather than needing a one-off migration step."""
+    creates missing tables, it never alters an existing one, so a column
+    that's already live in production (like these) needs a manual ALTER.
+    Every statement here is safe to run on every startup: ADD COLUMN IF NOT
+    EXISTS is a no-op once applied, and widening an already-TEXT column to
+    TEXT again is likewise a no-op — neither ever touches existing data."""
     with engine.begin() as conn:
         conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS imported_at TIMESTAMP"))
+        # These three were varchar(200)/(300) — too narrow for text read
+        # verbatim from a real signed contract (Drive import), which caused
+        # every real-document import to fail outright with a DB DataError.
+        conn.execute(text("ALTER TABLE scope_schedules ALTER COLUMN payment_terms TYPE TEXT"))
+        conn.execute(text("ALTER TABLE milestones ALTER COLUMN title TYPE TEXT"))
+        conn.execute(text("ALTER TABLE estimate_line_items ALTER COLUMN description TYPE TEXT"))
+        conn.execute(text("ALTER TABLE estimates ADD COLUMN IF NOT EXISTS total_override NUMERIC(12,2)"))
 
 
 @app.on_event("startup")

@@ -99,6 +99,7 @@ export const api = {
     get: (id: number) => get<Project>(`/projects/${id}`),
     createFromEstimate: (projectType: string, estimate: EstimateFetchResult) =>
       post<Project>("/projects", { project_type: projectType, estimate }),
+    delete: (id: number) => del(`/projects/${id}`),
     driveImportable: () => get<DriveImportableProject[]>("/projects/drive-importable"),
     // Separate pipeline from createFromEstimate above: a folder found here
     // predates this app, so it's previewed (read the contract/estimate/
@@ -118,6 +119,8 @@ export const api = {
       return request<EstimateFetchResult>("/estimates/upload", { method: "POST", body: form });
     },
     get: (projectId: number) => get<Estimate>(`/projects/${projectId}/estimate`),
+    overrideTotal: (projectId: number, totalOverride: number | null) =>
+      patch<Estimate>(`/projects/${projectId}/estimate`, { total_override: totalOverride }),
   },
 
   scopeSchedule: {

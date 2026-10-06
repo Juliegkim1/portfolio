@@ -341,6 +341,34 @@ export function EstimateUploadPage() {
             </div>
           </div>
 
+          {result.total_mismatch && (
+            <div className="section">
+              <div className="banner banner-attention icon-text">
+                <AlertTriangle size={16} strokeWidth={1.5} />
+                {result.total_mismatch}
+              </div>
+            </div>
+          )}
+
+          {result.milestones && result.milestones.length > 0 && (
+            <div className="section">
+              <h3>Payment schedule found ({result.milestones.length} milestones)</h3>
+              <div className="muted" style={{ fontSize: 13, marginBottom: "var(--space-2)" }}>
+                This will pre-fill the Project Scope & Payment Schedule step instead of its usual deposit/final-payment default.
+              </div>
+              <div className="record-list">
+                {result.milestones.map((m) => (
+                  <div key={m.number} className="card row-between" style={{ padding: "var(--space-3)" }}>
+                    <span>
+                      {m.number}. {m.title}
+                    </span>
+                    <strong>{money(m.amount)}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="section">
             <h3>The app creates</h3>
             <ul style={{ margin: 0, paddingLeft: 20, fontSize: 14 }}>
@@ -348,7 +376,10 @@ export function EstimateUploadPage() {
               <li>
                 A Google Drive folder: Projects › {customerName || "—"} – {propertyAddress?.split(",")[0] || "—"} › {projectType || "—"}
               </li>
-              <li>A Project Scope & Payment Schedule</li>
+              <li>
+                A Project Scope & Payment Schedule
+                {result.milestones && result.milestones.length > 0 ? ` — pre-filled with the ${result.milestones.length} milestones above` : ""}
+              </li>
               <li>A Contract Package draft</li>
             </ul>
             <div className="form-grid">

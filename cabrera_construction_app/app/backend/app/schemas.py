@@ -75,6 +75,7 @@ class EstimateOut(ORMBase):
     scope_text: str
     subtotal: float
     total: float
+    total_override: float | None
     line_items: list[EstimateLineItemOut]
 
 
@@ -97,11 +98,31 @@ class EstimateFetchResult(BaseModel):
     line_items: list[EstimateLineItemIn] = []
     total: float | None = None
     retrieved_at: dt.datetime | None = None
+    # Populated when the source document also contains a payment schedule
+    # (a deposit plus numbered milestones) — PDF/DOCX uploads only; a plain
+    # QuickBooks estimate lookup has no payment-schedule concept, so this
+    # stays empty there and the Scope & Payment Schedule page falls back to
+    # its generic two-milestone default, same as before.
+    milestones: list[MilestonePreview] = []
+    contract_date: dt.date | None = None
+    payment_terms: str | None = None
+    warranty_terms: str | None = None
+    # Set only when the document's own stated total disagrees with the sum
+    # of the line items extracted from it — surfaced as a warning banner
+    # rather than silently trusting one number over the other.
+    total_mismatch: str | None = None
 
 
 class CreateProjectFromEstimate(BaseModel):
     project_type: str
     estimate: EstimateFetchResult
+
+
+class EstimateAmountOverride(BaseModel):
+    # None clears the override and reverts to the computed total (subtotal
+    # + tax + permit fees - discount) — lets an owner fix a total that was
+    # extracted or entered wrong without having to re-edit every line item.
+    total_override: float | None = None
 
 
 # --- Drive import (pre-existing, already-signed projects) ------------------
@@ -133,6 +154,7 @@ class DriveImportPreview(BaseModel):
     payment_terms: str = ""
     warranty_terms: str = ""
     milestones: list[MilestonePreview] = []
+    total_mismatch: str | None = None
 
 
 class DriveImportConfirm(BaseModel):

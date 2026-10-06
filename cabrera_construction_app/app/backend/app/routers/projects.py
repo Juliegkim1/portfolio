@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from .. import models, schemas
 from ..config import settings
 from ..db import get_db
-from ..services import gemini_service, google_service, mock_integrations
+from ..services import documents, gemini_service, google_service, mock_integrations
 from ..services import google_oauth as g_oauth
 from ..services import quickbooks_oauth as qb_oauth
 from ..services import quickbooks_service
@@ -88,6 +88,52 @@ def list_drive_import_history(db: Session = Depends(get_db)):
 @router.get("/projects/{project_id}", response_model=schemas.ProjectOut)
 def get_project(project_id: int, db: Session = Depends(get_db)):
     return get_project_or_404(db, project_id)
+
+
+@router.delete("/projects/{project_id}", status_code=204)
+def delete_project(project_id: int, db: Session = Depends(get_db)):
+    """Deletes a project and everything that only exists because of it
+    (estimate, scope schedule, milestones, their invoices, contract
+    package, change orders — all cascade via the model relationships).
+    Receipts and bank transactions are NOT deleted — they represent real
+    money that moved; they're unlinked back to "unassigned" instead, same
+    as reassigning a receipt's project to None elsewhere in the app."""
+    project = get_project_or_404(db, project_id)
+
+    if project.scope_schedule:
+        milestone_ids = [m.id for m in project.scope_schedule.milestones]
+        if milestone_ids:
+            db.query(models.Invoice).filter(models.Invoice.milestone_id.in_(milestone_ids)).delete(synchronize_session=False)
+
+    receipt_ids = [r.id for r in project.receipts]
+    if receipt_ids:
+        db.query(models.BankTransaction).filter(models.BankTransaction.receipt_id.in_(receipt_ids)).update(
+            {"receipt_id": None, "match_status": "unmatched"}, synchronize_session=False
+        )
+        db.query(models.Receipt).filter(models.Receipt.project_id == project_id).update(
+            {"project_id": None, "needs_project": True}, synchronize_session=False
+        )
+    db.query(models.BankTransaction).filter(models.BankTransaction.project_id == project_id).update(
+        {"project_id": None}, synchronize_session=False
+    )
+
+    db.delete(project)
+    db.commit()
+
+
+@router.patch("/projects/{project_id}/estimate", response_model=schemas.EstimateOut)
+def override_estimate_total(project_id: int, payload: schemas.EstimateAmountOverride, db: Session = Depends(get_db)):
+    """Manually correct the contract total when extraction got it wrong —
+    e.g. a missed line item — without having to re-enter every line item.
+    Passing total_override: null clears the correction and reverts to the
+    computed total (subtotal + tax + permit fees - discount)."""
+    project = get_project_or_404(db, project_id)
+    if not project.estimate:
+        raise HTTPException(404, "No estimate for this project yet")
+    project.estimate.total_override = payload.total_override
+    db.commit()
+    db.refresh(project.estimate)
+    return project.estimate
 
 
 @router.post("/estimates/fetch", response_model=schemas.EstimateFetchResult)
@@ -340,6 +386,24 @@ def create_project_from_estimate(payload: schemas.CreateProjectFromEstimate, db:
         ],
     )
     db.add(contract_package)
+
+    # If the source document had its own payment schedule, pre-populate the
+    # Scope & Payment Schedule step with it instead of leaving that screen to
+    # generate a generic deposit/final-payment default — a plain QuickBooks
+    # lookup never has milestones, so this is skipped there and that default
+    # still applies, unchanged.
+    if est.milestones:
+        scope_schedule = models.ScopeSchedule(
+            project_id=project.id,
+            contract_date=est.contract_date,
+            payment_terms=est.payment_terms or "Due on milestone completion, net 15",
+            warranty_terms=est.warranty_terms or "",
+        )
+        db.add(scope_schedule)
+        db.flush()
+        for m in est.milestones:
+            db.add(models.Milestone(scope_schedule_id=scope_schedule.id, number=m.number, title=m.title, amount=m.amount, due_date=m.due_date))
+
     db.commit()
     db.refresh(project)
 
@@ -361,5 +425,22 @@ def create_project_from_estimate(payload: schemas.CreateProjectFromEstimate, db:
     except (g_oauth.GoogleNotConnected, google_service.GoogleApiError, httpx.HTTPError) as exc:
         db.rollback()
         logger.error("Drive folder/Sheet creation failed for project %s (%s): %s — project itself was still created.", project.id, project.name, exc)
+
+    # Also best-effort, same reasoning: the estimate itself (Att. 5 in the
+    # Contract Package's attachments list, set above) wasn't actually a real
+    # file anywhere until Approve generated the full combined PDF — so right
+    # after creating a project, the Drive folder had nothing in it but the
+    # Reconciliation Sheet. Generating and filing just the Estimate page now
+    # means there's a real, openable file backing that attachment from the
+    # start, not only once the contract is drafted and approved.
+    if project.drive_folder_id and g_oauth.get_connection(db):
+        try:
+            pdf_bytes = documents.generate_estimate_pdf(project=project, estimate=project.estimate)
+            filename = f"{customer_name} – Estimate {project.estimate.estimate_number}.pdf"
+            project.estimate.source_file_id = google_service.upload_file(db, filename, pdf_bytes, "application/pdf", project.drive_folder_id)
+            db.commit()
+        except (g_oauth.GoogleNotConnected, google_service.GoogleApiError, httpx.HTTPError) as exc:
+            db.rollback()
+            logger.error("Estimate PDF upload failed for project %s (%s): %s — project itself was still created.", project.id, project.name, exc)
 
     return project

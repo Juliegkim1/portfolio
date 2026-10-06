@@ -132,6 +132,12 @@ export function DriveImportPage() {
             This project already existed before this app — importing it keeps its contract marked signed and goes straight to
             Reconciliation, not the new-project wizard.
           </div>
+          {importPreview.total_mismatch && (
+            <div className="banner banner-attention icon-text">
+              <AlertTriangle size={16} strokeWidth={1.5} />
+              {importPreview.total_mismatch}
+            </div>
+          )}
           <div className="card" style={{ padding: "var(--space-4)" }}>
             <div className="form-grid">
               <div className="field">

@@ -45,6 +45,7 @@ export interface Estimate {
   scope_text: string;
   subtotal: number;
   total: number;
+  total_override: number | null;
   line_items: EstimateLineItem[];
 }
 
@@ -71,6 +72,15 @@ export interface EstimateFetchResult {
   line_items: EstimateLineItemIn[];
   total?: number | null;
   retrieved_at?: string | null;
+  // Populated when the source document also contains a payment schedule
+  // (PDF/DOCX uploads only — a QuickBooks lookup has no payment-schedule
+  // concept). When present, project creation pre-fills the Scope & Payment
+  // Schedule step with these instead of its generic two-milestone default.
+  milestones?: MilestonePreview[];
+  contract_date?: string | null;
+  payment_terms?: string | null;
+  warranty_terms?: string | null;
+  total_mismatch?: string | null;
 }
 
 // Importing a pre-existing Drive project folder is a separate pipeline from
@@ -98,6 +108,7 @@ export interface DriveImportPreview {
   payment_terms: string;
   warranty_terms: string;
   milestones: MilestonePreview[];
+  total_mismatch?: string | null;
 }
 
 // One row of the Import from Drive page's history — what was actually

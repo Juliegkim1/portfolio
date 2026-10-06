@@ -77,6 +77,10 @@ class Estimate(Base):
     discount: Mapped[float] = _money()
     source_file_id: Mapped[str | None] = mapped_column(String(200), nullable=True)  # uploaded fallback PDF
     scope_text: Mapped[str] = mapped_column(Text, default="")
+    # Manual correction when the computed total (below) is wrong — e.g. an
+    # extraction that missed or misread a line item. None means "use the
+    # computed total"; this never changes the line items themselves.
+    total_override: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
 
     project: Mapped[Project] = relationship(back_populates="estimate")
     line_items: Mapped[list["EstimateLineItem"]] = relationship(back_populates="estimate", cascade="all, delete-orphan")
@@ -87,6 +91,8 @@ class Estimate(Base):
 
     @property
     def total(self) -> float:
+        if self.total_override is not None:
+            return float(self.total_override)
         # Numeric columns come back as Decimal after a DB round-trip but stay plain
         # floats on a freshly-constructed, not-yet-refreshed object — coerce explicitly.
         return round(self.subtotal + self.subtotal * float(self.tax_rate) + float(self.permit_fees) - float(self.discount), 2)
@@ -98,7 +104,11 @@ class EstimateLineItem(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     estimate_id: Mapped[int] = mapped_column(ForeignKey("estimates.id"))
     section: Mapped[str] = mapped_column(String(40))  # demolition|materials|labor|additional_work
-    description: Mapped[str] = mapped_column(String(300))
+    # Text, not String(n): a short QuickBooks line item fits either way, but a
+    # line item read verbatim from a real signed contract (Drive import) can
+    # run much longer — this column must not reject it (see CLAUDE.md /
+    # payment_terms below for the production incident this caused there).
+    description: Mapped[str] = mapped_column(Text)
     qty: Mapped[float] = mapped_column(default=1)
     unit: Mapped[str] = mapped_column(String(20), default="ea")
     unit_price: Mapped[float] = _money()
@@ -117,7 +127,12 @@ class ScopeSchedule(Base):
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"))
     contract_date: Mapped[dt.date | None] = mapped_column(Date, nullable=True)
     contract_type: Mapped[str] = mapped_column(String(100), default="Fixed-Price Agreement")
-    payment_terms: Mapped[str] = mapped_column(String(200), default="Due on milestone completion, net 15")
+    # Text, not String(200): a Drive-imported real contract's payment-terms
+    # clause is copied verbatim (see gemini_service's historical-extraction
+    # prompt) and routinely runs past 200 chars — a varchar(200) cap here
+    # caused every real-document import to fail with a DB DataError, since
+    # it's a hard INSERT failure, not something any amount of retrying fixes.
+    payment_terms: Mapped[str] = mapped_column(Text, default="Due on milestone completion, net 15")
     warranty_terms: Mapped[str] = mapped_column(Text, default="")
     drive_file_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
@@ -132,7 +147,10 @@ class Milestone(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     scope_schedule_id: Mapped[int] = mapped_column(ForeignKey("scope_schedules.id"))
     number: Mapped[int] = mapped_column()  # 0 = initial deposit
-    title: Mapped[str] = mapped_column(String(200))
+    # Text, not String(200) — same reasoning as ScopeSchedule.payment_terms
+    # above: a milestone title read from a real signed contract's payment
+    # schedule can be a full descriptive clause, not a short label.
+    title: Mapped[str] = mapped_column(Text)
     deliverable: Mapped[str] = mapped_column(Text, default="")
     scope_verification: Mapped[str] = mapped_column(Text, default="")
     due_date: Mapped[dt.date | None] = mapped_column(Date, nullable=True)
