@@ -495,6 +495,18 @@ def extract_historical_project(folder_id: str, folder_name: str, files: list[tup
     total = float(declared_total or subtotal)
     mismatch = _total_mismatch_message(declared_total, subtotal)
 
+    # A real Scope & Payment Schedule document (like Cabrera's own template)
+    # is milestone-centric with no separate per-item cost breakdown at
+    # all — every dollar figure lives on the milestones, not a materials/
+    # labor line-item table. Leaving line_items empty in that case used to
+    # block import entirely ("at least one line item" was required to
+    # confirm) even though the project's financials were already complete
+    # via milestones — synthesize one summary line item from the total so
+    # that requirement is satisfied honestly rather than needing the user
+    # to invent cost-breakdown data that was never in the source documents.
+    if not line_items and milestones:
+        line_items = [EstimateLineItemIn(section="additional_work", description="Project total (from payment schedule)", qty=1, unit="ea", unit_price=total)]
+
     logger.info("Gemini extracted historical project from %s: %d line items, %d milestones, total=%.2f", names, len(line_items), len(milestones), total)
     return DriveImportPreview(
         folder_id=folder_id,

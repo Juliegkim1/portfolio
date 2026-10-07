@@ -314,6 +314,12 @@ class InvoiceOut(ORMBase):
     due_date: dt.date | None
     status: Literal["draft", "open", "paid", "void"]
     qb_invoice_id: str | None
+    # Computed from actual payment receipts tied to this invoice's
+    # milestone (routers/invoices.py) — `status` above is a static field
+    # that's effectively always "open" once created, so it's not useful for
+    # showing real payment progress; this is.
+    amount_received: float = 0
+    payment_status: Literal["invoiced", "partial", "paid"] = "invoiced"
 
 
 class InvoiceCreate(BaseModel):

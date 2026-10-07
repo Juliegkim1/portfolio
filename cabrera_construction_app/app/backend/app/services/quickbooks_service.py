@@ -204,6 +204,33 @@ def _escape_qb_query_literal(value: str) -> str:
     return value.replace("'", "''")
 
 
+def lookup_invoice(db: Session, raw_number: str) -> dict | None:
+    """A single QuickBooks invoice by its DocNumber (the number printed on
+    the invoice / shown to the customer, not QB's internal Id) — the
+    Invoices page's "look up a specific QuickBooks invoice" entry point,
+    mirroring how estimate lookup works by DocNumber. Returns None rather
+    than raising when nothing matches, same as lookup_estimate."""
+    doc_number = _normalize_doc_number(raw_number)
+    query = f"select * from Invoice where DocNumber = '{_escape_qb_query_literal(doc_number)}'"
+    resp = _request(db, "GET", "/query", params={"query": query, "minorversion": "75"})
+    invoices = resp.json().get("QueryResponse", {}).get("Invoice", [])
+    if len(invoices) != 1:
+        return None
+    inv = invoices[0]
+    total = float(inv.get("TotalAmt", 0))
+    balance = float(inv.get("Balance", 0))
+    status = "paid" if balance <= 0 else ("partial" if balance < total else "open")
+    return {
+        "doc_number": inv.get("DocNumber", doc_number),
+        "txn_date": inv.get("TxnDate"),
+        "due_date": inv.get("DueDate"),
+        "total_amt": total,
+        "balance": balance,
+        "status": status,
+        "email_status": inv.get("EmailStatus", ""),
+    }
+
+
 def list_invoices_for_customer(db: Session, customer_name: str) -> list[dict]:
     """Real, read-only: what QuickBooks actually has on file as sent for
     this customer — shown on the Invoices page next to this app's own

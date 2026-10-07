@@ -19,6 +19,23 @@ logger = logging.getLogger("cabrera.projects")
 
 router = APIRouter(prefix="/api", tags=["projects"])
 
+# Cabrera's standard warranty policy — the default for every new Scope &
+# Payment Schedule (editable per project afterward), so the generated
+# Contract Package PDF never ships with a blank warranty section just
+# because extraction didn't find one or nobody visited the Scope & Payment
+# Schedule screen to fill it in before Approve.
+_DEFAULT_WARRANTY_TERMS = (
+    "1-YEAR WORKMANSHIP WARRANTY POLICY (CSLB COMPLIANT)\n\n"
+    "- Guarantee Duration: Cabrera Construction warrants all labor and installation craftsmanship "
+    "for one (1) full year from the final completion date.\n"
+    "- Scope of Coverage: Covers defects in installation workmanship, tile setting/grout, cabinet "
+    "mounting, drywall finishing, and MEP connections.\n"
+    "- Client Material Exclusions: Manufacturer defects on client-supplied items (cabinets, tiles, "
+    "fixtures, appliances) are governed by manufacturer warranties.\n"
+    "- Service Notice & Remedy: Contractor shall inspect and remedy any verified workmanship defect "
+    "within 14 business days of written notification."
+)
+
 
 def get_project_or_404(db: Session, project_id: int) -> models.Project:
     project = db.get(models.Project, project_id)
@@ -339,7 +356,7 @@ def confirm_drive_import(folder_id: str, payload: schemas.DriveImportConfirm, db
         project_id=project.id,
         contract_date=preview.contract_date,
         payment_terms=preview.payment_terms or "Due on milestone completion, net 15",
-        warranty_terms=preview.warranty_terms,
+        warranty_terms=preview.warranty_terms.strip() or _DEFAULT_WARRANTY_TERMS,
     )
     db.add(scope_schedule)
     db.flush()
@@ -477,7 +494,7 @@ def create_project_from_estimate(payload: schemas.CreateProjectFromEstimate, db:
             project_id=project.id,
             contract_date=est.contract_date,
             payment_terms=est.payment_terms or "Due on milestone completion, net 15",
-            warranty_terms=est.warranty_terms or "",
+            warranty_terms=(est.warranty_terms or "").strip() or _DEFAULT_WARRANTY_TERMS,
         )
         db.add(scope_schedule)
         db.flush()

@@ -1,6 +1,8 @@
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+// See Sidebar.tsx for why this is a module import, not a public/ path string.
+import cabreraLogo from "../assets/cabrera-logo.png";
 import { useProjectContext } from "../context/ProjectContext";
 import { COMPANY_NAV, WORKFLOW_STEPS } from "../nav";
 
@@ -12,7 +14,7 @@ export function MobileHeader({ title }: { title: string }) {
     <>
       <header className="mobile-header mobile-only">
         <div className="mobile-header-logo">
-          <img src="/cabrera-logo.png" alt="Cabrera Construction" style={{ height: 20 }} />
+          <img src={cabreraLogo} alt="Cabrera Construction" style={{ height: 20 }} />
           <span style={{ fontSize: 15 }}>{title}</span>
         </div>
         <button className="btn btn-icon" aria-label="Menu" onClick={() => setMenuOpen(true)}>

@@ -235,6 +235,8 @@ export interface ChangeOrder {
 
 export type InvoiceStatus = "draft" | "open" | "paid" | "void";
 
+export type InvoicePaymentStatus = "invoiced" | "partial" | "paid";
+
 export interface Invoice {
   id: number;
   milestone_id: number;
@@ -244,6 +246,10 @@ export interface Invoice {
   due_date: string | null;
   status: InvoiceStatus;
   qb_invoice_id: string | null;
+  // Computed from actual payment receipts, not the static `status` above
+  // (which is effectively always "open" once an invoice is created).
+  amount_received: number;
+  payment_status: InvoicePaymentStatus;
 }
 
 export interface NextInvoiceDraft {

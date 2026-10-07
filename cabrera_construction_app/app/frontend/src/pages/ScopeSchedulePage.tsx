@@ -9,6 +9,18 @@ import { ErrorState, LoadingState } from "../components/StateViews";
 import { useProjectContext } from "../context/ProjectContext";
 import { money } from "../format";
 
+// Cabrera's standard warranty policy — always the starting point for a new
+// Scope & Payment Schedule (the user can still edit it per project), rather
+// than leaving this legally-relevant section blank by default. A saved or
+// Drive-imported schedule's own warranty_terms (e.g. from an already-signed
+// real contract) still takes priority — see the effect below.
+const DEFAULT_WARRANTY_TERMS = `1-YEAR WORKMANSHIP WARRANTY POLICY (CSLB COMPLIANT)
+
+• Guarantee Duration: Cabrera Construction warrants all labor and installation craftsmanship for one (1) full year from the final completion date.
+• Scope of Coverage: Covers defects in installation workmanship, tile setting/grout, cabinet mounting, drywall finishing, and MEP connections.
+• Client Material Exclusions: Manufacturer defects on client-supplied items (cabinets, tiles, fixtures, appliances) are governed by manufacturer warranties.
+• Service Notice & Remedy: Contractor shall inspect and remedy any verified workmanship defect within 14 business days of written notification.`;
+
 export function ScopeSchedulePage() {
   const { projectId: projectIdParam } = useParams();
   const projectId = Number(projectIdParam);
@@ -30,7 +42,7 @@ export function ScopeSchedulePage() {
 
   const [contractDate, setContractDate] = useState<string>("");
   const [paymentTerms, setPaymentTerms] = useState("Due on milestone completion, net 15");
-  const [warrantyTerms, setWarrantyTerms] = useState("");
+  const [warrantyTerms, setWarrantyTerms] = useState(DEFAULT_WARRANTY_TERMS);
   const [milestones, setMilestones] = useState<MilestoneIn[]>([]);
   const [materials, setMaterials] = useState<Partial<MaterialItem>[]>([]);
   const [initialized, setInitialized] = useState(false);
@@ -40,7 +52,7 @@ export function ScopeSchedulePage() {
     if (scopeQuery.data) {
       setContractDate(scopeQuery.data.contract_date ?? "");
       setPaymentTerms(scopeQuery.data.payment_terms);
-      setWarrantyTerms(scopeQuery.data.warranty_terms);
+      setWarrantyTerms(scopeQuery.data.warranty_terms.trim() || DEFAULT_WARRANTY_TERMS);
       setMilestones(scopeQuery.data.milestones.map((m) => ({ ...m })));
       setMaterials(scopeQuery.data.materials.map((m) => ({ ...m })));
       setInitialized(true);

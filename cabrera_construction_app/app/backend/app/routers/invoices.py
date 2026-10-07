@@ -19,12 +19,41 @@ router = APIRouter(prefix="/api", tags=["invoices"])
 # is invoiced its `amount` already reflects every signed change — no separate addition here.
 
 
+def _payment_status(amount: float, received: float) -> str:
+    if received >= amount - 0.01:  # cent-level rounding tolerance, same as milestones.py
+        return "paid"
+    if received > 0:
+        return "partial"
+    return "invoiced"
+
+
 @router.get("/projects/{project_id}/invoices", response_model=list[schemas.InvoiceOut])
 def list_invoices(project_id: int, db: Session = Depends(get_db)):
     project = get_project_or_404(db, project_id)
     if not project.scope_schedule:
         return []
-    return [m.invoice for m in project.scope_schedule.milestones if m.invoice]
+    invoices = [m.invoice for m in project.scope_schedule.milestones if m.invoice]
+    out = []
+    for inv in invoices:
+        received = sum(
+            float(r.amount)
+            for r in db.query(models.Receipt).filter(models.Receipt.milestone_id == inv.milestone_id, models.Receipt.type == "payment")
+        )
+        out.append(
+            schemas.InvoiceOut(
+                id=inv.id,
+                milestone_id=inv.milestone_id,
+                invoice_number=inv.invoice_number,
+                amount=float(inv.amount),
+                date_issued=inv.date_issued,
+                due_date=inv.due_date,
+                status=inv.status,
+                qb_invoice_id=inv.qb_invoice_id,
+                amount_received=round(received, 2),
+                payment_status=_payment_status(float(inv.amount), received),
+            )
+        )
+    return out
 
 
 @router.get("/projects/{project_id}/invoices/quickbooks", response_model=list[schemas.QuickBooksInvoiceOut])
@@ -42,6 +71,26 @@ def list_quickbooks_invoices(project_id: int, db: Session = Depends(get_db)):
         raise HTTPException(409, str(exc)) from exc
     except quickbooks_service.QuickBooksApiError as exc:
         raise HTTPException(502, str(exc)) from exc
+
+
+@router.get("/invoices/quickbooks/lookup", response_model=schemas.QuickBooksInvoiceOut)
+def lookup_quickbooks_invoice(number: str, db: Session = Depends(get_db)):
+    """Look up one specific QuickBooks invoice by its DocNumber — the
+    Invoices page's "look up a QuickBooks invoice number" entry point,
+    separate from the per-customer list above (that one shows everything
+    found for a customer; this looks up one invoice number directly, the
+    same way estimate lookup works)."""
+    if not qb_oauth.get_connection(db):
+        raise HTTPException(409, "Connect QuickBooks first.")
+    try:
+        result = quickbooks_service.lookup_invoice(db, number)
+    except qb_oauth.QuickBooksNotConnected as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except quickbooks_service.QuickBooksApiError as exc:
+        raise HTTPException(502, str(exc)) from exc
+    if not result:
+        raise HTTPException(404, f"No QuickBooks invoice found with number \"{number}\".")
+    return result
 
 
 @router.get("/projects/{project_id}/invoices/next-draft")

@@ -128,15 +128,33 @@ export function AnalyticsPage() {
       <div className="section">
         <h3>Revenue Projection</h3>
         <div className="card" style={{ padding: "var(--space-4)" }}>
-          <div className="row" style={{ alignItems: "flex-end", height: 120, gap: 6 }}>
-            {data.revenue_projection.map((r) => (
-              <div key={r.month} title={`${r.month}: ${money(r.collected + r.scheduled)}`} style={{ flex: 1, display: "flex", flexDirection: "column-reverse", height: "100%" }}>
-                <div style={{ height: `${(r.collected / maxRevenueMonth) * 100}%`, background: "var(--color-accent-700)" }} />
-                <div style={{ height: `${(r.scheduled / maxRevenueMonth) * 100}%`, background: "var(--color-accent-300)" }} />
-              </div>
-            ))}
+          <div className="row" style={{ alignItems: "flex-end", height: 160, gap: 6 }}>
+            {data.revenue_projection.map((r) => {
+              const total = r.collected + r.scheduled;
+              return (
+                <div
+                  key={r.month}
+                  title={`${r.month}: ${money(total)} (${money(r.collected)} collected, ${money(r.scheduled)} scheduled)`}
+                  style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", height: "100%" }}
+                >
+                  <div
+                    className="muted"
+                    style={{ fontSize: 10, marginBottom: 2, writingMode: total > 0 ? "vertical-rl" : undefined, whiteSpace: "nowrap" }}
+                  >
+                    {total > 0 ? money(total) : ""}
+                  </div>
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column-reverse", width: "100%" }}>
+                    <div style={{ height: `${(r.collected / maxRevenueMonth) * 100}%`, background: "var(--color-accent-700)" }} />
+                    <div style={{ height: `${(r.scheduled / maxRevenueMonth) * 100}%`, background: "var(--color-accent-300)" }} />
+                  </div>
+                  <div className="muted" style={{ fontSize: 10, marginTop: 4, whiteSpace: "nowrap" }}>
+                    {r.month}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <div className="row" style={{ fontSize: 11, marginTop: 6 }}>
+          <div className="row" style={{ fontSize: 11, marginTop: "var(--space-2)" }}>
             <span className="icon-text">
               <span style={{ width: 10, height: 10, background: "var(--color-accent-700)", display: "inline-block" }} /> Collected
             </span>

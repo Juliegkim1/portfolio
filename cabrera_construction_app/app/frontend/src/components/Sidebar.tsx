@@ -1,4 +1,12 @@
 import { useLocation, useNavigate } from "react-router-dom";
+// Imported (not referenced via a public/ path string) so Vite bundles it
+// through its asset pipeline into dist/assets/ — the only path the backend
+// actually serves statically in production (see main.py's StaticFiles
+// mount, which only covers /assets/*). A string path like "/cabrera-
+// logo.png" silently 404s there (falls through to the SPA catch-all,
+// which returns index.html instead of the image) even though it works
+// fine in local dev, where Vite's dev server serves public/ at the root.
+import cabreraLogo from "../assets/cabrera-logo.png";
 import { useProjectContext } from "../context/ProjectContext";
 import { COMPANY_NAV, WORKFLOW_STEPS } from "../nav";
 
@@ -10,7 +18,7 @@ export function Sidebar() {
   return (
     <aside className="sidebar desktop-only">
       <div className="sidebar-logo">
-        <img src="/cabrera-logo.png" alt="Cabrera Construction" />
+        <img src={cabreraLogo} alt="Cabrera Construction" />
       </div>
 
       <nav className="sidebar-nav">

@@ -1,10 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { api } from "../api/client";
+import { ApiError, api } from "../api/client";
+import type { InvoicePaymentStatus } from "../api/types";
 import { AppShell } from "../components/AppShell";
 import { EmptyState, LoadingState, StatusTag } from "../components/StateViews";
 import { useProjectContext } from "../context/ProjectContext";
 import { dateFmt, money } from "../format";
+
+const PAYMENT_STATUS_LABEL: Record<InvoicePaymentStatus, string> = {
+  invoiced: "Invoiced — not yet paid",
+  partial: "Partially Paid",
+  paid: "Fully Paid",
+};
 
 export function InvoicesPage() {
   const { projectId: param } = useParams();
@@ -33,6 +41,9 @@ export function InvoicesPage() {
       queryClient.invalidateQueries({ queryKey: ["scope-schedule", projectId] });
     },
   });
+
+  const [lookupNumber, setLookupNumber] = useState("");
+  const lookupInvoice = useMutation({ mutationFn: (number: string) => api.invoices.quickbooksLookup(number) });
 
   return (
     <AppShell title="Invoices" context={project ? `${project.name} · ${project.property_address}` : undefined}>
@@ -122,6 +133,7 @@ export function InvoicesPage() {
                   <th>Issued</th>
                   <th>Due</th>
                   <th>Amount</th>
+                  <th>Received</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -132,14 +144,17 @@ export function InvoicesPage() {
                     <td>{dateFmt(inv.date_issued)}</td>
                     <td>{dateFmt(inv.due_date)}</td>
                     <td>{money(inv.amount)}</td>
+                    <td>{money(inv.amount_received)}</td>
                     <td>
-                      <StatusTag status={inv.status} />
+                      <span className={`tag ${inv.payment_status === "paid" ? "tag-accent" : inv.payment_status === "partial" ? "tag-neutral" : "tag-outline"}`}>
+                        {PAYMENT_STATUS_LABEL[inv.payment_status]}
+                      </span>
                     </td>
                   </tr>
                 ))}
                 {invoicesQuery.data?.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="empty-state">
+                    <td colSpan={6} className="empty-state">
                       No invoices yet.
                     </td>
                   </tr>
@@ -155,6 +170,42 @@ export function InvoicesPage() {
         <div className="muted" style={{ fontSize: 13, marginBottom: "var(--space-2)" }}>
           Real, read-only — what QuickBooks actually has on file as sent for {project?.customer_name || "this customer"}.
         </div>
+        {qbStatus.data?.connected && (
+          <div className="row" style={{ marginBottom: "var(--space-3)" }}>
+            <input
+              className="input"
+              style={{ maxWidth: 220 }}
+              placeholder="Look up invoice # (e.g. 1021)"
+              value={lookupNumber}
+              onChange={(e) => setLookupNumber(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && lookupNumber && lookupInvoice.mutate(lookupNumber)}
+            />
+            <button className="btn btn-secondary" disabled={!lookupNumber || lookupInvoice.isPending} onClick={() => lookupInvoice.mutate(lookupNumber)}>
+              Look Up
+            </button>
+          </div>
+        )}
+        {lookupInvoice.isError && (
+          <div className="banner icon-text" style={{ marginBottom: "var(--space-3)" }}>
+            {lookupInvoice.error instanceof ApiError ? lookupInvoice.error.message : "Could not look up that invoice."}
+          </div>
+        )}
+        {lookupInvoice.data && (
+          <div className="card row-between" style={{ padding: "var(--space-3)", marginBottom: "var(--space-3)" }}>
+            <div className="icon-text">
+              <strong>{lookupInvoice.data.doc_number}</strong>
+              <span className="muted">
+                {dateFmt(lookupInvoice.data.txn_date)} → due {dateFmt(lookupInvoice.data.due_date)}
+              </span>
+            </div>
+            <div className="icon-text">
+              <span>
+                {money(lookupInvoice.data.total_amt)} total, {money(lookupInvoice.data.balance)} balance
+              </span>
+              <StatusTag status={lookupInvoice.data.status} />
+            </div>
+          </div>
+        )}
         {!qbStatus.data?.connected ? (
           <div className="banner icon-text">
             <a href={api.quickbooks.connectUrl}>Connect QuickBooks</a> to see invoices actually sent for this customer.

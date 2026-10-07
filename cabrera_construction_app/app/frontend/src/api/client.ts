@@ -182,6 +182,7 @@ export const api = {
     nextDraft: (projectId: number) => get<NextInvoiceDraft | null>(`/projects/${projectId}/invoices/next-draft`),
     create: (milestoneId: number) => post<Invoice>("/invoices", { milestone_id: milestoneId }),
     quickbooks: (projectId: number) => get<QuickBooksInvoice[]>(`/projects/${projectId}/invoices/quickbooks`),
+    quickbooksLookup: (number: string) => get<QuickBooksInvoice>(`/invoices/quickbooks/lookup?number=${encodeURIComponent(number)}`),
   },
 
   receipts: {
