@@ -184,6 +184,7 @@ _SECTION_STYLE = ParagraphStyle("CabreraSection", parent=_STYLES["Heading2"], fo
 _BODY_STYLE = ParagraphStyle("CabreraBody", parent=_STYLES["Normal"], fontName="Helvetica", fontSize=9.5, leading=13, textColor=colors.black)
 _CELL_STYLE = ParagraphStyle("CabreraCell", parent=_BODY_STYLE, fontSize=9, leading=12)
 _CELL_STYLE_RIGHT = ParagraphStyle("CabreraCellRight", parent=_CELL_STYLE, alignment=TA_CENTER)
+_LABEL_STYLE = ParagraphStyle("CabreraLabel", parent=_CELL_STYLE, fontName="Helvetica-Bold")
 
 _TABLE_GRID = colors.HexColor("#b8b8b8")
 _TABLE_HEADER_TEXT = colors.black
@@ -212,38 +213,109 @@ def _cell(text: str, style: ParagraphStyle = _CELL_STYLE) -> Paragraph:
     return Paragraph(text if text else "&nbsp;", style)
 
 
-def generate_scope_schedule_pdf(*, project, scope_schedule, contract_total: float) -> bytes:
+def generate_scope_schedule_pdf(*, project, estimate, scope_schedule, contract_total: float) -> bytes:
+    """Mirrors every field shown on the Scope & Payment Schedule screen, laid
+    out to match templates/Project Scope & Payment Schedule - Template.xlsx
+    section-for-section: project details strip, a summary strip (contract
+    price / deposit / schedule total / deposit cap / milestone range),
+    the milestone table (now including each phase's own Detailed Scope &
+    Verification, same as the on-screen field), a totals row, the material
+    matrix, the warranty section, and a signature acknowledgment block."""
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf, pagesize=letter,
-        leftMargin=0.85 * inch, rightMargin=0.85 * inch, topMargin=0.85 * inch, bottomMargin=0.75 * inch,
+        leftMargin=0.7 * inch, rightMargin=0.7 * inch, topMargin=0.85 * inch, bottomMargin=0.75 * inch,
     )
-    story: list = _letterhead(
-        "Project Scope & Payment Schedule",
-        project,
-        f"Client: {project.customer_name} &nbsp;&nbsp;|&nbsp;&nbsp; Contract Total: {_fmt_money(contract_total)}",
-    )
+    story: list = _letterhead("Project Scope & Payment Schedule", project, "Cabrera Construction — Lic. #1135927")
 
+    milestones = sorted(scope_schedule.milestones, key=lambda m: m.number)
+    schedule_total = sum(float(m.amount) for m in milestones)
+    balanced = abs(schedule_total - contract_total) < 0.01
+    deposit_amount = next((float(m.amount) for m in milestones if m.number == 0), 0.0)
+    deposit_cap = min(1000.0, contract_total * 0.10)
+    deposit_ok = deposit_amount <= deposit_cap + 0.01
+
+    # --- Project details -----------------------------------------------
+    story.append(Paragraph("Project Details", _SECTION_STYLE))
+    details_rows = [
+        [_cell("Job Site:", _LABEL_STYLE), _cell(project.property_address or "—"),
+         _cell("Contract Date:", _LABEL_STYLE), _cell(_fmt_date(scope_schedule.contract_date) or "—")],
+        [_cell("Contract Type:", _LABEL_STYLE), _cell(scope_schedule.contract_type or "—"),
+         _cell("Estimate #:", _LABEL_STYLE), _cell(estimate.estimate_number or "—")],
+    ]
+    details_table = Table(details_rows, colWidths=[0.9 * inch, 2.4 * inch, 1.0 * inch, 2.4 * inch])
+    details_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+    ]))
+    story.append(details_table)
+    if estimate.scope_text:
+        story.append(Spacer(1, 4))
+        story.append(_cell("Project Scope:", _LABEL_STYLE))
+        story.append(Paragraph(estimate.scope_text, _BODY_STYLE))
+
+    # --- Summary strip ---------------------------------------------------
+    numbers = [m.number for m in milestones]
+    milestone_range = f"Milestones {min(numbers)} through {max(numbers)}" if numbers else "—"
+    summary_header = ["TOTAL CONTRACT PRICE", "INITIAL DEPOSIT", "SCHEDULE TOTAL", "DEPOSIT CAP", "MILESTONES"]
+    summary_values = [_fmt_money(contract_total), _fmt_money(deposit_amount), _fmt_money(schedule_total), _fmt_money(deposit_cap), milestone_range]
+    summary_table = Table(
+        [[_cell(h, _LABEL_STYLE) for h in summary_header], [_cell(v) for v in summary_values]],
+        colWidths=[1.45 * inch, 1.2 * inch, 1.2 * inch, 1.1 * inch, 1.65 * inch],
+    )
+    summary_table.setStyle(TableStyle([
+        ("LINEBELOW", (0, 0), (-1, 0), 0.75, colors.black),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    story.append(Spacer(1, 10))
+    story.append(summary_table)
+    story.append(Spacer(1, 4))
+    balance_note = "Balanced — 100% of contract" if balanced else (
+        f"{'Over' if schedule_total > contract_total else 'Short'} by {_fmt_money(abs(schedule_total - contract_total))}"
+    )
+    deposit_note = f"Deposit within $1,000 / 10% limit (cap {_fmt_money(deposit_cap)})" if deposit_ok else f"Deposit exceeds the {_fmt_money(deposit_cap)} cap"
+    story.append(Paragraph(f"{balance_note} &nbsp;&nbsp;|&nbsp;&nbsp; {deposit_note}", _BODY_STYLE))
+
+    # --- Milestone table (with each phase's Detailed Scope & Verification) ---
     story.append(Paragraph("Payment Milestones", _SECTION_STYLE))
-    milestone_rows = [["#", "Milestone", "Amount", "%", "Due Date", "Status"]]
-    for m in sorted(scope_schedule.milestones, key=lambda m: m.number):
+    # Header cells MUST be wrapped in _cell() (a Paragraph), same as every
+    # body cell below — a plain string in a reportlab Table cell doesn't
+    # wrap to the column width the way a Paragraph does, so these long
+    # headers would overflow into neighboring columns and overlap.
+    milestone_header = ["#", "Milestone Title & Deliverable", "Detailed Scope of Work & Verification Criteria", "Amount", "%", "Due Date", "Status"]
+    milestone_rows = [[_cell(h, _LABEL_STYLE) for h in milestone_header]]
+    for m in milestones:
         pct = (float(m.amount) / contract_total * 100) if contract_total else 0
         milestone_rows.append([
             _cell(str(m.number)),
             _cell(m.title),
+            _cell(m.scope_verification or "—"),
             _cell(_fmt_money(float(m.amount))),
             _cell(f"{pct:.1f}%"),
             _cell(_fmt_date(m.due_date) or "—"),
             _cell((m.status or "").replace("_", " ").title()),
         ])
-    milestone_table = Table(milestone_rows, colWidths=[0.3 * inch, 2.5 * inch, 0.95 * inch, 0.55 * inch, 0.95 * inch, 0.85 * inch], repeatRows=1)
+    total_pct = (schedule_total / contract_total * 100) if contract_total else 0
+    milestone_rows.append([
+        "", _cell("TOTAL CONTRACT", _LABEL_STYLE), "",
+        _cell(_fmt_money(schedule_total), _LABEL_STYLE), _cell(f"{total_pct:.1f}%", _LABEL_STYLE), "",
+        _cell("Balanced (100%)" if balanced else "Not Balanced", _LABEL_STYLE),
+    ])
+    milestone_table = Table(
+        milestone_rows,
+        colWidths=[0.25 * inch, 1.15 * inch, 1.65 * inch, 0.85 * inch, 0.55 * inch, 0.85 * inch, 0.85 * inch],
+        repeatRows=1,
+    )
     milestone_table.setStyle(TableStyle([
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, 0), 9),
+        ("FONTSIZE", (0, 0), (-1, 0), 8.5),
         ("TEXTCOLOR", (0, 0), (-1, 0), _TABLE_HEADER_TEXT),
         ("LINEBELOW", (0, 0), (-1, 0), 1, colors.black),
-        ("LINEBELOW", (0, 1), (-1, -1), 0.5, _TABLE_GRID),
-        ("ALIGN", (2, 0), (3, -1), "RIGHT"),
+        ("LINEABOVE", (0, -1), (-1, -1), 1, colors.black),
+        ("LINEBELOW", (0, 1), (-1, -2), 0.5, _TABLE_GRID),
+        ("ALIGN", (3, 0), (4, -1), "RIGHT"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("TOPPADDING", (0, 0), (-1, -1), 5),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
@@ -252,7 +324,8 @@ def generate_scope_schedule_pdf(*, project, scope_schedule, contract_total: floa
 
     if scope_schedule.materials:
         story.append(Paragraph("Material Supply &amp; Responsibility Matrix", _SECTION_STYLE))
-        material_rows = [["Category", "Qty", "Supplied By", "Installed By", "Notes"]]
+        material_header = ["Item Category", "Quantity / Coverage Area", "Supplied By", "Installed / Hauled By", "Approval &amp; Operational Notes"]
+        material_rows = [[_cell(h, _LABEL_STYLE) for h in material_header]]
         for mi in scope_schedule.materials:
             material_rows.append([
                 _cell(mi.category),
@@ -261,10 +334,10 @@ def generate_scope_schedule_pdf(*, project, scope_schedule, contract_total: floa
                 _cell((mi.installed_by or "").title()),
                 _cell(mi.notes or "—"),
             ])
-        material_table = Table(material_rows, colWidths=[1.6 * inch, 0.7 * inch, 1.15 * inch, 1.15 * inch, 1.6 * inch], repeatRows=1)
+        material_table = Table(material_rows, colWidths=[1.5 * inch, 1.1 * inch, 0.95 * inch, 1.15 * inch, 1.55 * inch], repeatRows=1)
         material_table.setStyle(TableStyle([
             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, 0), 9),
+            ("FONTSIZE", (0, 0), (-1, 0), 8.5),
             ("LINEBELOW", (0, 0), (-1, 0), 1, colors.black),
             ("LINEBELOW", (0, 1), (-1, -1), 0.5, _TABLE_GRID),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
@@ -273,12 +346,34 @@ def generate_scope_schedule_pdf(*, project, scope_schedule, contract_total: floa
         ]))
         story.append(material_table)
 
-    story.append(Paragraph("Workmanship Warranty", _SECTION_STYLE))
+    story.append(Paragraph("Workmanship Warranty &amp; Quality Assurance", _SECTION_STYLE))
     for para in (scope_schedule.warranty_terms or "").split("\n"):
         if para.strip():
             story.append(Paragraph(para, _BODY_STYLE))
         else:
             story.append(Spacer(1, 6))
+
+    # --- Signature acknowledgment ---------------------------------------
+    story.append(Paragraph("Contract Acceptance &amp; Signature Acknowledgment", _SECTION_STYLE))
+    story.append(Paragraph(
+        "By signing below, both parties acknowledge and agree to the scope, milestone payment schedule, "
+        "material responsibilities, and workmanship warranty set forth in this Project Scope &amp; Payment Schedule.",
+        _BODY_STYLE,
+    ))
+    story.append(Spacer(1, 18))
+    sig_rows = [
+        [_cell("CLIENT / PROPERTY OWNER", _LABEL_STYLE), _cell("LICENSED CONTRACTOR", _LABEL_STYLE)],
+        [_cell("X ____________________________________"), _cell("X ____________________________________")],
+        [_cell("Printed Name: " + (project.customer_name or "")), _cell("Printed Name: Sam Cabrera (Lic. #1135927)")],
+        [_cell("Date Signed: ______________________"), _cell("Date Signed: ______________________")],
+    ]
+    sig_table = Table(sig_rows, colWidths=[3.2 * inch, 3.2 * inch])
+    sig_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    story.append(sig_table)
 
     doc.build(story)
     return buf.getvalue()
@@ -332,6 +427,6 @@ def build_contract_package_pdf(
     contract_part = fill_contract_pages(
         project=project, estimate=estimate, scope_schedule=scope_schedule, contract_package=contract_package, cancel_days=cancel_days
     )
-    scope_part = generate_scope_schedule_pdf(project=project, scope_schedule=scope_schedule, contract_total=estimate.total)
+    scope_part = generate_scope_schedule_pdf(project=project, estimate=estimate, scope_schedule=scope_schedule, contract_total=estimate.total)
     estimate_part = estimate_pdf_bytes if estimate_pdf_bytes else generate_estimate_summary_page(estimate=estimate)
     return merge_pdfs([contract_part, scope_part, estimate_part])
