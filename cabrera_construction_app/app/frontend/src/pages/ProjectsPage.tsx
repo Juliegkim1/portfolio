@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { FolderInput, Pencil, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { FolderInput, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
@@ -95,10 +95,42 @@ export function ProjectsPage() {
     }
   }
 
+  // Completed projects are kept out of the main (active) list entirely —
+  // not just visually de-emphasized — since a long-running shop accumulates
+  // a lot of finished jobs that would otherwise bury the projects still
+  // being worked. "Active" here also includes on_hold (still an open job,
+  // just paused), only "completed" moves to its own tab.
+  const [statusTab, setStatusTab] = useState<"active" | "completed">("active");
+  const [search, setSearch] = useState("");
+
+  const { activeCount, completedCount } = useMemo(
+    () => ({
+      activeCount: projects.filter((p) => p.status !== "completed").length,
+      completedCount: projects.filter((p) => p.status === "completed").length,
+    }),
+    [projects]
+  );
+
+  const visibleProjects = useMemo(() => {
+    const byTab = projects.filter((p) => (statusTab === "completed" ? p.status === "completed" : p.status !== "completed"));
+    const query = search.trim().toLowerCase();
+    if (!query) return byTab;
+    return byTab.filter((p) => p.customer_name.toLowerCase().includes(query) || p.property_address.toLowerCase().includes(query));
+  }, [projects, statusTab, search]);
+
   return (
     <AppShell title={t("projects.title")} context={t("projects.context")}>
       <div className="page-header">
-        <div />
+        <div className="row" style={{ gap: "var(--space-2)", alignItems: "center" }}>
+          <Search size={15} strokeWidth={1.5} className="muted" />
+          <input
+            className="input"
+            style={{ maxWidth: 280 }}
+            placeholder={t("projects.searchPlaceholder")}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
         <div className="page-header-actions">
           <button className="btn btn-secondary" onClick={() => navigate("/import-from-drive")}>
             <FolderInput size={15} strokeWidth={1.5} />
@@ -112,10 +144,23 @@ export function ProjectsPage() {
       </div>
 
       <div className="section">
+        <div className="seg">
+          <label className="seg-opt">
+            <input type="radio" checked={statusTab === "active"} onChange={() => setStatusTab("active")} />
+            {t("projects.tabActive", { count: activeCount })}
+          </label>
+          <label className="seg-opt">
+            <input type="radio" checked={statusTab === "completed"} onChange={() => setStatusTab("completed")} />
+            {t("projects.tabCompleted", { count: completedCount })}
+          </label>
+        </div>
+
         {isLoading ? (
           <LoadingState />
         ) : projects.length === 0 ? (
           <EmptyState label={t("projects.emptyState")} />
+        ) : visibleProjects.length === 0 ? (
+          <EmptyState label={search.trim() ? t("projects.noSearchResults", { search }) : t("projects.noProjectsInTab")} />
         ) : (
           <div className="table-scroll desktop-only">
             <table className="table">
@@ -130,7 +175,7 @@ export function ProjectsPage() {
                 </tr>
               </thead>
               <tbody>
-                {projects.map((p) => (
+                {visibleProjects.map((p) => (
                   <tr key={p.id} onClick={() => setSelectedProjectId(p.id)} style={{ cursor: "pointer", background: p.id === selectedProjectId ? "var(--color-accent-100)" : undefined }}>
                     <td>
                       <div>{p.name}</div>
@@ -153,7 +198,7 @@ export function ProjectsPage() {
         )}
 
         <div className="record-list mobile-only">
-          {projects.map((p) => (
+          {visibleProjects.map((p) => (
             <div key={p.id} className="card blueprint record-card" onClick={() => setSelectedProjectId(p.id)}>
               <i className="corner tl" />
               <i className="corner tr" />
