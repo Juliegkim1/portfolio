@@ -212,6 +212,52 @@ async def upload_estimate_pdf(project_id: int, file: UploadFile, db: Session = D
     return project.estimate
 
 
+@router.post("/projects/{project_id}/estimate/line-items/clean-up", response_model=schemas.EstimateOut)
+def clean_up_estimate_line_items(project_id: int, db: Session = Depends(get_db)):
+    """Rewrites every line item's description on an already-created
+    project's estimate — for one extracted before the extraction prompt's
+    own grammar/typo/summarize cleanup rule existed (or that still came
+    out messy anyway, e.g. a real document with long rambling per-item
+    text). section/qty/unit/unit_price are never touched — see
+    gemini_service.clean_up_line_item_descriptions."""
+    project = get_project_or_404(db, project_id)
+    if not project.estimate or not project.estimate.line_items:
+        raise HTTPException(404, "No line items to clean up for this project")
+    if not gemini_service.any_provider_configured():
+        raise HTTPException(400, "No AI extraction provider is configured — set GEMINI_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY in app/backend/.env.")
+    line_items = sorted(project.estimate.line_items, key=lambda li: li.id)
+    try:
+        cleaned_descriptions = gemini_service.clean_up_line_item_descriptions(line_items)
+    except gemini_service.GeminiExtractionError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    for li, description in zip(line_items, cleaned_descriptions):
+        li.description = description
+    db.commit()
+    db.refresh(project.estimate)
+    return project.estimate
+
+
+@router.patch("/projects/{project_id}/estimate/line-items", response_model=schemas.EstimateOut)
+def update_estimate_line_item_descriptions(project_id: int, payload: schemas.EstimateLineItemsUpdate, db: Session = Depends(get_db)):
+    """Manual hand-edit of one or more line item descriptions — e.g.
+    touching up the AI clean-up pass's result, or fixing something it
+    doesn't need to see. Only description changes; any id not found on
+    this estimate is silently skipped rather than erroring, so a stale
+    frontend list (edited, then the project's line items changed
+    elsewhere) doesn't 404 the whole request over one missing row."""
+    project = get_project_or_404(db, project_id)
+    if not project.estimate:
+        raise HTTPException(404, "No estimate for this project yet")
+    by_id = {li.id: li for li in project.estimate.line_items}
+    for item in payload.items:
+        line_item = by_id.get(item.id)
+        if line_item:
+            line_item.description = item.description
+    db.commit()
+    db.refresh(project.estimate)
+    return project.estimate
+
+
 @router.patch("/projects/{project_id}/dates", response_model=schemas.ProjectOut)
 def update_project_dates(project_id: int, payload: schemas.ProjectDatesUpdate, db: Session = Depends(get_db)):
     """Backfills/corrects start_date and end_date — see

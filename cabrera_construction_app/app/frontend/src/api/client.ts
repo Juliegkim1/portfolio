@@ -153,6 +153,14 @@ export const api = {
       form.append("file", file);
       return request<Estimate>(`/projects/${projectId}/estimate/upload-pdf`, { method: "POST", body: form });
     },
+    // Rewrites every line item's own description via AI — for a project
+    // whose estimate was extracted before the extraction prompt's own
+    // grammar/typo/summarize clean-up rule existed, or that still came out
+    // messy (a real document with long rambling per-item text). Never
+    // touches section/qty/unit/unit_price.
+    cleanUpLineItems: (projectId: number) => post<Estimate>(`/projects/${projectId}/estimate/line-items/clean-up`),
+    updateLineItemDescriptions: (projectId: number, items: { id: number; description: string }[]) =>
+      patch<Estimate>(`/projects/${projectId}/estimate/line-items`, { items }),
   },
 
   drive: {

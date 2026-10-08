@@ -92,6 +92,20 @@ class EstimateTextPaste(BaseModel):
     text: str
 
 
+class LineItemDescriptionUpdate(BaseModel):
+    id: int
+    description: str
+
+
+class EstimateLineItemsUpdate(BaseModel):
+    # Manual hand-edit of one or more line item descriptions on an
+    # already-created project's estimate — e.g. touching up the result of
+    # the AI clean-up pass, or fixing something it doesn't need to see.
+    # Only description changes; section/qty/unit/unit_price stay as they
+    # already are (this never re-prices anything).
+    items: list[LineItemDescriptionUpdate]
+
+
 class EstimateFetchResult(BaseModel):
     found: bool
     estimate_number: str

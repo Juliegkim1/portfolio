@@ -15,6 +15,13 @@ import { money } from "../format";
 // than leaving this legally-relevant section blank by default. A saved or
 // Drive-imported schedule's own warranty_terms (e.g. from an already-signed
 // real contract) still takes priority — see the effect below.
+const SECTION_LABEL_KEYS: Record<string, string> = {
+  demolition: "estimateUpload.sectionDemolition",
+  materials: "estimateUpload.sectionMaterials",
+  labor: "estimateUpload.sectionLabor",
+  additional_work: "estimateUpload.sectionAdditionalWork",
+};
+
 const DEFAULT_WARRANTY_TERMS = `1-YEAR WORKMANSHIP WARRANTY POLICY (CSLB COMPLIANT)
 
 • Guarantee Duration: Cabrera Construction warrants all labor and installation craftsmanship for one (1) full year from the final completion date.
@@ -56,6 +63,45 @@ export function ScopeSchedulePage() {
     mutationFn: (file: File) => api.estimates.uploadPdf(projectId, file),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["estimate", projectId] }),
   });
+
+  // Line item descriptions, editable by hand or via one-click AI clean-up —
+  // for a project whose estimate was extracted before the extraction
+  // prompt's own grammar/typo/summarize rule existed, or that still came
+  // out messy (a real document with long rambling per-item text, common on
+  // an informally-written estimate). Keyed by line item id rather than a
+  // plain array so a clean-up/save round-trip can't shuffle which draft
+  // belongs to which row.
+  const [lineItemDrafts, setLineItemDrafts] = useState<Record<number, string>>({});
+  const [lineItemsInitialized, setLineItemsInitialized] = useState(false);
+  useEffect(() => {
+    if (lineItemsInitialized || !estimateQuery.data) return;
+    const drafts: Record<number, string> = {};
+    for (const li of estimateQuery.data.line_items) drafts[li.id] = li.description;
+    setLineItemDrafts(drafts);
+    setLineItemsInitialized(true);
+  }, [estimateQuery.data, lineItemsInitialized]);
+
+  const cleanUpLineItems = useMutation({
+    mutationFn: () => api.estimates.cleanUpLineItems(projectId),
+    onSuccess: (data) => {
+      const drafts: Record<number, string> = {};
+      for (const li of data.line_items) drafts[li.id] = li.description;
+      setLineItemDrafts(drafts);
+      queryClient.invalidateQueries({ queryKey: ["estimate", projectId] });
+    },
+  });
+
+  const saveLineItemDescriptions = useMutation({
+    mutationFn: () =>
+      api.estimates.updateLineItemDescriptions(
+        projectId,
+        (estimateQuery.data?.line_items ?? []).map((li) => ({ id: li.id, description: lineItemDrafts[li.id] ?? li.description }))
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["estimate", projectId] }),
+  });
+
+  const lineItemsDirty =
+    estimateQuery.data?.line_items.some((li) => (lineItemDrafts[li.id] ?? li.description) !== li.description) ?? false;
 
   const [contractDate, setContractDate] = useState<string>("");
   const [paymentTerms, setPaymentTerms] = useState("Due on milestone completion, net 15");
@@ -238,7 +284,50 @@ export function ScopeSchedulePage() {
             </div>
           </div>
         </div>
+      </div>
 
+      {estimateQuery.data && estimateQuery.data.line_items.length > 0 && (
+        <div className="section">
+          <div className="row-between">
+            <h3>{t("scopeSchedule.lineItems")}</h3>
+            <div className="row" style={{ gap: "var(--space-2)" }}>
+              <button className="btn btn-secondary" disabled={cleanUpLineItems.isPending} onClick={() => cleanUpLineItems.mutate()}>
+                {cleanUpLineItems.isPending ? t("scopeSchedule.cleaningUp") : t("scopeSchedule.cleanUpLineItems")}
+              </button>
+              <button className="btn btn-primary" disabled={!lineItemsDirty || saveLineItemDescriptions.isPending} onClick={() => saveLineItemDescriptions.mutate()}>
+                {t("common.save")}
+              </button>
+            </div>
+          </div>
+          <div className="muted" style={{ fontSize: 13 }}>
+            {t("scopeSchedule.lineItemsHelp")}
+          </div>
+          <div className="stack">
+            {estimateQuery.data.line_items.map((li) => (
+              <div key={li.id} className="card" style={{ padding: "var(--space-3)" }}>
+                <div className="row-between">
+                  <span className="muted" style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    {t(SECTION_LABEL_KEYS[li.section] ?? "", { defaultValue: li.section })}
+                  </span>
+                  <span className="muted" style={{ fontSize: 12 }}>
+                    {li.qty} {li.unit} &times; {money(li.unit_price)} = {money(li.total)}
+                  </span>
+                </div>
+                <textarea
+                  className="input"
+                  style={{ marginTop: "var(--space-2)" }}
+                  value={lineItemDrafts[li.id] ?? li.description}
+                  onChange={(e) => setLineItemDrafts((prev) => ({ ...prev, [li.id]: e.target.value }))}
+                />
+              </div>
+            ))}
+          </div>
+          {cleanUpLineItems.isError && <div className="error-state">{(cleanUpLineItems.error as Error).message}</div>}
+          {saveLineItemDescriptions.isError && <div className="error-state">{(saveLineItemDescriptions.error as Error).message}</div>}
+        </div>
+      )}
+
+      <div className="section">
         <div className="kpi-grid">
           <div className="card">
             <div className="card-kicker">{t("scopeSchedule.contractTotal")}</div>

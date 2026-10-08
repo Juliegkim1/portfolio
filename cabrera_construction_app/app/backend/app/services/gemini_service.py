@@ -520,6 +520,53 @@ def combine_estimate_with_notes(existing: EstimateFetchResult, notes_text: str) 
     )
 
 
+_CLEANUP_NOTE = (
+    "\nThis is NOT a new document — these are already-extracted line items from an estimate "
+    "that need their descriptions cleaned up: correct typos, OCR garbling, and grammar "
+    "mistakes, and tighten anything long-winded or rambling into a clear, well-written "
+    "description, while keeping every real technical/scope detail each one actually states. "
+    "Return the SAME line items in the SAME order, with the SAME section, qty, unit, and "
+    "unit_price values exactly as given in each item's own listing below — only the "
+    "description text should change. Do not add, remove, merge, or split any line items; "
+    "there must be exactly as many line items in your answer as were given to you.\n"
+)
+
+
+def clean_up_line_item_descriptions(line_items: list) -> list[str]:
+    """Rewrites each line item's own description — correcting typos/OCR
+    garbling/grammar and tightening rambling text into something clear —
+    for line items that were already extracted before this clean-up rule
+    existed on the extraction prompt itself (or still came out messy
+    anyway). Returns just the cleaned description strings, in the same
+    order as the input. section/qty/unit/unit_price are never touched
+    here, by design — same reasoning as combine_estimate_with_notes: a
+    description clean-up pass has no business touching pricing, and the
+    caller is expected to apply these strings back onto the existing rows
+    positionally rather than trust anything else the model echoes back."""
+    if not line_items:
+        return []
+    blob = "\n\n".join(
+        f"{i + 1}. [{li.section}] {li.description} (qty={li.qty} {li.unit}, unit_price=${li.unit_price})"
+        for i, li in enumerate(line_items)
+    )
+    data = _extract_with_fallback(
+        [(blob.encode("utf-8"), "Existing line items", "text/plain")],
+        gemini_prompt=_EXTRACTION_PROMPT + _CLEANUP_NOTE,
+        gemini_schema=_EXTRACTION_SCHEMA,
+        gemini_timeout=45,
+        standard_prompt=ai_schema.EXTRACTION_PROMPT + _CLEANUP_NOTE,
+        standard_schema=ai_schema.EXTRACTION_SCHEMA,
+        not_found_message="Couldn't clean up these line items.",
+    )
+    cleaned = data.get("line_items", [])
+    if len(cleaned) != len(line_items):
+        raise GeminiExtractionError(
+            f"Expected {len(line_items)} line items back, got {len(cleaned)} — not applying, to avoid "
+            "mismatching cleaned descriptions to the wrong items."
+        )
+    return [c.get("description") or original.description for c, original in zip(cleaned, line_items)]
+
+
 _HISTORICAL_PROMPT = ai_schema.HISTORICAL_PROMPT
 
 _HISTORICAL_SCHEMA = {
