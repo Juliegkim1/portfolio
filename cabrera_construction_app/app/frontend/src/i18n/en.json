@@ -176,6 +176,8 @@
     "appCreatesContractDraft": "A Contract Package draft",
     "driveFolderExistsWarning": "{{customer}} – {{street}} already has a Drive folder{{types}}. This project will be filed as a new subfolder there, not a separate customer folder.",
     "projectTypeLabel": "Project Type",
+    "driveFolderNameLabel": "Drive Folder Name",
+    "driveFolderNamePlaceholder": "Defaults to Project Type",
     "missingFieldsWarning": "Fill in before creating the project: {{fields}}.",
     "creating": "Creating…",
     "createProjectButton": "Create Project & Continue to Scope"

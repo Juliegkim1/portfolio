@@ -101,6 +101,10 @@ export interface MilestonePreview {
   title: string;
   amount: number;
   due_date?: string | null;
+  // Populated when combining an estimate with supplementary notes — a short
+  // summary of what this phase's work covers, drawn from the estimate's own
+  // scope/line-item language rather than restating the payment itself.
+  scope_verification?: string | null;
 }
 
 export interface DriveImportPreview {

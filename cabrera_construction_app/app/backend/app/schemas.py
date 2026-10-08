@@ -138,6 +138,13 @@ class EstimateCombineNotes(BaseModel):
 class CreateProjectFromEstimate(BaseModel):
     project_type: str
     estimate: EstimateFetchResult
+    # Overrides the innermost Drive folder name (Projects / {Customer} –
+    # {Street} / {this}) — defaults to project_type when omitted/blank, same
+    # as before this field existed, but lets a user who wants a more
+    # specific folder name (e.g. distinguishing two projects of the same
+    # type at one address) set it independently of the project's own
+    # categorization.
+    drive_folder_name: str | None = None
 
 
 class EstimateAmountOverride(BaseModel):
@@ -198,6 +205,14 @@ class MilestonePreview(BaseModel):
     title: str
     amount: float
     due_date: dt.date | None = None
+    # Populated when combining an estimate's own scope/line-item language
+    # with supplementary notes (see gemini_service.combine_estimate_with_notes)
+    # — a short summary of what this specific phase's work actually covers,
+    # drawn from the estimate rather than restating the payment itself. Maps
+    # straight onto Milestone.scope_verification ("Detailed Scope &
+    # Verification" on the Scope & Payment Schedule screen) once a project
+    # is created. None for a normal single-document extraction.
+    scope_verification: str | None = None
 
 
 class DriveImportPreview(BaseModel):

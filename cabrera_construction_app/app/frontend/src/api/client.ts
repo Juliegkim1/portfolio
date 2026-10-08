@@ -99,8 +99,8 @@ export const api = {
   projects: {
     list: () => get<Project[]>("/projects"),
     get: (id: number) => get<Project>(`/projects/${id}`),
-    createFromEstimate: (projectType: string, estimate: EstimateFetchResult) =>
-      post<Project>("/projects", { project_type: projectType, estimate }),
+    createFromEstimate: (projectType: string, estimate: EstimateFetchResult, driveFolderName?: string) =>
+      post<Project>("/projects", { project_type: projectType, estimate, drive_folder_name: driveFolderName || undefined }),
     delete: (id: number) => del(`/projects/${id}`),
     updateDates: (id: number, startDate: string | null, endDate: string | null) =>
       patch<Project>(`/projects/${id}/dates`, { start_date: startDate, end_date: endDate }),

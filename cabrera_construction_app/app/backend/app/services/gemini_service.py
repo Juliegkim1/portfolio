@@ -177,6 +177,10 @@ _EXTRACTION_SCHEMA = {
                     "title": {"type": "STRING"},
                     "amount": {"type": "NUMBER"},
                     "due_date": {"type": "STRING", "description": "ISO date (YYYY-MM-DD) if known"},
+                    "scope_verification": {
+                        "type": "STRING",
+                        "description": "Only when combining an estimate with separate notes: a short 1-3 sentence summary of what this phase's work actually covers, drawn from the estimate's own scope/line-item language. Leave empty otherwise.",
+                    },
                 },
                 "required": ["number", "title", "amount"],
             },
@@ -356,7 +360,13 @@ def extract_estimate_from_documents(files: list[tuple[bytes, str, str]]) -> Esti
     )
 
     milestones = [
-        MilestonePreview(number=m["number"], title=m["title"], amount=m["amount"], due_date=_parse_date(m.get("due_date")))
+        MilestonePreview(
+            number=m["number"],
+            title=m["title"],
+            amount=m["amount"],
+            due_date=_parse_date(m.get("due_date")),
+            scope_verification=m.get("scope_verification") or None,
+        )
         for m in data.get("milestones", [])
     ]
     line_items = [EstimateLineItemIn(**li) for li in data.get("line_items", [])]
@@ -397,69 +407,116 @@ def extract_estimate_from_documents(files: list[tuple[bytes, str, str]]) -> Esti
     )
 
 
-def combine_estimate_with_notes(existing: EstimateFetchResult, notes_text: str) -> EstimateFetchResult:
-    """Merges a contractor's supplementary notes into an already-fetched/
-    extracted estimate — the common case where the estimate (a QuickBooks
-    lookup or an uploaded document) has the cost breakdown but no payment
-    schedule, and separate notes (the contractor's own text) supply the
-    phases/payment schedule, or fill in whatever else the estimate is
-    missing. Rather than guessing how to blend two raw documents together,
-    this extracts the notes on their own — same extraction a standalone
-    paste gets — then layers that into `existing`:
+_COMBINE_NOTE = (
+    "\nThe FIRST document below is the job's own estimate language (its project scope "
+    "description plus its itemized cost breakdown) — its line items and their dollar amounts "
+    "are already fixed; do not invent new ones or change their prices. The SECOND document is "
+    "supplementary notes from the contractor, which usually describe the ACTUAL payment "
+    "schedule/phases more accurately than the estimate does (the estimate may have no payment "
+    "schedule at all, or a less accurate one). Determine the milestones (the payment schedule) "
+    "primarily from the notes — each one is a real phase of work with its own payment amount. "
+    "For EVERY milestone, also fill in scope_verification: a short 1-3 sentence summary of what "
+    "that phase's work actually covers, written by combining the matching parts of the first "
+    "document's scope/line-item language with anything the notes themselves say about that "
+    "phase — this is what ties the payment to the work, not a restatement of the amount or due "
+    "date. If the notes don't mention a schedule at all, fall back to the estimate's own "
+    "milestones (if it has any) and still fill in scope_verification the same way.\n"
+)
 
-    - Milestones from the notes WIN outright when the notes have any: the
-      whole point of pasting notes here is almost always to supply or
-      correct the payment schedule, so "the notes mention a schedule" is
-      treated as "use it," not "use it only if nothing else exists."
-      Whichever list wins is renumbered 0..N afterward, so the resulting
-      Scope & Payment Schedule always gets clean, contiguous phase numbers
-      regardless of which source each milestone actually came from.
-    - Every other field (customer/property info, scope, total, line items,
-      payment/warranty terms) only falls back to the notes' extraction when
-      `existing` doesn't already have it — the estimate stays authoritative
-      for whatever it already covers.
+
+def _estimate_text_blob(existing: EstimateFetchResult) -> str:
+    """Reconstructs the estimate's own language from its already-extracted
+    fields — combine_estimate_with_notes only has the structured result on
+    screen (not the original file bytes), but scope_text plus each line
+    item's own description is the same language a human would read off the
+    estimate, and is what scope_verification summaries get drawn from.
+    Also includes any payment schedule already on `existing` (e.g. from an
+    earlier combine), since the model otherwise has no way to know one
+    already exists — without this, notes that only tweak one phase would
+    look to the model like "no schedule mentioned at all"."""
+    parts = [existing.scope_text or ""]
+    parts += [f"{li.description} — ${li.qty * li.unit_price:,.2f} ({li.section})" for li in existing.line_items]
+    if existing.milestones:
+        parts.append("Current payment schedule (already on file — keep or revise based on the notes, don't discard without reason):")
+        parts += [f"{m.number}. {m.title} — ${m.amount:,.2f}" for m in existing.milestones]
+    return "\n".join(p for p in parts if p.strip())
+
+
+def combine_estimate_with_notes(existing: EstimateFetchResult, notes_text: str) -> EstimateFetchResult:
+    """Combines a contractor's supplementary notes with an already-fetched/
+    extracted estimate in ONE AI call that sees both documents together —
+    the common case where the estimate (a QuickBooks lookup or an uploaded
+    document) has the cost breakdown but no payment schedule, or a less
+    accurate one, and separate notes (the contractor's own text) describe
+    the real phases. Unlike a plain two-step merge, this lets the model
+    actually cross-reference the two: the resulting milestones come
+    primarily from the notes (renumbered 0..N for clean phase numbers), and
+    each one gets a scope_verification summary synthesized from the
+    estimate's own scope/line-item language — "line items come from the
+    estimate, phases from the notes, summarized per phase" in one pass.
+
+    Line items and the total are NOT touched by the model at all — they're
+    kept exactly as `existing` already had them, since dollar amounts on
+    the cost breakdown should never be re-invented by an LLM call whose job
+    here is the payment schedule, not pricing.
     """
-    notes_result = extract_estimate_from_text(notes_text)
+    if not notes_text.strip():
+        raise GeminiExtractionError("Paste some notes to combine.")
+
+    files = [
+        (_estimate_text_blob(existing).encode("utf-8"), "Estimate (scope and line items)", "text/plain"),
+        (notes_text.encode("utf-8"), "Supplementary notes", "text/plain"),
+    ]
+
+    data = _extract_with_fallback(
+        files,
+        gemini_prompt=_EXTRACTION_PROMPT + _COMBINE_NOTE,
+        gemini_schema=_EXTRACTION_SCHEMA,
+        gemini_timeout=45,
+        standard_prompt=ai_schema.EXTRACTION_PROMPT + _COMBINE_NOTE,
+        standard_schema=ai_schema.EXTRACTION_SCHEMA,
+        not_found_message="Couldn't combine the estimate and notes into a usable payment schedule.",
+    )
+
+    combined_milestones = [
+        MilestonePreview(
+            number=i,
+            title=m["title"],
+            amount=m["amount"],
+            due_date=_parse_date(m.get("due_date")),
+            scope_verification=m.get("scope_verification") or None,
+        )
+        for i, m in enumerate(data.get("milestones", []))
+    ]
 
     def _or(current, fallback):
         return current if current else fallback
 
-    merged_milestones = notes_result.milestones if notes_result.milestones else existing.milestones
-    renumbered_milestones = [
-        MilestonePreview(number=i, title=m.title, amount=m.amount, due_date=m.due_date) for i, m in enumerate(merged_milestones)
-    ]
-
-    merged_line_items = existing.line_items if existing.line_items else notes_result.line_items
-    merged_total = existing.total if existing.total else notes_result.total
-    subtotal = round(sum(li.qty * li.unit_price for li in merged_line_items), 2) if merged_line_items else 0.0
-    mismatch = _total_mismatch_message(merged_total, subtotal) if merged_line_items else existing.total_mismatch
-
     logger.info(
-        "Combined notes into existing estimate: %d milestones (from %s), %d line items",
-        len(renumbered_milestones),
-        "notes" if notes_result.milestones else "existing",
-        len(merged_line_items),
+        "Combined notes into existing estimate: %d phases, each with a scope summary; %d line items kept from the estimate",
+        len(combined_milestones),
+        len(existing.line_items),
     )
     return EstimateFetchResult(
         found=True,
         estimate_number=existing.estimate_number,
-        customer_name=_or(existing.customer_name, notes_result.customer_name),
-        customer_phone=_or(existing.customer_phone, notes_result.customer_phone),
-        customer_email=_or(existing.customer_email, notes_result.customer_email),
-        property_address=_or(existing.property_address, notes_result.property_address),
+        customer_name=_or(existing.customer_name, data.get("customer_name")),
+        customer_phone=_or(existing.customer_phone, data.get("customer_phone")),
+        customer_email=_or(existing.customer_email, data.get("customer_email")),
+        property_address=_or(existing.property_address, data.get("property_address")),
         date_issued=existing.date_issued,
-        scope_text=_or(existing.scope_text, notes_result.scope_text),
+        scope_text=_or(existing.scope_text, data.get("scope_text")),
         tax_rate=existing.tax_rate,
         permit_fees=existing.permit_fees,
         discount=existing.discount,
-        line_items=merged_line_items,
-        total=merged_total,
+        line_items=existing.line_items,
+        total=existing.total,
         retrieved_at=existing.retrieved_at,
-        milestones=renumbered_milestones,
-        contract_date=_or(existing.contract_date, notes_result.contract_date),
-        payment_terms=_or(existing.payment_terms, notes_result.payment_terms),
-        warranty_terms=_or(existing.warranty_terms, notes_result.warranty_terms),
-        total_mismatch=mismatch,
+        milestones=combined_milestones if combined_milestones else existing.milestones,
+        contract_date=_or(existing.contract_date, _parse_date(data.get("contract_date"))),
+        payment_terms=_or(existing.payment_terms, data.get("payment_terms")),
+        warranty_terms=_or(existing.warranty_terms, data.get("warranty_terms")),
+        total_mismatch=existing.total_mismatch,
     )
 
 
@@ -543,7 +600,13 @@ def extract_historical_project(folder_id: str, folder_name: str, files: list[tup
 
     line_items = [EstimateLineItemIn(**li) for li in data.get("line_items", [])]
     milestones = [
-        MilestonePreview(number=m["number"], title=m["title"], amount=m["amount"], due_date=_parse_date(m.get("due_date")))
+        MilestonePreview(
+            number=m["number"],
+            title=m["title"],
+            amount=m["amount"],
+            due_date=_parse_date(m.get("due_date")),
+            scope_verification=m.get("scope_verification") or None,
+        )
         for m in data.get("milestones", [])
     ]
     declared_total = data.get("total")

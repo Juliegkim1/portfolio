@@ -30,6 +30,12 @@ export function EstimateUploadPage() {
   const [notFound, setNotFound] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [projectType, setProjectType] = useState("Kitchen Remodel");
+  // Independent of projectType — defaults to it server-side when left blank
+  // (see routers/projects.py's create_project_from_estimate), but lets a
+  // user set a more specific Drive folder name without changing the
+  // project's own categorization (e.g. two "Kitchen Remodel" projects at
+  // the same address that need distinguishable folder names).
+  const [driveFolderName, setDriveFolderName] = useState("");
 
   // Editable, not just display — extraction (QuickBooks or Gemini) can come
   // back with gaps, and the user needs to be able to fill those in rather
@@ -187,13 +193,17 @@ export function EstimateUploadPage() {
 
   const createProject = useMutation({
     mutationFn: () =>
-      api.projects.createFromEstimate(projectType, {
-        ...result!,
-        customer_name: customerName,
-        property_address: propertyAddress,
-        customer_phone: customerPhone,
-        customer_email: customerEmail,
-      }),
+      api.projects.createFromEstimate(
+        projectType,
+        {
+          ...result!,
+          customer_name: customerName,
+          property_address: propertyAddress,
+          customer_phone: customerPhone,
+          customer_email: customerEmail,
+        },
+        driveFolderName
+      ),
     onSuccess: (project) => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       setSelectedProjectId(project.id);
@@ -518,11 +528,18 @@ export function EstimateUploadPage() {
                 </div>
                 <div className="record-list">
                   {result.milestones.map((m) => (
-                    <div key={m.number} className="card row-between" style={{ padding: "var(--space-3)" }}>
-                      <span>
-                        {m.number}. {m.title}
-                      </span>
-                      <strong>{money(m.amount)}</strong>
+                    <div key={m.number} className="card" style={{ padding: "var(--space-3)" }}>
+                      <div className="row-between">
+                        <span>
+                          {m.number}. {m.title}
+                        </span>
+                        <strong>{money(m.amount)}</strong>
+                      </div>
+                      {m.scope_verification && (
+                        <div className="muted" style={{ fontSize: 13, marginTop: "var(--space-1)" }}>
+                          {m.scope_verification}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -581,7 +598,7 @@ export function EstimateUploadPage() {
                 {t("estimateUpload.appCreatesDriveFolder", {
                   customer: customerName || "—",
                   street: propertyAddress?.split(",")[0] || "—",
-                  type: projectType || "—",
+                  type: driveFolderName.trim() || projectType || "—",
                 })}
               </li>
               <li>
@@ -609,6 +626,15 @@ export function EstimateUploadPage() {
               <div className="field">
                 <label>{t("estimateUpload.projectTypeLabel")}</label>
                 <input className="input" value={projectType} onChange={(e) => setProjectType(e.target.value)} />
+              </div>
+              <div className="field">
+                <label>{t("estimateUpload.driveFolderNameLabel")}</label>
+                <input
+                  className="input"
+                  value={driveFolderName}
+                  onChange={(e) => setDriveFolderName(e.target.value)}
+                  placeholder={projectType || t("estimateUpload.driveFolderNamePlaceholder")}
+                />
               </div>
             </div>
             {missingFields.length > 0 && (

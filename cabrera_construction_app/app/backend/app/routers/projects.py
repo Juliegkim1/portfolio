@@ -499,7 +499,16 @@ def confirm_drive_import(folder_id: str, payload: schemas.DriveImportConfirm, db
     db.flush()
     milestones = preview.milestones or [schemas.MilestonePreview(number=0, title="Full Contract Amount", amount=preview.total)]
     for m in milestones:
-        db.add(models.Milestone(scope_schedule_id=scope_schedule.id, number=m.number, title=m.title, amount=m.amount, due_date=m.due_date))
+        db.add(
+            models.Milestone(
+                scope_schedule_id=scope_schedule.id,
+                number=m.number,
+                title=m.title,
+                amount=m.amount,
+                due_date=m.due_date,
+                scope_verification=getattr(m, "scope_verification", None) or "",
+            )
+        )
     project.start_date, project.end_date = _derive_project_dates(milestones)
 
     contract_package = models.ContractPackage(
@@ -651,7 +660,16 @@ def create_project_from_estimate(payload: schemas.CreateProjectFromEstimate, db:
         db.add(scope_schedule)
         db.flush()
         for m in milestone_sources:
-            db.add(models.Milestone(scope_schedule_id=scope_schedule.id, number=m.number, title=m.title, amount=m.amount, due_date=m.due_date))
+            db.add(
+                models.Milestone(
+                    scope_schedule_id=scope_schedule.id,
+                    number=m.number,
+                    title=m.title,
+                    amount=m.amount,
+                    due_date=m.due_date,
+                    scope_verification=getattr(m, "scope_verification", None) or "",
+                )
+            )
         project.start_date, project.end_date = _derive_project_dates(milestone_sources)
 
     db.commit()
@@ -661,12 +679,13 @@ def create_project_from_estimate(payload: schemas.CreateProjectFromEstimate, db:
     # are usable even if this fails, so a Drive/Sheets hiccup here doesn't
     # lose anything — it just leaves drive_folder_id/sheet_id unset (shown
     # as "Not yet created" in the UI) for the user to retry later.
+    folder_name = (payload.drive_folder_name or "").strip() or payload.project_type
     try:
         if g_oauth.get_connection(db):
-            drive_folder_id = google_service.create_project_folder(db, customer_name, street, payload.project_type)
+            drive_folder_id = google_service.create_project_folder(db, customer_name, street, folder_name)
             sheet_id = google_service.create_sheet(db, f"{customer_name} Reconciliation", parent_folder_id=drive_folder_id)
         else:
-            drive_folder_id = mock_integrations.create_drive_folder(customer_name, street, payload.project_type)
+            drive_folder_id = mock_integrations.create_drive_folder(customer_name, street, folder_name)
             sheet_id = mock_integrations.create_sheet(f"{customer_name} Reconciliation")
         project.drive_folder_id = drive_folder_id
         project.sheet_id = sheet_id

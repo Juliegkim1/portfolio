@@ -42,7 +42,9 @@ EXTRACTION_PROMPT = (
     "Framing', 'INSOLATION AND DRAYWALL' -> 'Insulation & Drywall', 'PLUMBING AND ELECTRICAL "
     "RAUGE' -> 'Plumbing & Electrical Rough-In'). Do not also duplicate these payment-schedule "
     "entries as line_items — they're the same money described two different ways (what for vs. "
-    "when paid), not two different costs.\n"
+    "when paid), not two different costs. Leave each milestone's scope_verification null unless "
+    "told otherwise below (it's only used when explicitly combining an estimate with separate "
+    "notes).\n"
     "- contract_date, payment_terms, warranty_terms: contract metadata if present. Copy "
     "payment_terms/warranty_terms language close to verbatim (these are terms, not prose to "
     "polish) — garbled OCR text is fine here since it's quoting the source, unlike milestone "
@@ -109,8 +111,12 @@ _MILESTONE_SCHEMA = {
         "title": {"type": "string"},
         "amount": {"type": "number"},
         "due_date": {"type": ["string", "null"], "description": "ISO date (YYYY-MM-DD) if known, else null"},
+        "scope_verification": {
+            "type": ["string", "null"],
+            "description": "Only when combining an estimate with separate notes: a short 1-3 sentence summary of what this phase's work actually covers, drawn from the estimate's own scope/line-item language. Null otherwise.",
+        },
     },
-    "required": ["number", "title", "amount", "due_date"],
+    "required": ["number", "title", "amount", "due_date", "scope_verification"],
     "additionalProperties": False,
 }
 

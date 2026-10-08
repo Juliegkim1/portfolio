@@ -159,10 +159,6 @@ export function ScopeSchedulePage() {
               <label>{t("scopeSchedule.contractType")}</label>
               <input className="input" value="Fixed-Price Agreement" readOnly style={{ opacity: 0.85 }} />
             </div>
-            <div className="field">
-              <label>{t("scopeSchedule.paymentTerms")}</label>
-              <input className="input" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />
-            </div>
           </div>
           {estimateQuery.data?.scope_text && (
             <div className="field" style={{ marginTop: "var(--space-3)" }}>

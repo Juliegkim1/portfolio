@@ -176,6 +176,8 @@
     "appCreatesContractDraft": "Un borrador de Paquete de Contrato",
     "driveFolderExistsWarning": "{{customer}} – {{street}} ya tiene una carpeta de Drive{{types}}. Este proyecto se archivará como una nueva subcarpeta allí, no como una carpeta de cliente separada.",
     "projectTypeLabel": "Tipo de Proyecto",
+    "driveFolderNameLabel": "Nombre de la Carpeta en Drive",
+    "driveFolderNamePlaceholder": "Usa el Tipo de Proyecto por defecto",
     "missingFieldsWarning": "Complete antes de crear el proyecto: {{fields}}.",
     "creating": "Creando…",
     "createProjectButton": "Crear Proyecto y Continuar al Alcance"
