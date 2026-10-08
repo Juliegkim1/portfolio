@@ -230,6 +230,7 @@
     "contractFields": "Campos del Contrato",
     "ownerName": "Nombre del Propietario",
     "projectAddress": "Dirección del Proyecto",
+    "editAddressTitle": "Corregir la dirección del sitio de trabajo",
     "contractor": "Contratista",
     "contractPrice": "Precio del Contrato",
     "downPayment": "Pago Inicial",

@@ -107,6 +107,7 @@ export const api = {
     updateDriveFolder: (id: number, driveFolderLink: string) =>
       patch<Project>(`/projects/${id}/drive-folder`, { drive_folder_link: driveFolderLink }),
     updateType: (id: number, projectType: string) => patch<Project>(`/projects/${id}/type`, { project_type: projectType }),
+    updateAddress: (id: number, propertyAddress: string) => patch<Project>(`/projects/${id}/address`, { property_address: propertyAddress }),
     checkDriveFolder: (customerName: string, street: string) =>
       get<{ exists: boolean; existing_project_types: string[] }>(
         `/projects/check-drive-folder?${new URLSearchParams({ customer_name: customerName, street }).toString()}`

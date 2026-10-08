@@ -239,6 +239,22 @@ def update_project_type(project_id: int, payload: schemas.ProjectTypeUpdate, db:
     return project
 
 
+@router.patch("/projects/{project_id}/address", response_model=schemas.ProjectOut)
+def update_project_address(project_id: int, payload: schemas.ProjectAddressUpdate, db: Session = Depends(get_db)):
+    """Corrects the job site/property address after a project already
+    exists — previously read-only everywhere (Projects, Scope & Payment
+    Schedule, Contract Package), with no way to fix a typo short of
+    deleting and recreating the whole project."""
+    project = get_project_or_404(db, project_id)
+    new_address = payload.property_address.strip()
+    if not new_address:
+        raise HTTPException(400, "Property address cannot be empty")
+    project.property_address = new_address
+    db.commit()
+    db.refresh(project)
+    return project
+
+
 _DRIVE_FOLDER_LINK_PATTERNS = (re.compile(r"/folders/([a-zA-Z0-9_-]+)"), re.compile(r"[?&]id=([a-zA-Z0-9_-]+)"))
 
 

@@ -180,6 +180,14 @@ class ProjectTypeUpdate(BaseModel):
     project_type: str
 
 
+class ProjectAddressUpdate(BaseModel):
+    # Corrects the job site/property address after a project already
+    # exists — e.g. noticed wrong while reviewing the Contract Package,
+    # where the field was previously read-only with no way to fix a typo
+    # short of deleting and recreating the whole project.
+    property_address: str
+
+
 class ProjectDriveFolderUpdate(BaseModel):
     # A pasted Drive folder link (any of its common URL shapes) or a raw
     # folder ID — lets an owner point a project at the real Drive folder by

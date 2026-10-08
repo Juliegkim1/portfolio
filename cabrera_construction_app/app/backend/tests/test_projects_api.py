@@ -64,6 +64,37 @@ def test_update_project_type_404_for_missing_project(client):
     assert resp.status_code == 404
 
 
+# --- PATCH .../address -------------------------------------------------------
+
+
+def test_update_project_address_persists(db, client):
+    project = make_project(db)
+    db.commit()
+
+    resp = client.patch(f"/api/projects/{project.id}/address", json={"property_address": "456 Oak Ave, Springfield, CA 90001"})
+    assert resp.status_code == 200
+    assert resp.json()["property_address"] == "456 Oak Ave, Springfield, CA 90001"
+
+    resp2 = client.get(f"/api/projects/{project.id}")
+    assert resp2.json()["property_address"] == "456 Oak Ave, Springfield, CA 90001"
+
+
+def test_update_project_address_rejects_empty_string(db, client):
+    project = make_project(db)
+    db.commit()
+
+    resp = client.patch(f"/api/projects/{project.id}/address", json={"property_address": "   "})
+    assert resp.status_code == 400
+
+    resp2 = client.get(f"/api/projects/{project.id}")
+    assert resp2.json()["property_address"] == "123 Main St, Springfield, CA 90000"
+
+
+def test_update_project_address_404_for_missing_project(client):
+    resp = client.patch("/api/projects/999999/address", json={"property_address": "456 Oak Ave"})
+    assert resp.status_code == 404
+
+
 # --- PATCH .../dates ---------------------------------------------------------
 
 

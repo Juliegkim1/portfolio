@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Circle, RefreshCw } from "lucide-react";
+import { CheckCircle2, Circle, Pencil, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
@@ -60,6 +60,19 @@ export function ContractPackagePage() {
       invalidate();
     },
   });
+  // Corrects the job site/property address after the project already
+  // exists — previously read-only here, with no way to fix a typo short of
+  // deleting and recreating the whole project.
+  const [editingAddress, setEditingAddress] = useState(false);
+  const [addressDraft, setAddressDraft] = useState("");
+  const updateAddress = useMutation({
+    mutationFn: () => api.projects.updateAddress(projectId, addressDraft),
+    onSuccess: () => {
+      invalidate();
+      setEditingAddress(false);
+    },
+  });
+
   const approve = useMutation({ mutationFn: () => api.contractPackage.approve(projectId, approvedBy), onSuccess: invalidate });
   const sendForSignature = useMutation({ mutationFn: () => api.contractPackage.sendForSignature(projectId), onSuccess: invalidate });
   const revertToDraft = useMutation({ mutationFn: () => api.contractPackage.revertToDraft(projectId), onSuccess: invalidate });
@@ -111,7 +124,36 @@ export function ContractPackagePage() {
               </div>
               <div className="field">
                 <label>{t("contract.projectAddress")}</label>
-                <input className="input" readOnly value={project?.property_address ?? ""} style={{ opacity: 0.85 }} />
+                {editingAddress ? (
+                  <div className="row" style={{ gap: "var(--space-2)" }}>
+                    <input className="input" value={addressDraft} onChange={(e) => setAddressDraft(e.target.value)} autoFocus />
+                    <button
+                      className="btn btn-primary"
+                      disabled={updateAddress.isPending || !addressDraft.trim()}
+                      onClick={() => updateAddress.mutate()}
+                    >
+                      {t("common.save")}
+                    </button>
+                    <button className="btn btn-secondary" onClick={() => setEditingAddress(false)}>
+                      {t("common.cancel")}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="icon-text">
+                    <input className="input" readOnly value={project?.property_address ?? ""} style={{ opacity: 0.85 }} />
+                    <button
+                      className="btn btn-icon"
+                      title={t("contract.editAddressTitle")}
+                      onClick={() => {
+                        setAddressDraft(project?.property_address ?? "");
+                        setEditingAddress(true);
+                      }}
+                    >
+                      <Pencil size={14} strokeWidth={1.5} />
+                    </button>
+                  </div>
+                )}
+                {updateAddress.isError && <div className="error-state">{(updateAddress.error as Error).message}</div>}
               </div>
               <div className="field">
                 <label>{t("contract.contractor")}</label>
