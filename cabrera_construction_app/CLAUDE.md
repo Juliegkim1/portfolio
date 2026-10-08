@@ -40,6 +40,17 @@ To wipe and reseed: `uv run python -c "from app import models; from app.db impor
 
 The `uv`-managed `pyproject.toml` pins `tool.uv.index` to plain PyPI — this environment's default index (a Databricks proxy) is unreachable from here, so don't remove that override.
 
+## Testing
+
+Every fix up to this point was verified by hand (a throwaway dry-run script against the dev DB, plus a live Playwright browser pass) — there was no automated suite and no CI. There is now, scoped deliberately to two things: a real `pytest` suite (`app/backend/tests/`) and a frontend build/type-check, run on every push/PR via `.github/workflows/cabrera-ci.yml` (paths-filtered to `cabrera_construction_app/app/**`, so it doesn't run for unrelated portfolio changes). Full browser walkthroughs for UI-visible changes are still done by hand as before — that's out of scope for this suite on purpose (see the "backend pytest + frontend build check" option chosen over the Vitest/Playwright-in-CI alternatives when this was set up).
+
+- **`app/backend/tests/test_*_service.py`** — pure-function unit tests for the business rules in `app/services/` (milestones, change orders, reconciliation matching, analytics). No DB involved; run instantly, anywhere, with no setup.
+- **`app/backend/tests/test_projects_api.py`** — API-level tests through FastAPI's `TestClient`, against a REAL Postgres database (`cabrera_test`) — not SQLite, because `_run_light_migrations()` in `main.py` has genuinely Postgres-specific DDL (`ADD COLUMN IF NOT EXISTS`, etc.) that SQLite can't run. One-time local setup: `docker compose exec db createdb -U cabrera cabrera_test` (same Postgres container the dev stack already runs). `tests/conftest.py`'s `db`/`client` fixtures create the schema once per session and truncate every table after each test; pure-function tests never request these fixtures, so they never touch Postgres at all.
+- **`app/backend/tests/test_ai_extraction_fallback.py`** — the Gemini→Claude→GPT fallback chain (`gemini_service._extract_with_fallback`), entirely mocked. CI has zero API keys configured and must never make a real network call here.
+- Run locally: `cd app/backend && uv run pytest tests/ -v`. Override the test DB with `TEST_DATABASE_URL` if it's not on `localhost:5432`.
+- Frontend: CI runs `npm run build` (`tsc -b && vite build`) in `app/frontend` as a smoke test — no component/unit tests yet.
+- Adding a new business rule or endpoint: add its test in the same pass, not as a follow-up — that's the whole point of having this now instead of another round of scratchpad scripts.
+
 ## Stack
 
 - **Backend** (`app/backend`): FastAPI + SQLAlchemy 2.0 + PostgreSQL, managed with `uv`. `app/models.py` has the ORM models, `app/schemas.py` the Pydantic I/O types, `app/services/` the business-rule and document-generation logic (see below), `app/routers/` the REST endpoints, `app/seed.py` the demo data. The old `construction_app/` repo's plain dataclasses (now only in git history, see `git show HEAD:construction_app/models/project.py` etc.) informed field naming but weren't reused directly — this is a richer schema with real relationships.
