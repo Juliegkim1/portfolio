@@ -9,8 +9,15 @@ app/backend/.venv/
 app/backend/__pycache__/
 *.pyc
 
-# Design/handoff package — large prototype HTML files, irrelevant to the build.
-design/
-assets/
+# Design/handoff package — large prototype HTML files, irrelevant to the
+# build. Anchored with a leading slash (gitignore-style syntax) so this only
+# matches the root-level design/assets directories — unanchored, "assets/"
+# also matched app/frontend/src/assets/ (added for the logo, bundled through
+# Vite's asset pipeline) and silently excluded it from every Cloud Build
+# upload, breaking the production build with a "could not resolve" error
+# that worked everywhere else (local zip, local npm run build) since only
+# gcloud builds submit actually reads this file.
+/design/
+/assets/
 README.md
 CLAUDE.md

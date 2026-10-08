@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
@@ -11,6 +12,8 @@ from ..services import documents, google_service, mock_integrations
 from ..services import google_oauth as g_oauth
 from .projects import get_project_or_404
 
+logger = logging.getLogger("cabrera.contracts")
+
 router = APIRouter(prefix="/api", tags=["contracts"])
 
 
@@ -19,6 +22,21 @@ def _get_package_or_404(db: Session, project_id: int) -> models.ContractPackage:
     if not project.contract_package:
         raise HTTPException(404, "No contract package for this project yet")
     return project.contract_package
+
+
+def _fetch_real_estimate_pdf(db: Session, estimate: models.Estimate) -> bytes | None:
+    """The real uploaded estimate document (see POST .../estimate/upload-pdf),
+    when there is one — documents.py has no Drive/DB access of its own, so
+    this lives here and gets passed in. Best-effort: a Drive hiccup fetching
+    it shouldn't block generating the rest of a real contract PDF, so this
+    falls back to None (the generated summary page) rather than raising."""
+    if not estimate.source_file_id or not g_oauth.get_connection(db):
+        return None
+    try:
+        return google_service.download_file(db, estimate.source_file_id)
+    except (g_oauth.GoogleNotConnected, google_service.GoogleApiError) as exc:
+        logger.warning("Could not fetch the real estimate PDF (source_file_id=%s): %s — using the summary page instead.", estimate.source_file_id, exc)
+        return None
 
 
 @router.get("/projects/{project_id}/contract-package", response_model=schemas.ContractPackageOut)
@@ -70,7 +88,11 @@ def approve_contract_package(project_id: int, payload: schemas.ApproveContractPa
         # README's layout is one file per project folder).
         try:
             pdf_bytes = documents.build_contract_package_pdf(
-                project=project, estimate=project.estimate, scope_schedule=project.scope_schedule, contract_package=cp
+                project=project,
+                estimate=project.estimate,
+                scope_schedule=project.scope_schedule,
+                contract_package=cp,
+                estimate_pdf_bytes=_fetch_real_estimate_pdf(db, project.estimate),
             )
             filename = f"{project.customer_name} – {project.property_address.split(',')[0]} – Contract Package.pdf"
             cp.drive_file_id = google_service.upload_file(
@@ -129,7 +151,11 @@ def download_contract_package_pdf(project_id: int, db: Session = Depends(get_db)
     if not project.scope_schedule:
         raise HTTPException(400, "Save the Scope & Payment Schedule before generating the combined PDF")
     pdf_bytes = documents.build_contract_package_pdf(
-        project=project, estimate=project.estimate, scope_schedule=project.scope_schedule, contract_package=cp
+        project=project,
+        estimate=project.estimate,
+        scope_schedule=project.scope_schedule,
+        contract_package=cp,
+        estimate_pdf_bytes=_fetch_real_estimate_pdf(db, project.estimate),
     )
     filename = f"{project.customer_name} - Contract Package.pdf".replace("/", "-")
     return Response(

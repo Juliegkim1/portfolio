@@ -1,28 +1,42 @@
-"""Summarizes a QuickBooks estimate's raw memo/line-item text into a clean
-project scope description, via the Gemini API.
+"""Document/estimate extraction, tried across multiple AI providers in
+order — Gemini first, then Claude (Anthropic), then GPT (OpenAI) — so one
+provider's models being unreliable for a given document, or the account
+being unconfigured, isn't a hard stop. Each provider is tried only if its
+API key is set (see config.py); the first one to return genuinely usable
+data (found=true with at least one line item or milestone) wins. If every
+configured provider comes up empty, the error explains what each one
+said, not just the last one tried.
 
-This isn't wired into any OAuth flow — the Gemini API (generativelanguage.
-googleapis.com) authenticates with a plain API key from
-aistudio.google.com/apikey, a different product from the Drive/Sheets OAuth
-client in google_oauth.py. If GEMINI_API_KEY isn't set, summarize() just
-returns the input unchanged — callers don't need to branch on whether it's
-configured.
+This module is still named after Gemini (the original, single-provider
+implementation) rather than something like "extraction_service" — a
+rename would touch every router import for a purely cosmetic reason, so
+it stayed put; the multi-provider orchestration lives here regardless of
+the name. GeminiNotConfigured/GeminiExtractionError are the stable public
+exception types routers already catch — they're raised by the
+orchestrator now, not literally Gemini-specific, but keeping the names
+avoids an unnecessary breaking rename for the same reason.
+
+Also home to summarize_scope() — a real but separate Gemini-only feature
+(cleaning up a QuickBooks estimate's memo text), not part of the
+extraction fallback chain: it already degrades gracefully to the raw
+text when Gemini isn't configured or hiccups, so there's no "all
+providers failed" case to design for there.
 """
 
 from __future__ import annotations
 
 import base64
 import datetime as dt
-import io
 import json
 import logging
 import time
 
-import docx
 import httpx
 
 from ..config import settings
 from ..schemas import DriveImportPreview, EstimateFetchResult, EstimateLineItemIn, MilestonePreview
+from . import ai_schema, anthropic_service, openai_service
+from .document_text import DocumentPart, DocumentReadError, PdfPart, TextPart, build_document_parts
 
 logger = logging.getLogger("cabrera.gemini")
 
@@ -125,61 +139,7 @@ def summarize_scope(raw_text: str) -> str:
         return raw_text
 
 
-def _extract_docx_text(docx_bytes: bytes) -> str:
-    """Flattens a .docx's paragraphs and table cells into plain text, in
-    document order, for the pieces Gemini actually needs here. .docx has no
-    equivalent to sending a PDF as inline_data — Gemini's document
-    understanding only covers PDF/image/etc. — so this text is sent as a
-    plain text part instead (see extract_estimate_from_document)."""
-    document = docx.Document(io.BytesIO(docx_bytes))
-    parts: list[str] = [p.text for p in document.paragraphs if p.text.strip()]
-    for table in document.tables:
-        for row in table.rows:
-            cells = [cell.text.strip() for cell in row.cells if cell.text.strip()]
-            if cells:
-                parts.append(" | ".join(cells))
-    return "\n".join(parts)
-
-
-_EXTRACTION_PROMPT = (
-    "This document is either a QuickBooks-exported estimate or informal notes written by a "
-    "general contractor (sometimes handwritten-style, with typos, OCR garbling, shorthand, or "
-    "mixed English/Spanish). Extract a structured project estimate from it.\n\n"
-    "Rules:\n"
-    "- Only extract information actually present in the document. Leave a field empty "
-    "(or omit it) rather than inventing a customer name, address, phone, or email that "
-    "isn't there.\n"
-    "- line_items are the COST BREAKDOWN (materials/labor/demo), not the payment schedule. "
-    "Every priced item in a materials/labor/demo breakdown becomes one line item. Classify "
-    "each into exactly one section: 'demolition' (demo/removal/prep work), 'materials', "
-    "'labor', or 'additional_work' (anything else, e.g. a line that's clearly a flat task "
-    "without materials/labor split out). If a line bundles labor and material together with "
-    "one price, you can put it under whichever section best matches its main description, or "
-    "'additional_work' if ambiguous. qty defaults to 1 and unit to 'ea' when the document "
-    "doesn't break those out separately — put the full line price in unit_price in that case.\n"
-    "- milestones are the PAYMENT SCHEDULE (how/when the client pays), a SEPARATE concept from "
-    "line_items — a document can have a cost breakdown, a payment schedule, both, or neither. "
-    "If the document lists a deposit followed by numbered payments/phases with their own "
-    "dollar amounts (e.g. 'Deposit $1,000', '1. Payment $5,000 — demo and prep', '2. Rough "
-    "framing $10,000', ...), extract EACH as its own milestone: number starts at 0 for the "
-    "deposit and increases in the order listed; amount is that line's dollar figure; title is "
-    "a SHORT (under 60 characters) clean label for the phase — unlike payment_terms/"
-    "warranty_terms below, DO NOT copy garbled source text verbatim here: normalize obvious "
-    "typos/OCR errors into standard construction terms (e.g. 'FRAIMING RAUGE' -> 'Rough "
-    "Framing', 'INSOLATION AND DRAYWALL' -> 'Insulation & Drywall', 'PLUMBING AND ELECTRICAL "
-    "RAUGE' -> 'Plumbing & Electrical Rough-In'). Do not also duplicate these payment-schedule "
-    "entries as line_items — they're the same money described two different ways (what for vs. "
-    "when paid), not two different costs.\n"
-    "- contract_date, payment_terms, warranty_terms: contract metadata if present. Copy "
-    "payment_terms/warranty_terms language close to verbatim (these are terms, not prose to "
-    "polish) — garbled OCR text is fine here since it's quoting the source, unlike milestone "
-    "titles above which need to be scannable at a glance.\n"
-    "- scope_text: write a clear 2-4 sentence project scope description covering the "
-    "actual work, as if for a contract's project description field — not a copy of the "
-    "line items verbatim.\n"
-    "- total: the document's own stated total if present; otherwise the sum of all line "
-    "item prices.\n"
-)
+_EXTRACTION_PROMPT = ai_schema.EXTRACTION_PROMPT
 
 _EXTRACTION_SCHEMA = {
     "type": "OBJECT",
@@ -245,79 +205,155 @@ def _total_mismatch_message(declared_total: float | None, line_item_subtotal: fl
     )
 
 
-_DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-
-
-def _build_document_part(file_bytes: bytes, filename: str, content_type: str) -> dict:
+def _to_gemini_part(part: DocumentPart) -> dict:
     """PDFs go to Gemini as-is (inline_data) so it can use real document
-    understanding — layout, tables, etc. — not just raw text. .docx has no
-    such support, so it's flattened to plain text locally first (python-docx)
-    and sent as an ordinary text part instead."""
-    is_docx = content_type == _DOCX_MIME or filename.lower().endswith(".docx")
-    if is_docx:
-        text = _extract_docx_text(file_bytes)
-        if not text.strip():
-            raise GeminiExtractionError("This .docx file appears to have no readable text.")
-        return {"text": "Document contents:\n\n" + text}
-    return {"inline_data": {"mime_type": "application/pdf", "data": base64.b64encode(file_bytes).decode("ascii")}}
+    understanding — layout, tables, etc. .docx/.xlsx/pasted text arrive
+    pre-flattened to plain text by document_text.build_document_parts
+    (shared with the other providers), since Gemini has no more native
+    understanding of spreadsheet/Word formats than Claude or GPT do."""
+    if isinstance(part, TextPart):
+        return {"text": part.text}
+    if isinstance(part, PdfPart):
+        return {"inline_data": {"mime_type": "application/pdf", "data": base64.b64encode(part.data).decode("ascii")}}
+    raise TypeError(f"Unknown document part type: {type(part)!r}")
+
+
+def _call_gemini(files: list[tuple[bytes, str, str]], prompt: str, schema: dict, timeout: float) -> dict:
+    """One Gemini call. Returns the raw extracted dict (parsed from the
+    response's JSON-as-text, since Gemini wraps structured output in a text
+    part rather than returning it as a native object the way Claude's
+    tool-use does). Raises GeminiExtractionError on any failure — the
+    orchestrator below treats that as "this provider couldn't help"."""
+    parts = build_document_parts(files)
+    document_parts = [_to_gemini_part(p) for p in parts]
+    url = _API_URL_TEMPLATE.format(model=settings.gemini_model)
+    resp = _post_with_retry(
+        url,
+        {
+            "contents": [{"parts": [*document_parts, {"text": prompt}]}],
+            "generationConfig": {"responseMimeType": "application/json", "responseSchema": schema},
+        },
+        timeout=timeout,
+    )
+    if resp.status_code >= 400:
+        raise GeminiExtractionError(_extract_error_message(resp))
+    body = resp.json()
+    return json.loads(body["candidates"][0]["content"]["parts"][0]["text"])
+
+
+def any_provider_configured() -> bool:
+    """Used by routers to decide whether to attempt real extraction at all
+    or fall back to the clearly-labeled mock_integrations demo data — the
+    same role settings.gemini_api_key played before Claude/GPT existed as
+    options, just checking all three instead of just one."""
+    return bool(settings.gemini_api_key) or anthropic_service.is_configured() or openai_service.is_configured()
+
+
+def _extract_with_fallback(
+    files: list[tuple[bytes, str, str]],
+    *,
+    gemini_prompt: str,
+    gemini_schema: dict,
+    gemini_timeout: float,
+    standard_prompt: str,
+    standard_schema: dict,
+    not_found_message: str,
+) -> dict:
+    """Tries each configured provider in order (Gemini, Claude, GPT),
+    returning the first one's raw extracted dict once it actually found
+    something usable (found=true, at least one line item or milestone).
+    Raises GeminiNotConfigured if nothing is configured at all, or
+    GeminiExtractionError with every attempted provider's reason if all
+    configured ones failed or came up empty — not just the last one tried,
+    since which provider struggles with a given document varies."""
+    if not files:
+        raise GeminiExtractionError("No documents to extract from.")
+    try:
+        build_document_parts(files)  # validate once, up front — a docx/xlsx that can't be read fails identically for every provider, so there's no point spending an API call (paid, on whichever provider is tried first) to discover that
+    except DocumentReadError as exc:
+        raise GeminiExtractionError(str(exc)) from exc
+
+    providers: list[tuple[str, object]] = []
+    if settings.gemini_api_key:
+        providers.append(("Gemini", lambda f, p, s: _call_gemini(f, p, s, gemini_timeout)))
+    if anthropic_service.is_configured():
+        providers.append(("Claude", anthropic_service.extract))
+    if openai_service.is_configured():
+        providers.append(("GPT", openai_service.extract))
+
+    if not providers:
+        raise GeminiNotConfigured(
+            "No AI extraction provider is configured — set GEMINI_API_KEY, ANTHROPIC_API_KEY, "
+            "or OPENAI_API_KEY in app/backend/.env."
+        )
+
+    names = ", ".join(f[1] for f in files)
+    reasons: list[str] = []
+    for provider_name, call in providers:
+        prompt = gemini_prompt if provider_name == "Gemini" else standard_prompt
+        schema = gemini_schema if provider_name == "Gemini" else standard_schema
+        try:
+            data = call(files, prompt, schema)
+        except Exception as exc:  # noqa: BLE001 — any provider failure just means "try the next one"
+            logger.info("%s extraction attempt failed for %s: %s", provider_name, names, exc)
+            reasons.append(f"{provider_name}: {exc}")
+            continue
+        if not data.get("found") or (not data.get("line_items") and not data.get("milestones")):
+            logger.info("%s found nothing usable for %s", provider_name, names)
+            reasons.append(f"{provider_name}: {not_found_message}")
+            continue
+        logger.info("%s extracted from %s", provider_name, names)
+        return data
+
+    raise GeminiExtractionError(f"{not_found_message} Tried: " + " · ".join(reasons))
 
 
 def extract_estimate_from_document(file_bytes: bytes, filename: str, content_type: str = "application/pdf") -> EstimateFetchResult:
     """Real extraction for the "no QuickBooks estimate number" upload path —
-    replaces the old hardcoded demo data. Accepts a PDF or a .docx."""
+    replaces the old hardcoded demo data. Accepts a PDF, .docx, or .xlsx."""
     return extract_estimate_from_documents([(file_bytes, filename, content_type)])
+
+
+def extract_estimate_from_text(raw_text: str) -> EstimateFetchResult:
+    """Same extraction, but from text pasted directly into the app instead
+    of an uploaded file. The fallback for a .docx/.xlsx that fails to parse
+    (not actually a valid Office document — common for an old .doc renamed,
+    or a quirky export from some other app) — but also just a faster path
+    when a contractor's notes are already sitting in a text message or
+    email and exporting them to a file first would be pure friction."""
+    if not raw_text.strip():
+        raise GeminiExtractionError("Paste some text to extract from.")
+    return extract_estimate_from_documents([(raw_text.encode("utf-8"), "Pasted notes", "text/plain")])
 
 
 def extract_estimate_from_documents(files: list[tuple[bytes, str, str]]) -> EstimateFetchResult:
     """Same extraction, but from several documents at once — e.g. every
     PDF/DOCX found in an existing Drive project folder (contract, estimate,
-    notes, ...) — sent to Gemini together in one request so it can combine
-    information across all of them into one result, rather than extracting
-    each file in isolation and having to merge the results ourselves.
+    notes, ...) — sent to each tried provider together in one request so it
+    can combine information across all of them into one result, rather than
+    extracting each file in isolation and having to merge the results
+    ourselves.
 
     Raises GeminiNotConfigured / GeminiExtractionError on failure rather
     than silently returning fake data — unlike summarize_scope, there's no
     honest fallback here: this function *is* the feature."""
-    if not settings.gemini_api_key:
-        raise GeminiNotConfigured("GEMINI_API_KEY is not set in app/backend/.env — required to read these documents.")
-    if not files:
-        raise GeminiExtractionError("No documents to extract from.")
+    multi_note = "\nThese are multiple documents for the same job — combine information across all of them into one result.\n"
+    gemini_prompt = _EXTRACTION_PROMPT if len(files) == 1 else _EXTRACTION_PROMPT + multi_note
+    standard_prompt = ai_schema.EXTRACTION_PROMPT if len(files) == 1 else ai_schema.EXTRACTION_PROMPT + multi_note
 
-    names = ", ".join(f[1] for f in files)
-    url = _API_URL_TEMPLATE.format(model=settings.gemini_model)
-    try:
-        document_parts = [_build_document_part(fb, fn, ct) for fb, fn, ct in files]
-        prompt = _EXTRACTION_PROMPT if len(files) == 1 else _EXTRACTION_PROMPT + "\nThese are multiple documents for the same job — combine information across all of them into one result.\n"
-        resp = _post_with_retry(
-            url,
-            {
-                "contents": [{"parts": [*document_parts, {"text": prompt}]}],
-                "generationConfig": {"responseMimeType": "application/json", "responseSchema": _EXTRACTION_SCHEMA},
-            },
-            # Bounded well under the load balancer's request timeout even in
-            # the worst case (this + retry backoff) — someone's waiting on
-            # this screen, so failing clearly in ~2 min beats hanging in a
-            # spinner for six.
-            timeout=45,
-        )
-        if resp.status_code >= 400:
-            message = _extract_error_message(resp)
-            logger.error("Gemini document extraction failed for %s: %s", names, message)
-            raise GeminiExtractionError(f"Could not extract an estimate from this: {message}")
-        body = resp.json()
-        data = json.loads(body["candidates"][0]["content"]["parts"][0]["text"])
-    except GeminiExtractionError:
-        raise
-    except (httpx.HTTPError, KeyError, IndexError, ValueError) as exc:
-        logger.error("Gemini document extraction failed for %s: %s", names, exc)
-        raise GeminiExtractionError(f"Could not extract an estimate from this: {exc}") from exc
-
-    # A document can be purely a payment schedule with no itemized cost
-    # breakdown (common for informal job notes like "Deposit $1,000, 1.
-    # Framing $10,000, ...") — that's still usable, so only reject when
-    # NEITHER a cost breakdown nor a payment schedule was found.
-    if not data.get("found") or (not data.get("line_items") and not data.get("milestones")):
-        raise GeminiExtractionError("Gemini couldn't find usable estimate/job information in these documents.")
+    data = _extract_with_fallback(
+        files,
+        gemini_prompt=gemini_prompt,
+        gemini_schema=_EXTRACTION_SCHEMA,
+        gemini_timeout=45,
+        # Bounded well under the load balancer's request timeout even in the
+        # worst case (this + retry backoff, Gemini only — Claude/GPT below
+        # aren't retried the same way) — someone's waiting on this screen,
+        # so failing clearly in a couple of minutes beats hanging for six.
+        standard_prompt=standard_prompt,
+        standard_schema=ai_schema.EXTRACTION_SCHEMA,
+        not_found_message="Couldn't find usable estimate/job information in these documents.",
+    )
 
     milestones = [
         MilestonePreview(number=m["number"], title=m["title"], amount=m["amount"], due_date=_parse_date(m.get("due_date")))
@@ -338,7 +374,8 @@ def extract_estimate_from_documents(files: list[tuple[bytes, str, str]]) -> Esti
     total = float(declared_total or subtotal)
     mismatch = _total_mismatch_message(declared_total, subtotal)
 
-    logger.info("Gemini extracted estimate from %s: %d line items, %d milestones, total=%.2f", names, len(line_items), len(milestones), total)
+    names = ", ".join(f[1] for f in files)
+    logger.info("Extracted estimate from %s: %d line items, %d milestones, total=%.2f", names, len(line_items), len(milestones), total)
     return EstimateFetchResult(
         found=True,
         estimate_number=f"DOC-{files[0][1][:20]}",
@@ -360,34 +397,7 @@ def extract_estimate_from_documents(files: list[tuple[bytes, str, str]]) -> Esti
     )
 
 
-_HISTORICAL_PROMPT = (
-    "These documents are the complete file for a residential construction project that was "
-    "created BEFORE this app existed — e.g. a signed contract, the original estimate, and/or a "
-    "Scope & Payment Schedule. Extract a complete historical record from them so the project's "
-    "contact info, scope, and payment schedule can be reconstructed. These documents may be some "
-    "combination of a signed contract, an estimate, and a payment schedule — combine information "
-    "across all of them into one result.\n\n"
-    "Rules:\n"
-    "- Only extract information actually present in the documents. Leave a field empty rather "
-    "than inventing a customer name, address, phone, email, contract date, or payment terms that "
-    "aren't there.\n"
-    "- Every priced item on the estimate becomes one line item, classified into 'demolition', "
-    "'materials', 'labor', or 'additional_work' as best fits.\n"
-    "- milestones are the PAYMENT SCHEDULE (how/when the client pays), a SEPARATE concept from "
-    "line_items (what the work costs) — don't duplicate payment-schedule entries as line_items. "
-    "Each milestone (e.g. 'Deposit', 'Rough-in complete', 'Final payment') gets its own amount. "
-    "number starts at 0 for the initial deposit/payment and increases in the order they appear. "
-    "If no payment schedule document is present, leave milestones empty rather than guessing a "
-    "schedule. title is a SHORT (under 60 characters) clean label — normalize obvious typos/OCR "
-    "errors into standard construction terms (e.g. 'FRAIMING RAUGE' -> 'Rough Framing') rather "
-    "than copying garbled source text verbatim; that's for payment_terms/warranty_terms below, "
-    "not milestone titles, which need to be scannable at a glance.\n"
-    "- contract_date: the date the contract was signed, if stated.\n"
-    "- payment_terms / warranty_terms: copy the actual contract language if present, don't "
-    "paraphrase.\n"
-    "- scope_text: a clear 2-4 sentence project scope description covering the actual work.\n"
-    "- total: the contract's stated total if present; otherwise the sum of all line item prices.\n"
-)
+_HISTORICAL_PROMPT = ai_schema.HISTORICAL_PROMPT
 
 _HISTORICAL_SCHEMA = {
     "type": "OBJECT",
@@ -449,41 +459,21 @@ def extract_historical_project(folder_id: str, folder_name: str, files: list[tup
     not just estimate fields — this feeds the dedicated Drive-import
     pipeline (see routers/projects.py), which creates a complete, already-
     signed project rather than running it through the new-estimate wizard."""
-    if not settings.gemini_api_key:
-        raise GeminiNotConfigured("GEMINI_API_KEY is not set in app/backend/.env — required to read these documents.")
-    if not files:
-        raise GeminiExtractionError("No documents to extract from.")
-
-    names = ", ".join(f[1] for f in files)
-    url = _API_URL_TEMPLATE.format(model=settings.gemini_model)
-    try:
-        document_parts = [_build_document_part(fb, fn, ct) for fb, fn, ct in files]
-        resp = _post_with_retry(
-            url,
-            {
-                "contents": [{"parts": [*document_parts, {"text": _HISTORICAL_PROMPT}]}],
-                "generationConfig": {"responseMimeType": "application/json", "responseSchema": _HISTORICAL_SCHEMA},
-            },
-            # Bounded well under the load balancer's request timeout even in
-            # the worst case (this + retry backoff) — someone's waiting on
-            # this screen, so failing clearly in ~2 min beats hanging in a
-            # spinner for six.
-            timeout=45,
-        )
-        if resp.status_code >= 400:
-            message = _extract_error_message(resp)
-            logger.error("Gemini historical-project extraction failed for %s: %s", names, message)
-            raise GeminiExtractionError(f"Could not extract an estimate from this: {message}")
-        body = resp.json()
-        data = json.loads(body["candidates"][0]["content"]["parts"][0]["text"])
-    except GeminiExtractionError:
-        raise
-    except (httpx.HTTPError, KeyError, IndexError, ValueError) as exc:
-        logger.error("Gemini historical-project extraction failed for %s: %s", names, exc)
-        raise GeminiExtractionError(f"Could not extract an estimate from this: {exc}") from exc
-
-    if not data.get("found"):
-        raise GeminiExtractionError("Gemini couldn't find usable project information in this Drive folder.")
+    data = _extract_with_fallback(
+        files,
+        gemini_prompt=_HISTORICAL_PROMPT,
+        gemini_schema=_HISTORICAL_SCHEMA,
+        # Bounded well under the load balancer's request timeout even in the
+        # worst case (this + retry backoff) — someone's waiting on this
+        # screen, so failing clearly in ~2.5 min beats hanging for six.
+        # Raised from 45s since a folder can send up to _MAX_FOLDER_DOCUMENTS
+        # (20) documents in one call — a bigger payload genuinely needs more
+        # processing time.
+        gemini_timeout=60,
+        standard_prompt=ai_schema.HISTORICAL_PROMPT,
+        standard_schema=ai_schema.HISTORICAL_SCHEMA,
+        not_found_message="Couldn't find usable project information in this Drive folder.",
+    )
 
     line_items = [EstimateLineItemIn(**li) for li in data.get("line_items", [])]
     milestones = [
@@ -507,7 +497,8 @@ def extract_historical_project(folder_id: str, folder_name: str, files: list[tup
     if not line_items and milestones:
         line_items = [EstimateLineItemIn(section="additional_work", description="Project total (from payment schedule)", qty=1, unit="ea", unit_price=total)]
 
-    logger.info("Gemini extracted historical project from %s: %d line items, %d milestones, total=%.2f", names, len(line_items), len(milestones), total)
+    names = ", ".join(f[1] for f in files)
+    logger.info("Extracted historical project from %s: %d line items, %d milestones, total=%.2f", names, len(line_items), len(milestones), total)
     return DriveImportPreview(
         folder_id=folder_id,
         folder_name=folder_name,

@@ -277,9 +277,14 @@ textarea.input { min-height: 90px; resize: vertical; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-2); }
 
 /* — blueprint frame: components are wireframe objects (see .blueprint
-     and .corner above) — square, transparent, hairline-bordered — */
-.card, .btn, .input, .tag, .seg, .dialog { border-radius: 0; }
-.card, .dialog { background: transparent; border: 1px solid var(--color-divider); }
+     and .corner above) — square, transparent, hairline-bordered —
+     .dialog is deliberately excluded from both rules below: a modal needs
+     to stay opaque regardless of what's behind it (the page content, via
+     the semi-transparent .dialog-backdrop), unlike a .card sitting flat
+     on the page background. It keeps its own background/shadow/radius
+     from the ".dialog" rule above instead. */
+.card, .btn, .input, .tag, .seg { border-radius: 0; }
+.card { background: transparent; border: 1px solid var(--color-divider); }
 .btn { border: 1px solid var(--color-divider); }
 .btn-primary { border-color: var(--color-accent); }
 .btn-ghost { border-color: transparent; }

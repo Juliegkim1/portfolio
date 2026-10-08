@@ -1,0 +1,114 @@
+"""Converts an uploaded/pasted file into either plain text or raw PDF bytes
+— shared by every AI extraction provider (Gemini, Anthropic, OpenAI), since
+none of them natively understand .docx/.xlsx and all three handle PDF and
+plain text their own way. Keeping this one place means docx/xlsx handling
+(and its error messages) doesn't drift across three near-duplicate copies.
+"""
+
+from __future__ import annotations
+
+import io
+from dataclasses import dataclass
+
+import docx
+import openpyxl
+
+DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+class DocumentReadError(Exception):
+    """A file claims to be .docx/.xlsx but isn't actually readable as one —
+    see extract_docx_text/extract_xlsx_text. Each provider_service.py wraps
+    this in its own extraction-error type; the message itself (which points
+    the user at the paste-text fallback) stays identical everywhere."""
+
+
+@dataclass
+class TextPart:
+    text: str
+
+
+@dataclass
+class PdfPart:
+    data: bytes
+
+
+DocumentPart = TextPart | PdfPart
+
+
+def extract_docx_text(docx_bytes: bytes) -> str:
+    """Flattens a .docx's paragraphs and table cells into plain text, in
+    document order. A file named "<something>.docx" isn't necessarily a
+    real OOXML Word document — a legacy .doc saved years ago and just
+    renamed, a Pages/Google Docs export with quirks, or a plain corrupted
+    upload will make python-docx raise instead of returning text. That's a
+    real, recurring case for a small contractor's informal notes files, so
+    it's caught here and turned into a clear, actionable error rather than
+    an uncaught 500 — the paste-text option on the Estimate Upload screen
+    is the intended fallback when this happens."""
+    try:
+        document = docx.Document(io.BytesIO(docx_bytes))
+    except Exception as exc:
+        raise DocumentReadError(
+            "This .docx file couldn't be read — it may not actually be a valid Word document "
+            "(common if it was saved from an old .doc, or exported from another app). Open it, "
+            "copy its text, and use \"Or paste the text directly\" instead."
+        ) from exc
+    parts: list[str] = [p.text for p in document.paragraphs if p.text.strip()]
+    for table in document.tables:
+        for row in table.rows:
+            cells = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+            if cells:
+                parts.append(" | ".join(cells))
+    text = "\n".join(parts)
+    if not text.strip():
+        raise DocumentReadError("This .docx file appears to have no readable text.")
+    return text
+
+
+def extract_xlsx_text(xlsx_bytes: bytes) -> str:
+    """Flattens an .xlsx's sheets into plain text, row by row. A real
+    "Project Scope and Payment Schedule" workbook is typically one sheet,
+    one header row, and one row per payment phase (number, title,
+    description, amount, due date) — exactly the shape a flattened
+    "cell | cell | cell" text line preserves well enough to read as a
+    table."""
+    try:
+        workbook = openpyxl.load_workbook(io.BytesIO(xlsx_bytes), data_only=True, read_only=True)
+    except Exception as exc:
+        raise DocumentReadError(
+            "This .xlsx file couldn't be read — it may be corrupted or not actually a valid "
+            'Excel workbook. Open it, copy its text, and use "Or paste the text directly" instead.'
+        ) from exc
+    parts: list[str] = []
+    for sheet in workbook.worksheets:
+        for row in sheet.iter_rows(values_only=True):
+            cells = [str(c).strip() for c in row if c is not None and str(c).strip()]
+            if cells:
+                parts.append(" | ".join(cells))
+    text = "\n".join(parts)
+    if not text.strip():
+        raise DocumentReadError("This .xlsx file appears to have no readable content.")
+    return text
+
+
+def build_document_parts(files: list[tuple[bytes, str, str]]) -> list[DocumentPart]:
+    """files: (bytes, filename, content_type) triples, same shape every
+    caller already collects (an upload, a pasted-text pseudo-file, a Drive
+    download). Returns one TextPart/PdfPart per file, in order — a provider
+    turns each into its own native request format."""
+    parts: list[DocumentPart] = []
+    for file_bytes, filename, content_type in files:
+        if content_type == "text/plain":
+            parts.append(TextPart(text="Document contents:\n\n" + file_bytes.decode("utf-8")))
+            continue
+        is_docx = content_type == DOCX_MIME or filename.lower().endswith(".docx")
+        is_xlsx = content_type == XLSX_MIME or filename.lower().endswith(".xlsx")
+        if is_docx:
+            parts.append(TextPart(text="Document contents:\n\n" + extract_docx_text(file_bytes)))
+        elif is_xlsx:
+            parts.append(TextPart(text="Spreadsheet contents:\n\n" + extract_xlsx_text(file_bytes)))
+        else:
+            parts.append(PdfPart(data=file_bytes))
+    return parts

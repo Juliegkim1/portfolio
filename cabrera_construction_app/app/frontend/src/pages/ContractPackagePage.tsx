@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Circle, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 import { api } from "../api/client";
 import { AppShell } from "../components/AppShell";
@@ -8,7 +9,7 @@ import { ErrorState, LoadingState } from "../components/StateViews";
 import { useProjectContext } from "../context/ProjectContext";
 import { money } from "../format";
 
-const STEPS = ["Draft generated", "Review", "Approved & saved to Drive", "Sent for signature"];
+const STEP_KEYS = ["contract.stepDraft", "contract.stepReview", "contract.stepApproved", "contract.stepSent"];
 
 function stepIndexFor(status: string): number {
   switch (status) {
@@ -25,6 +26,7 @@ function stepIndexFor(status: string): number {
 }
 
 export function ContractPackagePage() {
+  const { t } = useTranslation();
   const { projectId: param } = useParams();
   const projectId = Number(param);
   const queryClient = useQueryClient();
@@ -65,14 +67,14 @@ export function ContractPackagePage() {
 
   if (cpQuery.isLoading || estimateQuery.isLoading) {
     return (
-      <AppShell title="Contract Package">
+      <AppShell title={t("nav.step4")}>
         <LoadingState />
       </AppShell>
     );
   }
   if (cpQuery.isError) {
     return (
-      <AppShell title="Contract Package">
+      <AppShell title={t("nav.step4")}>
         <ErrorState error={cpQuery.error} />
       </AppShell>
     );
@@ -86,13 +88,13 @@ export function ContractPackagePage() {
   const downPayment = milestones[0]?.amount ?? 0;
 
   return (
-    <AppShell title="Contract Package" context={project ? `${project.name} · ${project.property_address}` : undefined}>
+    <AppShell title={t("nav.step4")} context={project ? `${project.name} · ${project.property_address}` : undefined}>
       <div className="section">
         <div className="row">
-          {STEPS.map((label, i) => (
-            <div key={label} className="icon-text" style={{ fontSize: 13, opacity: i <= currentStep ? 1 : 0.45 }}>
+          {STEP_KEYS.map((key, i) => (
+            <div key={key} className="icon-text" style={{ fontSize: 13, opacity: i <= currentStep ? 1 : 0.45 }}>
               {i <= currentStep ? <CheckCircle2 size={15} strokeWidth={1.5} /> : <Circle size={15} strokeWidth={1.5} />}
-              {label}
+              {t(key)}
             </div>
           ))}
         </div>
@@ -100,54 +102,54 @@ export function ContractPackagePage() {
 
       <div className="form-grid" style={{ alignItems: "start" }}>
         <div className="section" style={{ gridColumn: "span 2" }}>
-          <h3>Contract Fields</h3>
+          <h3>{t("contract.contractFields")}</h3>
           <div className="card" style={{ padding: "var(--space-4)" }}>
             <div className="form-grid">
               <div className="field">
-                <label>Owner Name</label>
+                <label>{t("contract.ownerName")}</label>
                 <input className="input" readOnly value={project?.customer_name ?? ""} style={{ opacity: 0.85 }} />
               </div>
               <div className="field">
-                <label>Project Address</label>
+                <label>{t("contract.projectAddress")}</label>
                 <input className="input" readOnly value={project?.property_address ?? ""} style={{ opacity: 0.85 }} />
               </div>
               <div className="field">
-                <label>Contractor</label>
+                <label>{t("contract.contractor")}</label>
                 <input className="input" readOnly value="Cabrera Construction — Lic. #1135927" style={{ opacity: 0.85 }} />
               </div>
               <div className="field">
-                <label>Contract Price</label>
+                <label>{t("contract.contractPrice")}</label>
                 <input className="input" readOnly value={money(estimate?.total)} style={{ opacity: 0.85 }} />
               </div>
               <div className="field">
-                <label>Down Payment</label>
+                <label>{t("contract.downPayment")}</label>
                 <input className="input" readOnly value={money(downPayment)} style={{ opacity: 0.85 }} />
               </div>
               <div className="field">
-                <label>Start / Completion</label>
+                <label>{t("contract.startCompletion")}</label>
                 <input className="input" readOnly value={`${project?.start_date ?? "—"} → ${project?.end_date ?? "—"}`} style={{ opacity: 0.85 }} />
               </div>
             </div>
 
             <div className="field" style={{ marginTop: "var(--space-3)" }}>
               <div className="row-between">
-                <label>Description of the Project and Significant Materials</label>
+                <label>{t("contract.descriptionLabel")}</label>
                 <button className="btn btn-ghost" disabled={regenerate.isPending} onClick={() => regenerate.mutate()}>
-                  <RefreshCw size={13} strokeWidth={1.5} /> Regenerate summary
+                  <RefreshCw size={13} strokeWidth={1.5} /> {t("contract.regenerateSummary")}
                 </button>
               </div>
               <textarea className="input" value={description} onChange={(e) => setDescription(e.target.value)} onBlur={() => saveDescription.mutate()} rows={5} />
             </div>
 
             <div className="field" style={{ marginTop: "var(--space-3)" }}>
-              <label>Schedule of Progress Payments</label>
+              <label>{t("contract.scheduleOfPayments")}</label>
               <div className="table-scroll">
                 <table className="table">
                   <thead>
                     <tr>
-                      <th>Milestone</th>
-                      <th>Due</th>
-                      <th>Amount</th>
+                      <th>{t("contract.milestoneColumn")}</th>
+                      <th>{t("contract.due")}</th>
+                      <th>{t("common.amount")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -166,7 +168,7 @@ export function ContractPackagePage() {
         </div>
 
         <div className="section">
-          <h3>Combined PDF</h3>
+          <h3>{t("contract.combinedPdf")}</h3>
           <div className="card" style={{ padding: "var(--space-4)" }}>
             <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
               {cp.attachments.map((a, i) => (
@@ -174,20 +176,20 @@ export function ContractPackagePage() {
               ))}
             </ul>
             <div className="muted" style={{ fontSize: 12, marginTop: "var(--space-2)" }}>
-              Drive: {cp.drive_file_id ?? "Not saved yet"}
+              {t("contract.driveLabel")}: {cp.drive_file_id ?? t("contract.notSavedYet")}
             </div>
             <a className="btn btn-secondary btn-block" href={api.contractPackage.pdfUrl(projectId)} target="_blank" rel="noreferrer">
-              Preview PDF
+              {t("scopeSchedule.previewPdf")}
             </a>
 
             {cp.status === "draft" && (
               <>
                 <div className="field" style={{ marginTop: "var(--space-3)" }}>
-                  <label>Approved by</label>
+                  <label>{t("contract.approvedBy")}</label>
                   <input className="input" value={approvedBy} onChange={(e) => setApprovedBy(e.target.value)} />
                 </div>
                 <button className="btn btn-primary btn-block" disabled={approve.isPending} onClick={() => approve.mutate()}>
-                  Approve & Save to Drive
+                  {t("contract.approveSaveToDrive")}
                 </button>
               </>
             )}
@@ -195,27 +197,32 @@ export function ContractPackagePage() {
             {cp.status === "approved" && (
               <div className="stack" style={{ marginTop: "var(--space-3)" }}>
                 <div className="muted" style={{ fontSize: 12 }}>
-                  Approved by {cp.approved_by}
+                  {t("contract.approvedByLabel", { name: cp.approved_by })}
+                </div>
+                <div className="muted" style={{ fontSize: 12 }}>
+                  {t("contract.manualSignatureNote")}
                 </div>
                 <button className="btn btn-primary btn-block" disabled={sendForSignature.isPending} onClick={() => sendForSignature.mutate()}>
-                  Send for Signature via Adobe Acrobat Sign
+                  {t("contract.sendForSignature")}
                 </button>
                 <button className="btn btn-secondary btn-block" disabled={revertToDraft.isPending} onClick={() => revertToDraft.mutate()}>
-                  Revert to Draft
+                  {t("contract.revertToDraft")}
                 </button>
               </div>
             )}
 
             {cp.status === "out_for_signature" && (
               <div className="stack" style={{ marginTop: "var(--space-3)" }}>
-                <div className="tag tag-outline">Agreement {cp.adobe_agreement_id}</div>
+                <div className="muted" style={{ fontSize: 12 }}>
+                  {t("contract.outForSignatureNote")}
+                </div>
                 <button className="btn btn-primary btn-block" disabled={markSigned.isPending} onClick={() => markSigned.mutate()}>
-                  Simulate: Both Parties Signed
+                  {t("contract.markFullySigned")}
                 </button>
               </div>
             )}
 
-            {cp.status === "signed" && <div className="tag tag-accent" style={{ marginTop: "var(--space-3)" }}>Signed</div>}
+            {cp.status === "signed" && <div className="tag tag-accent" style={{ marginTop: "var(--space-3)" }}>{t("contract.signedTag")}</div>}
 
             {(saveDescription.isError || approve.isError || sendForSignature.isError) && (
               <div className="error-state" style={{ marginTop: "var(--space-2)" }}>

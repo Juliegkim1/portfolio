@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
 import type { ReceiptType } from "../api/types";
 import { useProjectContext } from "../context/ProjectContext";
@@ -24,6 +25,7 @@ export function AddReceiptDialog({
   // worth) rather than forcing an exact-match amount.
   milestoneContext?: { title: string; amount: number; received: number } | null;
 }) {
+  const { t } = useTranslation();
   const { projects } = useProjectContext();
   const queryClient = useQueryClient();
 
@@ -65,24 +67,24 @@ export function AddReceiptDialog({
   return (
     <div className="dialog-backdrop" onClick={onClose}>
       <div className="dialog" onClick={(e) => e.stopPropagation()}>
-        <div className="dialog-title">Add Receipt</div>
+        <div className="dialog-title">{t("addReceipt.title")}</div>
 
         <div className="field">
-          <label>Type</label>
+          <label>{t("reconciliation.type")}</label>
           <div className="seg">
             <label className="seg-opt">
               <input type="radio" checked={type === "expense"} onChange={() => setType("expense")} />
-              Job Expense
+              {t("addReceipt.jobExpense")}
             </label>
             <label className="seg-opt">
               <input type="radio" checked={type === "payment"} onChange={() => setType("payment")} />
-              Customer Payment
+              {t("addReceipt.customerPayment")}
             </label>
           </div>
         </div>
 
         <div className="field">
-          <label>Which project is this receipt for?</label>
+          <label>{t("addReceipt.whichProject")}</label>
           <select
             className="input"
             value={projectId}
@@ -91,7 +93,7 @@ export function AddReceiptDialog({
               setMilestoneId("");
             }}
           >
-            <option value="">{type === "expense" ? "No project — business expense" : "Select a project…"}</option>
+            <option value="">{type === "expense" ? t("addReceipt.noProjectExpense") : t("addReceipt.selectProject")}</option>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -102,9 +104,9 @@ export function AddReceiptDialog({
 
         {type === "payment" && typeof projectId === "number" && (
           <div className="field">
-            <label>Milestone</label>
+            <label>{t("contract.milestoneColumn")}</label>
             <select className="input" value={milestoneId} onChange={(e) => setMilestoneId(e.target.value === "" ? "" : Number(e.target.value))}>
-              <option value="">Not tied to a specific milestone</option>
+              <option value="">{t("addReceipt.notTiedToMilestone")}</option>
               {scopeSchedule?.milestones.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.title}
@@ -116,44 +118,45 @@ export function AddReceiptDialog({
 
         {milestoneContext && (
           <div className="muted" style={{ fontSize: 13 }}>
-            {milestoneContext.title}: {money(milestoneContext.received)} received of {money(milestoneContext.amount)} —{" "}
-            {money(milestoneContext.amount - milestoneContext.received)} remaining. This payment doesn't need to match that exactly — partial
-            payments and payments that combine more than one milestone are both fine; add one receipt per payment as it comes in.
+            {t("addReceipt.milestoneContextNote", {
+              title: milestoneContext.title,
+              received: money(milestoneContext.received),
+              amount: money(milestoneContext.amount),
+              remaining: money(milestoneContext.amount - milestoneContext.received),
+            })}
           </div>
         )}
 
         <div className="form-grid">
           <div className="field">
-            <label>Date</label>
+            <label>{t("common.date")}</label>
             <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
           <div className="field">
-            <label>Amount</label>
+            <label>{t("common.amount")}</label>
             <input className="input" type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
           </div>
         </div>
 
         <div className="field">
-          <label>Description</label>
+          <label>{t("common.description")}</label>
           <input
             className="input"
-            placeholder="Vendor — details"
+            placeholder={t("addReceipt.vendorPlaceholder")}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
         </div>
 
-        {showBusinessWarning && (
-          <div className="banner banner-attention">This receipt won't be attached to a project — it will be filed as a business expense.</div>
-        )}
+        {showBusinessWarning && <div className="banner banner-attention">{t("addReceipt.businessExpenseWarning")}</div>}
         {createReceipt.isError && <div className="error-state">{(createReceipt.error as Error).message}</div>}
 
         <div className="dialog-actions">
           <button className="btn btn-secondary" onClick={onClose}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button className="btn btn-primary" disabled={!canSubmit || createReceipt.isPending} onClick={() => createReceipt.mutate()}>
-            {showBusinessWarning ? "File as Business Expense" : "Add Receipt"}
+            {showBusinessWarning ? t("addReceipt.fileAsBusinessExpense") : t("addReceipt.title")}
           </button>
         </div>
       </div>

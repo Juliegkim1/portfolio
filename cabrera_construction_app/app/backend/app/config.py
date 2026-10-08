@@ -31,12 +31,29 @@ class Settings(BaseSettings):
     google_client_secret: str = ""
     google_redirect_uri: str = "http://localhost:8000/api/integrations/google/callback"
 
-    # Gemini API (summarizing the QuickBooks estimate description into a
-    # clean project scope) — a plain API key from aistudio.google.com/apikey,
-    # not part of the Drive/Sheets OAuth client above; separate product.
-    # Summarization is skipped (raw text used as-is) when this is unset.
+    # Gemini API (document/estimate extraction, QuickBooks scope summarizing)
+    # — a plain API key from aistudio.google.com/apikey, not part of the
+    # Drive/Sheets OAuth client above; separate product. Tried FIRST among
+    # the extraction providers below when set (see services/gemini_service.py
+    # for the fallback order); summarize_scope() falls back to raw text,
+    # unsummarized, when this is unset rather than failing.
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.8-flash"
+
+    # Anthropic (Claude) API — second extraction provider, tried when Gemini
+    # is unset or doesn't find usable information in a given document/paste.
+    # A plain API key from console.anthropic.com. Leave unset to skip this
+    # provider entirely (the extraction fallback chain just has one fewer
+    # link, not an error).
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-sonnet-5-5"
+
+    # OpenAI (GPT) API — third extraction provider, tried last. A plain API
+    # key from platform.openai.com. Leave unset to skip. Confirm this model
+    # name is still current when setting up the account — it moves faster
+    # than this file gets revisited.
+    openai_api_key: str = ""
+    openai_model: str = "gpt-5.1"
 
     # Production only (Cloud Run): path to the frontend's built static files
     # inside the container — set by app/Dockerfile. None in local dev, where

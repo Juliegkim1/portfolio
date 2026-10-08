@@ -25,6 +25,13 @@ DRIVE_UPLOAD_API = "https://www.googleapis.com/upload/drive/v3"
 SHEETS_API = "https://sheets.googleapis.com/v4"
 FOLDER_MIME = "application/vnd.google-apps.folder"
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+# A native Google Sheet (created in Sheets, not an uploaded .xlsx) has this
+# mimeType and typically no file extension in its name at all — it has no
+# bytes of its own to download via `alt=media` (Drive returns 403 for native
+# Google Workspace files); it has to be rendered via the /export endpoint
+# instead. See export_file below.
+SHEET_MIME = "application/vnd.google-apps.spreadsheet"
 
 
 class GoogleApiError(Exception):
@@ -143,7 +150,7 @@ def create_sheet(db: Session, name: str, parent_folder_id: str | None = None) ->
     return sheet_id
 
 
-_IMPORTABLE_EXTENSIONS = (".pdf", ".docx")
+_IMPORTABLE_EXTENSIONS = (".pdf", ".docx", ".xlsx")
 
 
 def _list_subfolders(db: Session, parent_id: str) -> list[dict]:
@@ -179,12 +186,18 @@ def list_importable_project_folders(db: Session, exclude_folder_ids: set[str]) -
 
 
 def list_folder_documents(db: Session, folder_id: str) -> list[dict]:
-    """PDF/DOCX files directly inside a folder — the ones extraction can
-    actually read. Ignores subfolders, images, spreadsheets, etc."""
+    """PDF/DOCX files, plus native Google Sheets, directly inside a folder —
+    the ones extraction can actually read. Ignores subfolders, images, etc.
+
+    A native Google Sheet (e.g. a Scope & Payment Schedule someone built
+    directly in Sheets rather than uploading a .pdf/.xlsx) usually has no
+    file extension in its name at all, so the extension check below would
+    silently skip it — matched by mimeType instead. It still needs
+    export_file (not download_file) to actually read its bytes."""
     query = f"'{folder_id}' in parents and trashed = false"
     resp = _request(db, "GET", f"{DRIVE_API}/files", params={"q": query, "fields": "files(id,name,mimeType)", "pageSize": 50})
     files = resp.json().get("files", [])
-    return [f for f in files if f.get("name", "").lower().endswith(_IMPORTABLE_EXTENSIONS)]
+    return [f for f in files if f.get("name", "").lower().endswith(_IMPORTABLE_EXTENSIONS) or f.get("mimeType") == SHEET_MIME]
 
 
 def get_file_name(db: Session, file_id: str) -> str:
@@ -194,6 +207,18 @@ def get_file_name(db: Session, file_id: str) -> str:
 
 def download_file(db: Session, file_id: str) -> bytes:
     resp = _request(db, "GET", f"{DRIVE_API}/files/{file_id}", params={"alt": "media"})
+    return resp.content
+
+
+def export_file(db: Session, file_id: str, export_mime_type: str = "application/pdf") -> bytes:
+    """Renders a native Google Workspace file (Sheet, Doc, Slides — no bytes
+    of its own) via Drive's /export endpoint. download_file's `alt=media`
+    doesn't work on these; Drive returns 403. Exporting a Sheet to PDF
+    (rather than e.g. CSV) preserves its layout — merged cells, section
+    headers — which matters for a formatted Scope & Payment Schedule, and
+    lets the result reuse Gemini's existing PDF document-understanding path
+    with no separate parsing."""
+    resp = _request(db, "GET", f"{DRIVE_API}/files/{file_id}/export", params={"mimeType": export_mime_type})
     return resp.content
 
 
@@ -217,7 +242,7 @@ def search_documents(db: Session, search: str | None = None, limit: int = 20) ->
     lives elsewhere in Drive rather than requiring a local download first.
     `search` filters by filename (Drive's `contains` operator); omitted,
     returns the most recently modified matching files."""
-    mime_clause = f"(mimeType = '{DOCX_MIME}' or mimeType = 'application/pdf')"
+    mime_clause = f"(mimeType = '{DOCX_MIME}' or mimeType = '{XLSX_MIME}' or mimeType = 'application/pdf')"
     query = f"{mime_clause} and trashed = false"
     if search and search.strip():
         query += f" and name contains '{_escape_query_literal(search.strip())}'"

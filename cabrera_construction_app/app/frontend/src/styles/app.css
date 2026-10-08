@@ -17,9 +17,14 @@ a { text-decoration: none; }
   border-right: 1px solid var(--color-divider);
   padding: var(--space-4);
   gap: var(--space-2);
+  /* White, not var(--color-bg) (a light gray) — matches the logo's own
+     background so it doesn't sit on a visibly different-toned panel. The
+     main content area keeps --color-bg; this is scoped to the nav shell
+     only (sidebar + its mobile equivalents below), not the whole app. */
+  background: #fff;
 }
-.sidebar-logo { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-4); }
-.sidebar-logo img { height: 28px; width: auto; display: block; }
+.sidebar-logo { display: flex; align-items: center; margin-bottom: var(--space-4); }
+.sidebar-logo img { width: 100%; height: auto; display: block; }
 .sidebar-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; overflow-y: auto; }
 .sidebar-step {
   display: flex; align-items: center; gap: var(--space-2);
@@ -62,7 +67,7 @@ a { text-decoration: none; }
   .mobile-header {
     display: flex; align-items: center; justify-content: space-between;
     padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-divider);
-    position: sticky; top: 0; background: var(--color-bg); z-index: 5;
+    position: sticky; top: 0; background: #fff; z-index: 5;
   }
   .mobile-header-logo { display: flex; align-items: center; gap: var(--space-2); font-family: var(--font-heading); font-weight: 600; }
   .mobile-header-logo img { height: 22px; }
@@ -70,7 +75,7 @@ a { text-decoration: none; }
   .content { padding: var(--space-4); padding-bottom: 64px; }
   .mobile-tabbar {
     display: flex; position: fixed; bottom: 0; left: 0; right: 0; height: 48px;
-    border-top: 1px solid var(--color-divider); background: var(--color-bg); z-index: 5;
+    border-top: 1px solid var(--color-divider); background: #fff; z-index: 5;
   }
   .mobile-tab {
     flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -120,5 +125,23 @@ a { text-decoration: none; }
 .icon-text { display: inline-flex; align-items: center; gap: 6px; }
 .muted { opacity: 0.6; }
 .stack { display: flex; flex-direction: column; gap: var(--space-2); }
-.row { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
-.row-between { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+/* flex-direction: row is explicit (not just the flex default) because
+   .card sets flex-direction: column, and a className="card row" element
+   (the common pattern for a bordered row — see DriveImportPage,
+   EstimateUploadPage, InvoicesPage) needs .row to actually win that
+   property, not just rely on .row never having mentioned it. Two classes
+   of equal specificity on one element don't "merge" per property — the
+   last rule to actually declare a given property wins regardless of
+   class order on the element, and before this, nothing declared
+   flex-direction: row at all, so every "card row" stayed in .card's
+   column direction and rendered as a vertical stack instead. */
+.row { display: flex; flex-direction: row; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+/* Flex items default to min-width: auto, which floors them at their
+   intrinsic content size — an <input type="date"> alone is wide enough
+   that a row of several flex:1/flex:3 inputs (e.g. the Import from Drive
+   line-item/milestone editors) overflows its container's actual width
+   and wraps every input onto its own line well before the row is
+   actually out of room. Letting them shrink below content size is what
+   flex-basis/flex-grow were set up to control in the first place. */
+.row > .input, .row > input, .row > select { min-width: 0; }
+.row-between { display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: var(--space-2); flex-wrap: wrap; }

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Plus } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
 import { AddReceiptDialog } from "../components/AddReceiptDialog";
 import { AppShell } from "../components/AppShell";
@@ -9,6 +10,7 @@ import { useProjectContext } from "../context/ProjectContext";
 import { dateFmt, money } from "../format";
 
 export function BusinessExpensesPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { projects } = useProjectContext();
   const [showAddReceipt, setShowAddReceipt] = useState(false);
@@ -22,14 +24,14 @@ export function BusinessExpensesPage() {
 
   if (query.isLoading) {
     return (
-      <AppShell title="Business Expenses">
+      <AppShell title={t("nav.businessExpenses")}>
         <LoadingState />
       </AppShell>
     );
   }
   if (query.isError) {
     return (
-      <AppShell title="Business Expenses">
+      <AppShell title={t("nav.businessExpenses")}>
         <ErrorState error={query.error} />
       </AppShell>
     );
@@ -38,18 +40,18 @@ export function BusinessExpensesPage() {
   const data = query.data!;
 
   return (
-    <AppShell title="Business Expenses" context="Receipts not tied to a project">
+    <AppShell title={t("nav.businessExpenses")} context={t("businessExpenses.context")}>
       <div className="kpi-grid section">
         <div className="card">
-          <div className="card-kicker">Total</div>
+          <div className="card-kicker">{t("common.total")}</div>
           <div className="kpi-value">{money(data.kpis.total)}</div>
         </div>
         <div className="card">
-          <div className="card-kicker">Assigned to Projects</div>
+          <div className="card-kicker">{t("businessExpenses.assignedToProjects")}</div>
           <div className="kpi-value">{money(data.kpis.assigned_to_projects)}</div>
         </div>
         <div className="card">
-          <div className="card-kicker">Business</div>
+          <div className="card-kicker">{t("businessExpenses.business")}</div>
           <div className="kpi-value">{money(data.kpis.business)}</div>
         </div>
       </div>
@@ -57,25 +59,25 @@ export function BusinessExpensesPage() {
       {data.needs_project_count > 0 && (
         <div className="banner banner-attention icon-text section">
           <AlertTriangle size={16} strokeWidth={1.5} />
-          {data.needs_project_count} receipt{data.needs_project_count > 1 ? "s" : ""} need a project identified.
+          {t("businessExpenses.needsProjectCount", { count: data.needs_project_count })}
         </div>
       )}
 
       <div className="section">
         <div className="row-between">
-          <h3>Expense Receipts</h3>
+          <h3>{t("businessExpenses.expenseReceipts")}</h3>
           <button className="btn btn-secondary" onClick={() => setShowAddReceipt(true)}>
-            <Plus size={14} strokeWidth={1.5} /> Add Receipt
+            <Plus size={14} strokeWidth={1.5} /> {t("reconciliation.addReceipt")}
           </button>
         </div>
         <div className="table-scroll">
           <table className="table">
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Description</th>
-                <th>Amount</th>
-                <th>Project</th>
+                <th>{t("common.date")}</th>
+                <th>{t("common.description")}</th>
+                <th>{t("common.amount")}</th>
+                <th>{t("common.project")}</th>
               </tr>
             </thead>
             <tbody>
@@ -86,7 +88,7 @@ export function BusinessExpensesPage() {
                     {r.description}
                     {r.needs_project && (
                       <span className="tag tag-outline" style={{ marginLeft: 6 }}>
-                        Project not identified
+                        {t("businessExpenses.projectNotIdentified")}
                       </span>
                     )}
                   </td>
@@ -97,7 +99,7 @@ export function BusinessExpensesPage() {
                       value={r.project_id ?? ""}
                       onChange={(e) => assignProject.mutate({ id: r.id, projectId: e.target.value === "" ? null : Number(e.target.value) })}
                     >
-                      <option value="">Business expense</option>
+                      <option value="">{t("businessExpenses.businessExpenseOption")}</option>
                       {projects.map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.name}

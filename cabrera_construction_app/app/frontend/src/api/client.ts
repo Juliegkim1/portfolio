@@ -102,6 +102,11 @@ export const api = {
     createFromEstimate: (projectType: string, estimate: EstimateFetchResult) =>
       post<Project>("/projects", { project_type: projectType, estimate }),
     delete: (id: number) => del(`/projects/${id}`),
+    updateDates: (id: number, startDate: string | null, endDate: string | null) =>
+      patch<Project>(`/projects/${id}/dates`, { start_date: startDate, end_date: endDate }),
+    updateDriveFolder: (id: number, driveFolderLink: string) =>
+      patch<Project>(`/projects/${id}/drive-folder`, { drive_folder_link: driveFolderLink }),
+    updateType: (id: number, projectType: string) => patch<Project>(`/projects/${id}/type`, { project_type: projectType }),
     checkDriveFolder: (customerName: string, street: string) =>
       get<{ exists: boolean; existing_project_types: string[] }>(
         `/projects/check-drive-folder?${new URLSearchParams({ customer_name: customerName, street }).toString()}`
@@ -127,7 +132,20 @@ export const api = {
     get: (projectId: number) => get<Estimate>(`/projects/${projectId}/estimate`),
     overrideTotal: (projectId: number, totalOverride: number | null) =>
       patch<Estimate>(`/projects/${projectId}/estimate`, { total_override: totalOverride }),
+    updateNumber: (projectId: number, estimateNumber: string) =>
+      patch<Estimate>(`/projects/${projectId}/estimate`, { estimate_number: estimateNumber }),
     uploadFromDrive: (fileId: string) => post<EstimateFetchResult>(`/estimates/upload-from-drive/${encodeURIComponent(fileId)}`),
+    pasteText: (text: string) => post<EstimateFetchResult>("/estimates/paste", { text }),
+    // The REAL estimate document (e.g. exported straight from QuickBooks as
+    // a PDF) — distinct from the extraction uploads above, which read a
+    // file to populate a project's fields. This just attaches the exact
+    // file as-is so the Contract Package's last page can embed it directly
+    // instead of falling back to a bare "Estimate #" summary page.
+    uploadPdf: (projectId: number, file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      return request<Estimate>(`/projects/${projectId}/estimate/upload-pdf`, { method: "POST", body: form });
+    },
   },
 
   drive: {

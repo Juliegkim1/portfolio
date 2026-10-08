@@ -11,7 +11,7 @@ import { OperationalReconciliationPage } from "./pages/OperationalReconciliation
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { ReconciliationPage } from "./pages/ReconciliationPage";
 import { ScopeSchedulePage } from "./pages/ScopeSchedulePage";
-import { TeamUsersPage } from "./pages/TeamUsersPage";
+import { SettingsPage } from "./pages/SettingsPage";
 
 export default function App() {
   return (
@@ -29,7 +29,8 @@ export default function App() {
         <Route path="/business-expenses" element={<BusinessExpensesPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/operational-reconciliation" element={<OperationalReconciliationPage />} />
-        <Route path="/team" element={<TeamUsersPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/team" element={<Navigate to="/settings" replace />} />
       </Routes>
     </ProjectProvider>
   );

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { ApiError, api } from "../api/client";
 import type { InvoicePaymentStatus } from "../api/types";
@@ -8,13 +9,14 @@ import { EmptyState, LoadingState, StatusTag } from "../components/StateViews";
 import { useProjectContext } from "../context/ProjectContext";
 import { dateFmt, money } from "../format";
 
-const PAYMENT_STATUS_LABEL: Record<InvoicePaymentStatus, string> = {
-  invoiced: "Invoiced — not yet paid",
-  partial: "Partially Paid",
-  paid: "Fully Paid",
+const PAYMENT_STATUS_KEY: Record<InvoicePaymentStatus, string> = {
+  invoiced: "invoices.paymentStatusInvoiced",
+  partial: "invoices.paymentStatusPartial",
+  paid: "invoices.paymentStatusPaid",
 };
 
 export function InvoicesPage() {
+  const { t } = useTranslation();
   const { projectId: param } = useParams();
   const projectId = Number(param);
   const navigate = useNavigate();
@@ -46,23 +48,23 @@ export function InvoicesPage() {
   const lookupInvoice = useMutation({ mutationFn: (number: string) => api.invoices.quickbooksLookup(number) });
 
   return (
-    <AppShell title="Invoices" context={project ? `${project.name} · ${project.property_address}` : undefined}>
+    <AppShell title={t("nav.step6")} context={project ? `${project.name} · ${project.property_address}` : undefined}>
       <div className="section">
         <div className="form-grid">
           <div className="field" style={{ maxWidth: 360 }}>
-            <label>Project</label>
+            <label>{t("common.project")}</label>
             <select className="input" value={projectId} onChange={(e) => navigate(`/projects/${e.target.value}/invoices`)}>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
-                  {p.imported_at ? " (imported)" : ""}
+                  {p.imported_at ? ` (${t("changeOrders.imported")})` : ""}
                 </option>
               ))}
             </select>
           </div>
           {project && (
             <div>
-              <div className="card-kicker">Customer</div>
+              <div className="card-kicker">{t("common.customer")}</div>
               <div>{project.customer_name}</div>
               <div className="muted">{project.customer_phone}</div>
               <div className="muted">{project.customer_email}</div>
@@ -72,7 +74,7 @@ export function InvoicesPage() {
       </div>
 
       <div className="section">
-        <h3>Next Milestone Invoice</h3>
+        <h3>{t("invoices.nextMilestoneInvoice")}</h3>
         {nextDraftQuery.isLoading ? (
           <LoadingState />
         ) : nextDraftQuery.data ? (
@@ -83,24 +85,24 @@ export function InvoicesPage() {
             <i className="corner br" />
             <div className="form-grid">
               <div className="field">
-                <label>Bill To</label>
+                <label>{t("invoices.billTo")}</label>
                 <input className="input" readOnly value={nextDraftQuery.data.bill_to} style={{ opacity: 0.85 }} />
               </div>
               <div className="field">
-                <label>Date Issued</label>
+                <label>{t("invoices.dateIssued")}</label>
                 <input className="input" readOnly value={dateFmt(nextDraftQuery.data.date_issued)} style={{ opacity: 0.85 }} />
               </div>
               <div className="field">
-                <label>Due Date</label>
+                <label>{t("invoices.dueDate")}</label>
                 <input className="input" readOnly value={dateFmt(nextDraftQuery.data.due_date)} style={{ opacity: 0.85 }} />
               </div>
               <div className="field">
-                <label>Amount</label>
+                <label>{t("common.amount")}</label>
                 <input className="input" readOnly value={money(nextDraftQuery.data.amount)} style={{ opacity: 0.85 }} />
               </div>
             </div>
             <div className="muted" style={{ fontSize: 13, marginTop: "var(--space-2)" }}>
-              Line: {nextDraftQuery.data.milestone_title}
+              {t("invoices.lineLabel", { title: nextDraftQuery.data.milestone_title })}
             </div>
             {createInvoice.isError && <div className="error-state">{(createInvoice.error as Error).message}</div>}
             <button
@@ -108,20 +110,19 @@ export function InvoicesPage() {
               disabled={createInvoice.isPending}
               onClick={() => createInvoice.mutate(nextDraftQuery.data!.milestone_id)}
             >
-              Mark Milestone as Invoiced
+              {t("invoices.markAsInvoiced")}
             </button>
             <div className="muted" style={{ fontSize: 12, marginTop: "var(--space-1)" }}>
-              This creates a local record in this app only — it does not send anything to QuickBooks. Compare against "Invoices in
-              QuickBooks" below for what's actually been sent.
+              {t("invoices.localRecordNote")}
             </div>
           </div>
         ) : (
-          <EmptyState label="All milestones have been invoiced." />
+          <EmptyState label={t("invoices.allInvoiced")} />
         )}
       </div>
 
       <div className="section">
-        <h3>Invoices in This App</h3>
+        <h3>{t("invoices.invoicesInApp")}</h3>
         {invoicesQuery.isLoading ? (
           <LoadingState />
         ) : (
@@ -129,12 +130,12 @@ export function InvoicesPage() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Invoice #</th>
-                  <th>Issued</th>
-                  <th>Due</th>
-                  <th>Amount</th>
-                  <th>Received</th>
-                  <th>Status</th>
+                  <th>{t("invoices.invoiceNumber")}</th>
+                  <th>{t("invoices.issued")}</th>
+                  <th>{t("contract.due")}</th>
+                  <th>{t("common.amount")}</th>
+                  <th>{t("invoices.received")}</th>
+                  <th>{t("common.status")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -147,7 +148,7 @@ export function InvoicesPage() {
                     <td>{money(inv.amount_received)}</td>
                     <td>
                       <span className={`tag ${inv.payment_status === "paid" ? "tag-accent" : inv.payment_status === "partial" ? "tag-neutral" : "tag-outline"}`}>
-                        {PAYMENT_STATUS_LABEL[inv.payment_status]}
+                        {t(PAYMENT_STATUS_KEY[inv.payment_status])}
                       </span>
                     </td>
                   </tr>
@@ -155,7 +156,7 @@ export function InvoicesPage() {
                 {invoicesQuery.data?.length === 0 && (
                   <tr>
                     <td colSpan={6} className="empty-state">
-                      No invoices yet.
+                      {t("invoices.noInvoicesYet")}
                     </td>
                   </tr>
                 )}
@@ -166,28 +167,28 @@ export function InvoicesPage() {
       </div>
 
       <div className="section">
-        <h3>Invoices in QuickBooks</h3>
+        <h3>{t("invoices.invoicesInQuickBooks")}</h3>
         <div className="muted" style={{ fontSize: 13, marginBottom: "var(--space-2)" }}>
-          Real, read-only — what QuickBooks actually has on file as sent for {project?.customer_name || "this customer"}.
+          {t("invoices.readOnlyNote", { customer: project?.customer_name || t("invoices.thisCustomer") })}
         </div>
         {qbStatus.data?.connected && (
           <div className="row" style={{ marginBottom: "var(--space-3)" }}>
             <input
               className="input"
               style={{ maxWidth: 220 }}
-              placeholder="Look up invoice # (e.g. 1021)"
+              placeholder={t("invoices.lookupPlaceholder")}
               value={lookupNumber}
               onChange={(e) => setLookupNumber(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && lookupNumber && lookupInvoice.mutate(lookupNumber)}
             />
             <button className="btn btn-secondary" disabled={!lookupNumber || lookupInvoice.isPending} onClick={() => lookupInvoice.mutate(lookupNumber)}>
-              Look Up
+              {t("invoices.lookUp")}
             </button>
           </div>
         )}
         {lookupInvoice.isError && (
           <div className="banner icon-text" style={{ marginBottom: "var(--space-3)" }}>
-            {lookupInvoice.error instanceof ApiError ? lookupInvoice.error.message : "Could not look up that invoice."}
+            {lookupInvoice.error instanceof ApiError ? lookupInvoice.error.message : t("invoices.lookupFailed")}
           </div>
         )}
         {lookupInvoice.data && (
@@ -195,20 +196,18 @@ export function InvoicesPage() {
             <div className="icon-text">
               <strong>{lookupInvoice.data.doc_number}</strong>
               <span className="muted">
-                {dateFmt(lookupInvoice.data.txn_date)} → due {dateFmt(lookupInvoice.data.due_date)}
+                {dateFmt(lookupInvoice.data.txn_date)} {t("invoices.dueArrow")} {dateFmt(lookupInvoice.data.due_date)}
               </span>
             </div>
             <div className="icon-text">
-              <span>
-                {money(lookupInvoice.data.total_amt)} total, {money(lookupInvoice.data.balance)} balance
-              </span>
+              <span>{t("invoices.totalBalance", { total: money(lookupInvoice.data.total_amt), balance: money(lookupInvoice.data.balance) })}</span>
               <StatusTag status={lookupInvoice.data.status} />
             </div>
           </div>
         )}
         {!qbStatus.data?.connected ? (
           <div className="banner icon-text">
-            <a href={api.quickbooks.connectUrl}>Connect QuickBooks</a> to see invoices actually sent for this customer.
+            <a href={api.quickbooks.connectUrl}>{t("estimateUpload.connectQuickBooks")}</a> {t("invoices.toSeeInvoicesSent")}
           </div>
         ) : qbInvoicesQuery.isLoading ? (
           <LoadingState />
@@ -219,12 +218,12 @@ export function InvoicesPage() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Invoice #</th>
-                  <th>Issued</th>
-                  <th>Due</th>
-                  <th>Total</th>
-                  <th>Balance</th>
-                  <th>Status</th>
+                  <th>{t("invoices.invoiceNumber")}</th>
+                  <th>{t("invoices.issued")}</th>
+                  <th>{t("contract.due")}</th>
+                  <th>{t("common.total")}</th>
+                  <th>{t("invoices.balance")}</th>
+                  <th>{t("common.status")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -243,7 +242,7 @@ export function InvoicesPage() {
                 {qbInvoicesQuery.data?.length === 0 && (
                   <tr>
                     <td colSpan={6} className="empty-state">
-                      No invoices found in QuickBooks for this customer.
+                      {t("invoices.noQbInvoices")}
                     </td>
                   </tr>
                 )}

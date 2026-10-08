@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { FileText } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
 import { dateTimeFmt } from "../format";
 
@@ -17,11 +18,12 @@ export function DriveFilePickerDialog({
   // retry budget).
   picking: boolean;
 }) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 300);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
   }, [search]);
 
   const query = useQuery({
@@ -32,21 +34,21 @@ export function DriveFilePickerDialog({
   return (
     <div className="dialog-backdrop" onClick={onClose}>
       <div className="dialog" onClick={(e) => e.stopPropagation()}>
-        <div className="dialog-title">Choose from Google Drive</div>
+        <div className="dialog-title">{t("drivePicker.title")}</div>
         <input
           className="input"
-          placeholder="Search your Drive by filename…"
+          placeholder={t("drivePicker.searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           autoFocus
         />
         <div className="muted" style={{ fontSize: 12, marginTop: "var(--space-1)" }}>
-          PDF and DOCX files only. Showing most recently modified first.
+          {t("drivePicker.formatsNote")}
         </div>
 
         <div className="stack" style={{ marginTop: "var(--space-3)", maxHeight: 320, overflowY: "auto" }}>
           {query.isLoading ? (
-            <div className="loading-state">Searching Drive…</div>
+            <div className="loading-state">{t("drivePicker.searching")}</div>
           ) : query.isError ? (
             <div className="error-state">{(query.error as Error).message}</div>
           ) : query.data && query.data.length > 0 ? (
@@ -70,15 +72,17 @@ export function DriveFilePickerDialog({
               </div>
             ))
           ) : (
-            <div className="empty-state">No PDF or DOCX files found{debouncedSearch ? ` matching "${debouncedSearch}"` : " in Drive"}.</div>
+            <div className="empty-state">
+              {debouncedSearch ? t("drivePicker.noFilesMatching", { search: debouncedSearch }) : t("drivePicker.noFilesInDrive")}
+            </div>
           )}
         </div>
 
-        {picking && <div className="loading-state">Reading the document…</div>}
+        {picking && <div className="loading-state">{t("estimateUpload.readingDocument")}</div>}
 
         <div className="dialog-actions">
           <button className="btn btn-secondary" onClick={onClose} disabled={picking}>
-            Cancel
+            {t("common.cancel")}
           </button>
         </div>
       </div>

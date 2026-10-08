@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, Plus } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import type { ProjectReconciliation } from "../api/types";
@@ -11,6 +12,7 @@ import { useProjectContext } from "../context/ProjectContext";
 import { dateFmt, money } from "../format";
 
 export function ReconciliationPage() {
+  const { t } = useTranslation();
   const { projectId: param } = useParams();
   const projectId = Number(param);
   const navigate = useNavigate();
@@ -35,14 +37,14 @@ export function ReconciliationPage() {
 
   if (query.isLoading) {
     return (
-      <AppShell title="Reconciliation & Closing">
+      <AppShell title={t("nav.step7")}>
         <LoadingState />
       </AppShell>
     );
   }
   if (query.isError) {
     return (
-      <AppShell title="Reconciliation & Closing">
+      <AppShell title={t("nav.step7")}>
         <ErrorState error={query.error} />
       </AppShell>
     );
@@ -51,15 +53,15 @@ export function ReconciliationPage() {
   const data = query.data!;
 
   return (
-    <AppShell title="Reconciliation & Closing" context={project ? `${project.name} · ${project.property_address}` : undefined}>
+    <AppShell title={t("nav.step7")} context={project ? `${project.name} · ${project.property_address}` : undefined}>
       <div className="section">
         <div className="field" style={{ maxWidth: 360 }}>
-          <label>Project</label>
+          <label>{t("common.project")}</label>
           <select className="input" value={projectId} onChange={(e) => navigate(`/projects/${e.target.value}/reconciliation`)}>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
-                {p.imported_at ? " (imported)" : ""}
+                {p.imported_at ? ` (${t("changeOrders.imported")})` : ""}
               </option>
             ))}
           </select>
@@ -68,48 +70,48 @@ export function ReconciliationPage() {
 
       <div className="kpi-grid section">
         <div className="card">
-          <div className="card-kicker">Original</div>
+          <div className="card-kicker">{t("reconciliation.original")}</div>
           <div className="kpi-value">{money(data.kpis.original)}</div>
         </div>
         <div className="card">
-          <div className="card-kicker">Change Orders</div>
+          <div className="card-kicker">{t("nav.step5")}</div>
           <div className="kpi-value">{money(data.kpis.change_orders)}</div>
         </div>
         <div className="card">
-          <div className="card-kicker">Revised</div>
+          <div className="card-kicker">{t("reconciliation.revised")}</div>
           <div className="kpi-value">{money(data.kpis.revised)}</div>
         </div>
         <div className="card">
-          <div className="card-kicker">Invoiced</div>
+          <div className="card-kicker">{t("reconciliation.invoicedKpi")}</div>
           <div className="kpi-value">{money(data.kpis.invoiced)}</div>
         </div>
         <div className="card">
-          <div className="card-kicker">Received</div>
+          <div className="card-kicker">{t("invoices.received")}</div>
           <div className="kpi-value">{money(data.kpis.received)}</div>
         </div>
         <div className="card">
-          <div className="card-kicker">Balance Due</div>
+          <div className="card-kicker">{t("reconciliation.balanceDue")}</div>
           <div className="kpi-value">{money(data.kpis.balance_due)}</div>
         </div>
       </div>
 
       <div className="section">
         <div className="row-between">
-          <h3>Milestones</h3>
+          <h3>{t("scopeSchedule.milestones")}</h3>
           <div className="muted" style={{ fontSize: 13 }}>
-            Click a milestone to add a payment against it
+            {t("reconciliation.clickMilestoneHint")}
           </div>
         </div>
         <div className="table-scroll">
           <table className="table">
             <thead>
               <tr>
-                <th>Milestone</th>
-                <th>Amount</th>
-                <th>Invoice</th>
-                <th>Invoiced</th>
-                <th>Received</th>
-                <th>Status</th>
+                <th>{t("contract.milestoneColumn")}</th>
+                <th>{t("common.amount")}</th>
+                <th>{t("reconciliation.invoice")}</th>
+                <th>{t("reconciliation.invoicedColumn")}</th>
+                <th>{t("invoices.received")}</th>
+                <th>{t("common.status")}</th>
               </tr>
             </thead>
             <tbody>
@@ -132,20 +134,20 @@ export function ReconciliationPage() {
 
       <div className="section">
         <div className="row-between">
-          <h3>Receipts</h3>
+          <h3>{t("reconciliation.receipts")}</h3>
           <button className="btn btn-secondary" onClick={() => setShowAddReceipt(true)}>
-            <Plus size={14} strokeWidth={1.5} /> Add Receipt
+            <Plus size={14} strokeWidth={1.5} /> {t("reconciliation.addReceipt")}
           </button>
         </div>
         <div className="table-scroll">
           <table className="table">
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Description</th>
-                <th>Type</th>
-                <th>Amount</th>
-                <th>Source</th>
+                <th>{t("common.date")}</th>
+                <th>{t("common.description")}</th>
+                <th>{t("reconciliation.type")}</th>
+                <th>{t("common.amount")}</th>
+                <th>{t("reconciliation.source")}</th>
               </tr>
             </thead>
             <tbody>
@@ -153,15 +155,15 @@ export function ReconciliationPage() {
                 <tr key={r.id}>
                   <td>{dateFmt(r.date)}</td>
                   <td>{r.description}</td>
-                  <td className="muted">{r.type}</td>
+                  <td className="muted">{t(`reconciliation.receiptType.${r.type}`, { defaultValue: r.type })}</td>
                   <td>{money(r.amount)}</td>
-                  <td className="muted">{r.source}</td>
+                  <td className="muted">{t(`reconciliation.receiptSource.${r.source}`, { defaultValue: r.source })}</td>
                 </tr>
               ))}
               {data.receipts.length === 0 && (
                 <tr>
                   <td colSpan={5} className="empty-state">
-                    No receipts yet.
+                    {t("reconciliation.noReceiptsYet")}
                   </td>
                 </tr>
               )}
@@ -172,11 +174,11 @@ export function ReconciliationPage() {
 
       <div className="row-between">
         <div className="muted icon-text" style={{ fontSize: 13 }}>
-          <ExternalLink size={14} strokeWidth={1.5} /> Google Sheets: {data.sheet_id ?? "Not created"}
+          <ExternalLink size={14} strokeWidth={1.5} /> {t("reconciliation.googleSheets")}: {data.sheet_id ?? t("reconciliation.notCreated")}
         </div>
         {closeMutation.isError && <div className="error-state">{(closeMutation.error as Error).message}</div>}
         <button className="btn btn-primary" disabled={!data.can_close || closeMutation.isPending} onClick={() => closeMutation.mutate()}>
-          Close Project
+          {t("reconciliation.closeProject")}
         </button>
       </div>
 

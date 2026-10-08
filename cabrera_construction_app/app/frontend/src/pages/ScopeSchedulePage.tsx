@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { CheckCircle2, Pencil, Plus, Trash2, Upload } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import type { MaterialItem, MilestoneIn } from "../api/types";
@@ -22,6 +23,7 @@ const DEFAULT_WARRANTY_TERMS = `1-YEAR WORKMANSHIP WARRANTY POLICY (CSLB COMPLIA
 • Service Notice & Remedy: Contractor shall inspect and remedy any verified workmanship defect within 14 business days of written notification.`;
 
 export function ScopeSchedulePage() {
+  const { t } = useTranslation();
   const { projectId: projectIdParam } = useParams();
   const projectId = Number(projectIdParam);
   const navigate = useNavigate();
@@ -39,6 +41,21 @@ export function ScopeSchedulePage() {
   // contract = estimate total + signed CO deltas) — fetched so the live balance/deposit
   // checks below agree with the server's, which already accounts for this.
   const changeOrdersQuery = useQuery({ queryKey: ["change-orders", projectId], queryFn: () => api.changeOrders.list(projectId) });
+
+  const estimatePdfInputRef = useRef<HTMLInputElement>(null);
+  const [editingEstimateNumber, setEditingEstimateNumber] = useState(false);
+  const [estimateNumberDraft, setEstimateNumberDraft] = useState("");
+  const updateEstimateNumber = useMutation({
+    mutationFn: () => api.estimates.updateNumber(projectId, estimateNumberDraft),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["estimate", projectId] });
+      setEditingEstimateNumber(false);
+    },
+  });
+  const uploadEstimatePdf = useMutation({
+    mutationFn: (file: File) => api.estimates.uploadPdf(projectId, file),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["estimate", projectId] }),
+  });
 
   const [contractDate, setContractDate] = useState<string>("");
   const [paymentTerms, setPaymentTerms] = useState("Due on milestone completion, net 15");
@@ -112,81 +129,157 @@ export function ScopeSchedulePage() {
 
   if (estimateQuery.isLoading) {
     return (
-      <AppShell title="Project Scope & Payment Schedule">
+      <AppShell title={t("nav.step3")}>
         <LoadingState />
       </AppShell>
     );
   }
   if (estimateQuery.isError) {
     return (
-      <AppShell title="Project Scope & Payment Schedule">
+      <AppShell title={t("nav.step3")}>
         <ErrorState error={estimateQuery.error} />
       </AppShell>
     );
   }
 
   return (
-    <AppShell title="Project Scope & Payment Schedule" context={project ? `${project.name} · ${project.property_address}` : undefined}>
+    <AppShell title={t("nav.step3")} context={project ? `${project.name} · ${project.property_address}` : undefined}>
       <div className="section">
         <div className="card" style={{ padding: "var(--space-4)" }}>
           <div className="form-grid">
             <div className="field">
-              <label>Job Site</label>
+              <label>{t("scopeSchedule.jobSite")}</label>
               <input className="input" value={project?.property_address ?? ""} readOnly style={{ opacity: 0.85 }} />
             </div>
             <div className="field">
-              <label>Contract Date</label>
+              <label>{t("scopeSchedule.contractDate")}</label>
               <input className="input" type="date" value={contractDate} onChange={(e) => setContractDate(e.target.value)} />
             </div>
             <div className="field">
-              <label>Contract Type</label>
+              <label>{t("scopeSchedule.contractType")}</label>
               <input className="input" value="Fixed-Price Agreement" readOnly style={{ opacity: 0.85 }} />
             </div>
             <div className="field">
-              <label>Payment Terms</label>
+              <label>{t("scopeSchedule.paymentTerms")}</label>
               <input className="input" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />
             </div>
           </div>
           {estimateQuery.data?.scope_text && (
             <div className="field" style={{ marginTop: "var(--space-3)" }}>
-              <label>Project Scope</label>
+              <label>{t("estimateUpload.projectScope")}</label>
               <textarea className="input" readOnly value={estimateQuery.data.scope_text} style={{ opacity: 0.85 }} rows={3} />
             </div>
           )}
+          <div className="row-between" style={{ marginTop: "var(--space-3)", flexWrap: "wrap", gap: "var(--space-3)" }}>
+            <div>
+              <div className="card-kicker">{t("scopeSchedule.estimateNumber")}</div>
+              {editingEstimateNumber ? (
+                <div className="row" style={{ gap: "var(--space-2)" }}>
+                  <input
+                    className="input"
+                    style={{ maxWidth: 160 }}
+                    value={estimateNumberDraft}
+                    onChange={(e) => setEstimateNumberDraft(e.target.value)}
+                    autoFocus
+                  />
+                  <button
+                    className="btn btn-primary"
+                    disabled={updateEstimateNumber.isPending || !estimateNumberDraft.trim()}
+                    onClick={() => updateEstimateNumber.mutate()}
+                  >
+                    {t("common.save")}
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => setEditingEstimateNumber(false)}>
+                    {t("common.cancel")}
+                  </button>
+                </div>
+              ) : (
+                <div className="icon-text">
+                  <span>{estimateQuery.data?.estimate_number}</span>
+                  <button
+                    className="btn btn-icon"
+                    title={t("scopeSchedule.editEstimateNumberTitle")}
+                    onClick={() => {
+                      setEstimateNumberDraft(estimateQuery.data?.estimate_number ?? "");
+                      setEditingEstimateNumber(true);
+                    }}
+                  >
+                    <Pencil size={14} strokeWidth={1.5} />
+                  </button>
+                </div>
+              )}
+              {updateEstimateNumber.isError && <div className="error-state">{(updateEstimateNumber.error as Error).message}</div>}
+            </div>
+            <div>
+              <div className="card-kicker">{t("scopeSchedule.estimateDocument")}</div>
+              <div className="icon-text">
+                {estimateQuery.data?.source_file_id ? (
+                  <span className="icon-text" style={{ color: "var(--color-accent-700)" }}>
+                    <CheckCircle2 size={15} strokeWidth={1.5} /> {t("scopeSchedule.estimateAttached")}
+                  </span>
+                ) : (
+                  <span className="muted">{t("scopeSchedule.estimateNotAttached")}</span>
+                )}
+                <button className="btn btn-ghost" disabled={uploadEstimatePdf.isPending} onClick={() => estimatePdfInputRef.current?.click()}>
+                  <Upload size={13} strokeWidth={1.5} />
+                  {uploadEstimatePdf.isPending ? t("estimateUpload.readingDocument") : t("scopeSchedule.uploadEstimatePdf")}
+                </button>
+                <input
+                  ref={estimatePdfInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) uploadEstimatePdf.mutate(file);
+                  }}
+                />
+              </div>
+              <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
+                {t("scopeSchedule.estimateDocumentHint")}
+              </div>
+              {uploadEstimatePdf.isError && <div className="error-state">{(uploadEstimatePdf.error as Error).message}</div>}
+            </div>
+          </div>
         </div>
 
         <div className="kpi-grid">
           <div className="card">
-            <div className="card-kicker">Contract Total</div>
+            <div className="card-kicker">{t("scopeSchedule.contractTotal")}</div>
             <div className="kpi-value">{money(contractTotal)}</div>
           </div>
           <div className="card">
-            <div className="card-kicker">Schedule Total</div>
+            <div className="card-kicker">{t("scopeSchedule.scheduleTotal")}</div>
             <div className="kpi-value">{money(totalAmount)}</div>
           </div>
           <div className="card">
-            <div className="card-kicker">Milestones</div>
+            <div className="card-kicker">{t("scopeSchedule.milestones")}</div>
             <div className="kpi-value">{milestones.length}</div>
           </div>
           <div className="card">
-            <div className="card-kicker">Deposit Cap</div>
+            <div className="card-kicker">{t("scopeSchedule.depositCap")}</div>
             <div className="kpi-value">{money(depositCap)}</div>
           </div>
         </div>
 
         <div className={`banner ${balanced ? "banner-attention" : ""}`}>
-          {balanced ? "Balanced — 100% of contract" : `${totalAmount > contractTotal ? "Over" : "Short"} by ${money(Math.abs(totalAmount - contractTotal))}`}
+          {balanced
+            ? t("scopeSchedule.balanced")
+            : t("scopeSchedule.overShortBy", {
+                direction: totalAmount > contractTotal ? t("scopeSchedule.over") : t("scopeSchedule.short"),
+                amount: money(Math.abs(totalAmount - contractTotal)),
+              })}
         </div>
         <div className={`banner ${depositOk ? "banner-attention" : ""}`}>
-          {depositOk ? `Deposit within $1,000 / 10% limit (cap ${money(depositCap)})` : `Deposit exceeds the ${money(depositCap)} cap`}
+          {depositOk ? t("scopeSchedule.depositOk", { cap: money(depositCap) }) : t("scopeSchedule.depositExceeds", { cap: money(depositCap) })}
         </div>
       </div>
 
       <div className="section">
         <div className="row-between">
-          <h3>Milestones</h3>
+          <h3>{t("scopeSchedule.milestones")}</h3>
           <button className="btn btn-secondary" onClick={addMilestone}>
-            <Plus size={14} strokeWidth={1.5} /> Add Milestone
+            <Plus size={14} strokeWidth={1.5} /> {t("scopeSchedule.addMilestone")}
           </button>
         </div>
         <div className="stack">
@@ -194,15 +287,15 @@ export function ScopeSchedulePage() {
             <div key={i} className="card" style={{ padding: "var(--space-3)" }}>
               <div className="form-grid">
                 <div className="field">
-                  <label>Title & Deliverable</label>
+                  <label>{t("scopeSchedule.titleDeliverable")}</label>
                   <input className="input" value={m.title} onChange={(e) => updateMilestone(i, { title: e.target.value })} />
                 </div>
                 <div className="field">
-                  <label>Target Due</label>
+                  <label>{t("scopeSchedule.targetDue")}</label>
                   <input className="input" type="date" value={m.due_date ?? ""} onChange={(e) => updateMilestone(i, { due_date: e.target.value })} />
                 </div>
                 <div className="field">
-                  <label>Amount</label>
+                  <label>{t("common.amount")}</label>
                   <input
                     className="input"
                     type="number"
@@ -212,15 +305,15 @@ export function ScopeSchedulePage() {
                   />
                 </div>
                 <div className="field">
-                  <label>% of Contract</label>
+                  <label>{t("scopeSchedule.percentOfContract")}</label>
                   <input className="input" readOnly style={{ opacity: 0.85 }} value={contractTotal ? `${((Number(m.amount) / contractTotal) * 100).toFixed(1)}%` : "—"} />
                 </div>
               </div>
               <div className="field" style={{ marginTop: "var(--space-2)" }}>
-                <label>Detailed Scope & Verification</label>
+                <label>{t("scopeSchedule.detailedScope")}</label>
                 <input
                   className="input"
-                  placeholder="How completion of this milestone is verified"
+                  placeholder={t("scopeSchedule.scopeVerificationPlaceholder")}
                   value={m.scope_verification ?? ""}
                   onChange={(e) => updateMilestone(i, { scope_verification: e.target.value })}
                 />
@@ -230,7 +323,7 @@ export function ScopeSchedulePage() {
                   #{m.number}
                 </span>
                 <button className="btn btn-ghost" onClick={() => removeMilestone(i)}>
-                  <Trash2 size={14} strokeWidth={1.5} /> Remove
+                  <Trash2 size={14} strokeWidth={1.5} /> {t("common.remove")}
                 </button>
               </div>
             </div>
@@ -240,23 +333,23 @@ export function ScopeSchedulePage() {
 
       <div className="section">
         <div className="row-between">
-          <h3>Material Supply & Responsibility Matrix</h3>
+          <h3>{t("scopeSchedule.materialMatrix")}</h3>
           <button className="btn btn-secondary" onClick={() => setMaterials((prev) => [...prev, { category: "", qty: "", supplied_by: "contractor", installed_by: "contractor" }])}>
-            <Plus size={14} strokeWidth={1.5} /> Add Material
+            <Plus size={14} strokeWidth={1.5} /> {t("scopeSchedule.addMaterial")}
           </button>
         </div>
         <div className="stack">
           {materials.map((mi, i) => (
             <div key={i} className="row" style={{ background: "var(--color-surface)", padding: "var(--space-2)", borderRadius: "var(--radius-md)" }}>
-              <input className="input" placeholder="Category" value={mi.category ?? ""} onChange={(e) => updateMaterial(i, { category: e.target.value })} style={{ flex: 2 }} />
-              <input className="input" placeholder="Qty" value={mi.qty ?? ""} onChange={(e) => updateMaterial(i, { qty: e.target.value })} style={{ flex: 1 }} />
+              <input className="input" placeholder={t("scopeSchedule.category")} value={mi.category ?? ""} onChange={(e) => updateMaterial(i, { category: e.target.value })} style={{ flex: 2 }} />
+              <input className="input" placeholder={t("scopeSchedule.qty")} value={mi.qty ?? ""} onChange={(e) => updateMaterial(i, { qty: e.target.value })} style={{ flex: 1 }} />
               <select className="input" value={mi.supplied_by ?? "contractor"} onChange={(e) => updateMaterial(i, { supplied_by: e.target.value as MaterialItem["supplied_by"] })} style={{ flex: 1 }}>
-                <option value="contractor">Supplied: Contractor</option>
-                <option value="owner">Supplied: Owner</option>
+                <option value="contractor">{t("scopeSchedule.suppliedContractor")}</option>
+                <option value="owner">{t("scopeSchedule.suppliedOwner")}</option>
               </select>
               <select className="input" value={mi.installed_by ?? "contractor"} onChange={(e) => updateMaterial(i, { installed_by: e.target.value as MaterialItem["installed_by"] })} style={{ flex: 1 }}>
-                <option value="contractor">Installed: Contractor</option>
-                <option value="owner">Installed: Owner</option>
+                <option value="contractor">{t("scopeSchedule.installedContractor")}</option>
+                <option value="owner">{t("scopeSchedule.installedOwner")}</option>
               </select>
               <button className="btn btn-icon" onClick={() => removeMaterial(i)}>
                 <Trash2 size={14} strokeWidth={1.5} />
@@ -267,17 +360,17 @@ export function ScopeSchedulePage() {
       </div>
 
       <div className="section">
-        <h3>Workmanship Warranty</h3>
+        <h3>{t("scopeSchedule.workmanshipWarranty")}</h3>
         <textarea className="input" value={warrantyTerms} onChange={(e) => setWarrantyTerms(e.target.value)} />
       </div>
 
       {saveMutation.isError && <div className="error-state">{(saveMutation.error as Error).message}</div>}
       <div className="row">
         <a className="btn btn-secondary" href={api.contractPackage.pdfUrl(projectId)} target="_blank" rel="noreferrer">
-          Preview PDF
+          {t("scopeSchedule.previewPdf")}
         </a>
         <button className="btn btn-primary" disabled={saveMutation.isPending} onClick={() => saveMutation.mutate()}>
-          Save Schedule & Draft Contract
+          {t("scopeSchedule.saveButton")}
         </button>
       </div>
     </AppShell>

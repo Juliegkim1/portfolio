@@ -1,5 +1,6 @@
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 // See Sidebar.tsx for why this is a module import, not a public/ path string.
 import cabreraLogo from "../assets/cabrera-logo.png";
@@ -7,6 +8,7 @@ import { useProjectContext } from "../context/ProjectContext";
 import { COMPANY_NAV, WORKFLOW_STEPS } from "../nav";
 
 export function MobileHeader({ title }: { title: string }) {
+  const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -26,7 +28,7 @@ export function MobileHeader({ title }: { title: string }) {
         <div className="dialog-backdrop" onClick={() => setMenuOpen(false)}>
           <div className="dialog" style={{ alignSelf: "flex-start", marginTop: 56 }} onClick={(e) => e.stopPropagation()}>
             <div className="row-between">
-              <div className="dialog-title">Company</div>
+              <div className="dialog-title">{t("nav.company")}</div>
               <button className="btn btn-icon" onClick={() => setMenuOpen(false)}>
                 <X size={16} strokeWidth={1.5} />
               </button>
@@ -45,7 +47,7 @@ export function MobileHeader({ title }: { title: string }) {
                     }}
                   >
                     <Icon size={16} strokeWidth={1.5} />
-                    {item.label}
+                    {t(item.labelKey)}
                   </button>
                 );
               })}
@@ -58,6 +60,7 @@ export function MobileHeader({ title }: { title: string }) {
 }
 
 export function MobileTabBar() {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { selectedProjectId } = useProjectContext();
@@ -79,7 +82,7 @@ export function MobileTabBar() {
             }}
           >
             <Icon size={16} strokeWidth={1.5} />
-            {step.mobileLabel}
+            {t(step.mobileLabelKey)}
           </a>
         );
       })}

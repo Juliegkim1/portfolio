@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 // Imported (not referenced via a public/ path string) so Vite bundles it
 // through its asset pipeline into dist/assets/ — the only path the backend
@@ -11,6 +12,7 @@ import { useProjectContext } from "../context/ProjectContext";
 import { COMPANY_NAV, WORKFLOW_STEPS } from "../nav";
 
 export function Sidebar() {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { selectedProjectId } = useProjectContext();
@@ -38,12 +40,12 @@ export function Sidebar() {
             >
               <span className="sidebar-step-num">{step.number}</span>
               <Icon size={15} strokeWidth={1.5} />
-              {step.label}
+              {t(step.labelKey)}
             </a>
           );
         })}
 
-        <div className="sidebar-group-label">Company</div>
+        <div className="sidebar-group-label">{t("nav.company")}</div>
         {COMPANY_NAV.map((item) => {
           const active = location.pathname === item.path;
           const Icon = item.icon;
@@ -58,7 +60,7 @@ export function Sidebar() {
               }}
             >
               <Icon size={15} strokeWidth={1.5} />
-              {item.label}
+              {t(item.labelKey)}
             </a>
           );
         })}
@@ -66,7 +68,7 @@ export function Sidebar() {
 
       <div className="sidebar-user">
         <div>Samuel Cabrera</div>
-        <div className="sidebar-user-role">Owner / Admin</div>
+        <div className="sidebar-user-role">{t("nav.ownerRole")}</div>
       </div>
     </aside>
   );

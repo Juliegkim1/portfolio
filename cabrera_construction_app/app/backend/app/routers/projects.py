@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import datetime as dt
 import logging
+import re
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
-from ..config import settings
 from ..db import get_db
 from ..services import documents, gemini_service, google_service, mock_integrations
 from ..services import google_oauth as g_oauth
@@ -161,17 +161,112 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
 
 @router.patch("/projects/{project_id}/estimate", response_model=schemas.EstimateOut)
 def override_estimate_total(project_id: int, payload: schemas.EstimateAmountOverride, db: Session = Depends(get_db)):
-    """Manually correct the contract total when extraction got it wrong —
-    e.g. a missed line item — without having to re-enter every line item.
+    """Manually correct the contract total and/or the real estimate number.
     Passing total_override: null clears the correction and reverts to the
-    computed total (subtotal + tax + permit fees - discount)."""
+    computed total (subtotal + tax + permit fees - discount). Each field is
+    only touched when actually present in the request body (checked via
+    model_fields_set, not just "is it None") — total_override's own None
+    means "clear it", so a request updating only estimate_number must leave
+    total_override untouched rather than defaulting it to None and wiping
+    an existing override."""
     project = get_project_or_404(db, project_id)
     if not project.estimate:
         raise HTTPException(404, "No estimate for this project yet")
-    project.estimate.total_override = payload.total_override
+    fields_set = payload.model_fields_set
+    if "total_override" in fields_set:
+        project.estimate.total_override = payload.total_override
+    if "estimate_number" in fields_set and payload.estimate_number is not None:
+        project.estimate.estimate_number = payload.estimate_number
     db.commit()
     db.refresh(project.estimate)
     return project.estimate
+
+
+@router.post("/projects/{project_id}/estimate/upload-pdf", response_model=schemas.EstimateOut)
+async def upload_estimate_pdf(project_id: int, file: UploadFile, db: Session = Depends(get_db)):
+    """Attaches the REAL estimate PDF (e.g. the one QuickBooks itself
+    generates, exported and uploaded here) so the Contract Package's last
+    page can embed the actual document instead of a bare "Estimate #" page
+    — see services/documents.py's build_contract_package_pdf. There's no
+    extraction here (no Gemini call); this is purely "save this exact file
+    as the real source document," unlike /estimates/upload, which reads a
+    file to populate a NEW project's fields."""
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(400, "Only PDF uploads are accepted here")
+    project = get_project_or_404(db, project_id)
+    if not project.estimate:
+        raise HTTPException(404, "No estimate for this project yet")
+    if not project.drive_folder_id:
+        raise HTTPException(409, "This project has no Drive folder yet — connect Google Workspace first.")
+    if not g_oauth.get_connection(db):
+        raise HTTPException(409, "Connect Google Workspace first.")
+    file_bytes = await file.read()
+    try:
+        project.estimate.source_file_id = google_service.upload_file(
+            db, f"Estimate {project.estimate.estimate_number} (uploaded).pdf", file_bytes, "application/pdf", project.drive_folder_id
+        )
+    except (g_oauth.GoogleNotConnected, google_service.GoogleApiError) as exc:
+        raise HTTPException(502, f"Google Drive error: {exc}") from exc
+    db.commit()
+    db.refresh(project.estimate)
+    return project.estimate
+
+
+@router.patch("/projects/{project_id}/dates", response_model=schemas.ProjectOut)
+def update_project_dates(project_id: int, payload: schemas.ProjectDatesUpdate, db: Session = Depends(get_db)):
+    """Backfills/corrects start_date and end_date — see
+    schemas.ProjectDatesUpdate for why these matter (Analytics)."""
+    project = get_project_or_404(db, project_id)
+    project.start_date = payload.start_date
+    project.end_date = payload.end_date
+    db.commit()
+    db.refresh(project)
+    return project
+
+
+@router.patch("/projects/{project_id}/type", response_model=schemas.ProjectOut)
+def update_project_type(project_id: int, payload: schemas.ProjectTypeUpdate, db: Session = Depends(get_db)):
+    """Recategorizes a project (e.g. Kitchen Remodel -> Bathroom Remodel)
+    after it's already been created or imported — the type picked at
+    estimate-upload/Drive-import time is free text and easy to get wrong."""
+    project = get_project_or_404(db, project_id)
+    new_type = payload.project_type.strip()
+    if not new_type:
+        raise HTTPException(400, "Project type cannot be empty")
+    project.project_type = new_type
+    db.commit()
+    db.refresh(project)
+    return project
+
+
+_DRIVE_FOLDER_LINK_PATTERNS = (re.compile(r"/folders/([a-zA-Z0-9_-]+)"), re.compile(r"[?&]id=([a-zA-Z0-9_-]+)"))
+
+
+def _extract_drive_folder_id(link_or_id: str) -> str:
+    """Same parsing as the frontend's manual-folder-entry field (Import
+    from Drive page) — accepts a pasted Drive URL in any of its common
+    shapes, or a bare folder ID, so either works here too."""
+    trimmed = link_or_id.strip()
+    for pattern in _DRIVE_FOLDER_LINK_PATTERNS:
+        if m := pattern.search(trimmed):
+            return m.group(1)
+    return trimmed
+
+
+@router.patch("/projects/{project_id}/drive-folder", response_model=schemas.ProjectOut)
+def update_project_drive_folder(project_id: int, payload: schemas.ProjectDriveFolderUpdate, db: Session = Depends(get_db)):
+    """Manually points a project at a real Drive folder — for a project
+    whose folder wasn't discoverable through the automatic scan (see
+    GET /projects/drive-importable, which only looks directly under Drive ›
+    Projects) or one created before Google was ever connected. No
+    validation that the folder actually exists/is readable — same as how
+    drive_folder_id already gets set from the automatic flows without a
+    round-trip check, and a typo here is just as easy to re-correct."""
+    project = get_project_or_404(db, project_id)
+    project.drive_folder_id = _extract_drive_folder_id(payload.drive_folder_link)
+    db.commit()
+    db.refresh(project)
+    return project
 
 
 @router.post("/estimates/fetch", response_model=schemas.EstimateFetchResult)
@@ -190,22 +285,37 @@ def fetch_estimate(payload: schemas.EstimateFetchRequest, db: Session = Depends(
     return mock_integrations.lookup_quickbooks_estimate(payload.estimate_number)
 
 
-_ACCEPTED_UPLOAD_EXTENSIONS = (".pdf", ".docx")
+_ACCEPTED_UPLOAD_EXTENSIONS = (".pdf", ".docx", ".xlsx")
 
 
 @router.post("/estimates/upload", response_model=schemas.EstimateFetchResult)
 async def upload_estimate(file: UploadFile):
     if not file.filename.lower().endswith(_ACCEPTED_UPLOAD_EXTENSIONS):
-        raise HTTPException(400, "Only PDF or DOCX uploads are accepted")
+        raise HTTPException(400, "Only PDF, DOCX, or XLSX uploads are accepted")
     file_bytes = await file.read()
 
-    if not settings.gemini_api_key:
-        # No honest way to extract an arbitrary document without Gemini —
-        # fall back to the clearly-labeled demo data rather than failing outright.
+    if not gemini_service.any_provider_configured():
+        # No honest way to extract an arbitrary document without at least
+        # one AI provider configured — fall back to the clearly-labeled
+        # demo data rather than failing outright.
         return mock_integrations.mock_parse_estimate_pdf(file.filename)
 
     try:
         return gemini_service.extract_estimate_from_document(file_bytes, file.filename, file.content_type or "")
+    except gemini_service.GeminiExtractionError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.post("/estimates/paste", response_model=schemas.EstimateFetchResult)
+def paste_estimate_text(payload: schemas.EstimateTextPaste):
+    """Same extraction as /estimates/upload, sourcing the text directly from
+    a paste instead of a file — the fallback when a .docx/.xlsx isn't
+    actually readable (see gemini_service's docx/xlsx error messages) or
+    when copy-pasting notes is just faster than exporting a file first."""
+    if not gemini_service.any_provider_configured():
+        return mock_integrations.mock_parse_estimate_pdf("pasted-notes.txt")
+    try:
+        return gemini_service.extract_estimate_from_text(payload.text)
     except gemini_service.GeminiExtractionError as exc:
         raise HTTPException(422, str(exc)) from exc
 
@@ -233,7 +343,7 @@ def upload_estimate_from_drive(file_id: str, db: Session = Depends(get_db)):
     local file upload."""
     if not g_oauth.get_connection(db):
         raise HTTPException(409, "Connect Google Workspace first.")
-    if not settings.gemini_api_key:
+    if not gemini_service.any_provider_configured():
         return mock_integrations.mock_parse_estimate_pdf(file_id)
     try:
         filename = google_service.get_file_name(db, file_id)
@@ -246,25 +356,37 @@ def upload_estimate_from_drive(file_id: str, db: Session = Depends(get_db)):
         raise HTTPException(422, str(exc)) from exc
 
 
-_PRIORITY_FILENAME_KEYWORDS = ("estimate", "scope", "schedule", "payment", "contract")
+_MAX_FOLDER_DOCUMENTS = 20
+
+
+def _read_one_folder_document(db: Session, file_meta: dict) -> tuple[bytes, str, str]:
+    """A native Google Sheet has no bytes of its own — alt=media 403s on it —
+    so it has to be rendered via Drive's /export endpoint instead, as a PDF
+    (preserves layout: section headers, merged cells) rather than CSV. Every
+    other file type (uploaded .pdf/.docx) downloads as-is."""
+    if file_meta.get("mimeType") == google_service.SHEET_MIME:
+        content = google_service.export_file(db, file_meta["id"], "application/pdf")
+        return content, file_meta["name"], "application/pdf"
+    content = google_service.download_file(db, file_meta["id"])
+    return content, file_meta["name"], file_meta.get("mimeType", "")
 
 
 def _read_folder_documents(db: Session, folder_id: str) -> list[tuple[bytes, str, str]]:
     try:
         files_meta = google_service.list_folder_documents(db, folder_id)
         if not files_meta:
-            raise HTTPException(422, "No PDF or DOCX files found in this Drive folder to read.")
-        # The Drive API's default order isn't meaningful (not by relevance
-        # or name), so a plain [:N] slice on a folder with more files than
-        # the cap can silently drop the one document that actually has the
-        # estimate/line items — e.g. a folder with several signed/unsigned
-        # contract and change-order copies, where the real estimate happens
-        # to sort last. Rank filenames mentioning what we're actually
-        # looking for first, so those are never the ones dropped.
-        ranked = sorted(files_meta, key=lambda f: 0 if any(kw in f["name"].lower() for kw in _PRIORITY_FILENAME_KEYWORDS) else 1)
-        # Capped at 10 (was 5): keeps the request bounded while covering a
-        # folder with both signed and unsigned copies of several documents.
-        return [(google_service.download_file(db, f["id"]), f["name"], f.get("mimeType", "")) for f in ranked[:10]]
+            raise HTTPException(422, "No PDF, DOCX, XLSX, or Google Sheets files found in this Drive folder to read.")
+        # Filename-keyword prioritizing was a mistake for exactly the case
+        # that matters most here: a contractor's own informal notes file
+        # (e.g. "notes.docx", "Doc2.docx") has none of these keywords in its
+        # name, so sorting by keyword match actively pushed the one file
+        # most likely to hold the real scope/schedule to the back of the
+        # list — right where a small cap would cut it off. The real fix is
+        # a cap generous enough to just read everything in a normal project
+        # folder (20 covers every real example seen so far with room to
+        # spare), not a heuristic for guessing what's "relevant" by name.
+        files_meta = sorted(files_meta, key=lambda f: f["name"])[:_MAX_FOLDER_DOCUMENTS]
+        return [_read_one_folder_document(db, f) for f in files_meta]
     except (g_oauth.GoogleNotConnected, google_service.GoogleApiError) as exc:
         raise HTTPException(502, f"Google Drive error: {exc}") from exc
 
@@ -280,8 +402,8 @@ def preview_drive_import(folder_id: str, db: Session = Depends(get_db)):
     step, which actually creates the project from this preview."""
     if not g_oauth.get_connection(db):
         raise HTTPException(409, "Connect Google Workspace first.")
-    if not settings.gemini_api_key:
-        raise HTTPException(400, "GEMINI_API_KEY is not set in app/backend/.env — required to read documents from Drive.")
+    if not gemini_service.any_provider_configured():
+        raise HTTPException(400, "No AI extraction provider is configured — set GEMINI_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY in app/backend/.env.")
 
     documents = _read_folder_documents(db, folder_id)
     try:
@@ -363,6 +485,7 @@ def confirm_drive_import(folder_id: str, payload: schemas.DriveImportConfirm, db
     milestones = preview.milestones or [schemas.MilestonePreview(number=0, title="Full Contract Amount", amount=preview.total)]
     for m in milestones:
         db.add(models.Milestone(scope_schedule_id=scope_schedule.id, number=m.number, title=m.title, amount=m.amount, due_date=m.due_date))
+    project.start_date, project.end_date = _derive_project_dates(milestones)
 
     contract_package = models.ContractPackage(
         project_id=project.id,
@@ -375,8 +498,8 @@ def confirm_drive_import(folder_id: str, payload: schemas.DriveImportConfirm, db
             {"label": "Att. 1 Notice of Cancellation", "kind": "noc"},
             {"label": "Att. 2 Change Order Form", "kind": "change_order_form"},
             {"label": "Att. 3 CA Checklist", "kind": "ca_checklist"},
-            {"label": "Att. 4 Scope & Payment Schedule", "kind": "scope_schedule"},
-            {"label": "Att. 5 QuickBooks Estimate", "kind": "estimate"},
+            {"label": "4. Project Scope and Payment Schedule", "kind": "scope_schedule"},
+            {"label": "5. Estimate", "kind": "estimate"},
         ],
     )
     db.add(contract_package)
@@ -401,6 +524,20 @@ def confirm_drive_import(folder_id: str, payload: schemas.DriveImportConfirm, db
         logger.error("Reconciliation Sheet creation failed for imported project %s (%s): %s", project.id, project.name, exc)
 
     return project
+
+
+def _derive_project_dates(milestones: list) -> tuple[dt.date | None, dt.date | None]:
+    """Project.start_date/end_date are never set anywhere else, and the
+    Analytics page's Project Timeline / Concurrency charts both require
+    both to be set to show a project at all — so without this, every real
+    project (new or imported) is invisible there forever, not just until
+    more data comes in. The milestone due dates already extracted are the
+    best available signal for a project's actual date range in the absence
+    of an explicit start/completion date in the source document."""
+    due_dates = [m.due_date for m in milestones if m.due_date]
+    if not due_dates:
+        return None, None
+    return min(due_dates), max(due_dates)
 
 
 def _missing_required_fields(est: schemas.EstimateFetchResult) -> list[str]:
@@ -466,8 +603,8 @@ def create_project_from_estimate(payload: schemas.CreateProjectFromEstimate, db:
             {"label": "Att. 1 Notice of Cancellation", "kind": "noc"},
             {"label": "Att. 2 Change Order Form", "kind": "change_order_form"},
             {"label": "Att. 3 CA Checklist", "kind": "ca_checklist"},
-            {"label": "Att. 4 Scope & Payment Schedule", "kind": "scope_schedule"},
-            {"label": "Att. 5 QuickBooks Estimate", "kind": "estimate"},
+            {"label": "4. Project Scope and Payment Schedule", "kind": "scope_schedule"},
+            {"label": "5. Estimate", "kind": "estimate"},
         ],
     )
     db.add(contract_package)
@@ -500,6 +637,7 @@ def create_project_from_estimate(payload: schemas.CreateProjectFromEstimate, db:
         db.flush()
         for m in milestone_sources:
             db.add(models.Milestone(scope_schedule_id=scope_schedule.id, number=m.number, title=m.title, amount=m.amount, due_date=m.due_date))
+        project.start_date, project.end_date = _derive_project_dates(milestone_sources)
 
     db.commit()
     db.refresh(project)
@@ -523,21 +661,15 @@ def create_project_from_estimate(payload: schemas.CreateProjectFromEstimate, db:
         db.rollback()
         logger.error("Drive folder/Sheet creation failed for project %s (%s): %s — project itself was still created.", project.id, project.name, exc)
 
-    # Also best-effort, same reasoning: the estimate itself (Att. 5 in the
-    # Contract Package's attachments list, set above) wasn't actually a real
-    # file anywhere until Approve generated the full combined PDF — so right
-    # after creating a project, the Drive folder had nothing in it but the
-    # Reconciliation Sheet. Generating and filing just the Estimate page now
-    # means there's a real, openable file backing that attachment from the
-    # start, not only once the contract is drafted and approved.
-    if project.drive_folder_id and g_oauth.get_connection(db):
-        try:
-            pdf_bytes = documents.generate_estimate_pdf(project=project, estimate=project.estimate)
-            filename = f"{customer_name} – Estimate {project.estimate.estimate_number}.pdf"
-            project.estimate.source_file_id = google_service.upload_file(db, filename, pdf_bytes, "application/pdf", project.drive_folder_id)
-            db.commit()
-        except (g_oauth.GoogleNotConnected, google_service.GoogleApiError, httpx.HTTPError) as exc:
-            db.rollback()
-            logger.error("Estimate PDF upload failed for project %s (%s): %s — project itself was still created.", project.id, project.name, exc)
-
+    # Deliberately NOT auto-generating a recreated "Estimate" PDF here the
+    # way this used to: source_file_id means "a real uploaded estimate
+    # document" (see POST .../estimate/upload-pdf) — a reportlab recreation
+    # built from extracted fields isn't that, and setting it here meant the
+    # Contract Package's last page always showed that recreation (garbled
+    # for a pasted-text/QuickBooks-fetched estimate with no real document
+    # behind it, e.g. "QuickBooks Estimate DOC-Pasted notes") instead of
+    # ever falling back to the clean "Estimate #<number>" summary page. The
+    # Drive folder simply has nothing filed under this project yet besides
+    # the Reconciliation Sheet until the user uploads the real PDF or
+    # approves the contract package (which files the full combined PDF).
     return project

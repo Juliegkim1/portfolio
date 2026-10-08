@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Upload } from "lucide-react";
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
 import { AppShell } from "../components/AppShell";
 import { LoadingState, StatusTag } from "../components/StateViews";
@@ -8,13 +9,14 @@ import { useProjectContext } from "../context/ProjectContext";
 import { dateFmt, money } from "../format";
 
 const FILTERS = [
-  { key: "all", label: "All" },
-  { key: "needs_attention", label: "Needs Attention" },
-  { key: "matched", label: "Matched" },
-  { key: "deposits", label: "Deposits" },
+  { key: "all", labelKey: "opReconciliation.filterAll" },
+  { key: "needs_attention", labelKey: "opReconciliation.filterNeedsAttention" },
+  { key: "matched", labelKey: "opReconciliation.filterMatched" },
+  { key: "deposits", labelKey: "opReconciliation.filterDeposits" },
 ] as const;
 
 export function OperationalReconciliationPage() {
+  const { t } = useTranslation();
   const { projects } = useProjectContext();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -48,7 +50,7 @@ export function OperationalReconciliationPage() {
   const data = query.data;
 
   return (
-    <AppShell title="Operational Reconciliation" context="Bank of America transactions matched to receipts and projects">
+    <AppShell title={t("nav.operationalReconciliation")} context={t("opReconciliation.context")}>
       <div className="section">
         <div
           className="card blueprint"
@@ -60,7 +62,7 @@ export function OperationalReconciliationPage() {
           <i className="corner bl" />
           <i className="corner br" />
           <Upload size={18} strokeWidth={1.5} style={{ margin: "0 auto 6px" }} />
-          <div>Upload Bank of America transaction file (CSV, QFX or OFX)</div>
+          <div>{t("opReconciliation.uploadPrompt")}</div>
           <input
             ref={fileInputRef}
             type="file"
@@ -72,26 +74,26 @@ export function OperationalReconciliationPage() {
             }}
           />
         </div>
-        {importedFileName && <div className="muted">Imported: {importedFileName}</div>}
+        {importedFileName && <div className="muted">{t("opReconciliation.imported", { name: importedFileName })}</div>}
         {importMutation.isError && <div className="error-state">{(importMutation.error as Error).message}</div>}
       </div>
 
       {data && (
         <div className="kpi-grid section">
           <div className="card">
-            <div className="card-kicker">Transactions</div>
+            <div className="card-kicker">{t("opReconciliation.transactions")}</div>
             <div className="kpi-value">{data.kpis.transactions}</div>
           </div>
           <div className="card">
-            <div className="card-kicker">Matched to Receipts</div>
+            <div className="card-kicker">{t("opReconciliation.matchedToReceipts")}</div>
             <div className="kpi-value">{data.kpis.matched_to_receipts}</div>
           </div>
           <div className="card">
-            <div className="card-kicker">Needs Attention</div>
+            <div className="card-kicker">{t("opReconciliation.filterNeedsAttention")}</div>
             <div className="kpi-value">{data.kpis.needs_attention}</div>
           </div>
           <div className="card">
-            <div className="card-kicker">Unresolved Amount</div>
+            <div className="card-kicker">{t("opReconciliation.unresolvedAmount")}</div>
             <div className="kpi-value">{money(data.kpis.unresolved_amount)}</div>
           </div>
         </div>
@@ -100,7 +102,7 @@ export function OperationalReconciliationPage() {
       {data && data.kpis.needs_attention > 0 && (
         <div className="banner banner-attention icon-text section">
           <AlertTriangle size={16} strokeWidth={1.5} />
-          {data.kpis.needs_attention} transaction{data.kpis.needs_attention > 1 ? "s" : ""} need attention.
+          {t("opReconciliation.needsAttentionCount", { count: data.kpis.needs_attention })}
         </div>
       )}
 
@@ -109,7 +111,7 @@ export function OperationalReconciliationPage() {
           {FILTERS.map((f) => (
             <label key={f.key} className="seg-opt">
               <input type="radio" checked={filter === f.key} onChange={() => setFilter(f.key)} />
-              {f.label}
+              {t(f.labelKey)}
             </label>
           ))}
         </div>
@@ -121,37 +123,37 @@ export function OperationalReconciliationPage() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>Posted</th>
-                  <th>Bank Description</th>
-                  <th>Amount</th>
-                  <th>Receipt on File</th>
-                  <th>Project</th>
-                  <th>Status</th>
+                  <th>{t("opReconciliation.posted")}</th>
+                  <th>{t("opReconciliation.bankDescription")}</th>
+                  <th>{t("common.amount")}</th>
+                  <th>{t("opReconciliation.receiptOnFile")}</th>
+                  <th>{t("common.project")}</th>
+                  <th>{t("common.status")}</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
-                {data?.transactions.map((t) => (
-                  <tr key={t.id}>
-                    <td>{dateFmt(t.posted_date)}</td>
+                {data?.transactions.map((tx) => (
+                  <tr key={tx.id}>
+                    <td>{dateFmt(tx.posted_date)}</td>
                     <td style={{ fontFamily: "monospace", fontSize: 12 }}>
-                      {t.description}
+                      {tx.description}
                       <div className="muted" style={{ fontFamily: "inherit" }}>
-                        {t.vendor}
+                        {tx.vendor}
                       </div>
                     </td>
-                    <td style={{ color: t.amount >= 0 ? "var(--color-accent-700)" : undefined }}>{money(t.amount)}</td>
-                    <td className="muted">{t.receipt_id ? `#${t.receipt_id}` : "No receipt"}</td>
+                    <td style={{ color: tx.amount >= 0 ? "var(--color-accent-700)" : undefined }}>{money(tx.amount)}</td>
+                    <td className="muted">{tx.receipt_id ? `#${tx.receipt_id}` : t("opReconciliation.noReceipt")}</td>
                     <td>
-                      {t.receipt_id ? (
-                        projects.find((p) => p.id === t.project_id)?.name ?? "—"
+                      {tx.receipt_id ? (
+                        projects.find((p) => p.id === tx.project_id)?.name ?? "—"
                       ) : (
                         <select
                           className="input"
-                          value={t.project_id ?? ""}
-                          onChange={(e) => assignMutation.mutate({ id: t.id, projectId: e.target.value === "" ? null : Number(e.target.value) })}
+                          value={tx.project_id ?? ""}
+                          onChange={(e) => assignMutation.mutate({ id: tx.id, projectId: e.target.value === "" ? null : Number(e.target.value) })}
                         >
-                          <option value="">Needs project</option>
+                          <option value="">{t("opReconciliation.needsProject")}</option>
                           {projects.map((p) => (
                             <option key={p.id} value={p.id}>
                               {p.name}
@@ -161,16 +163,16 @@ export function OperationalReconciliationPage() {
                       )}
                     </td>
                     <td>
-                      <StatusTag status={t.match_status} />
+                      <StatusTag status={tx.match_status} />
                     </td>
                     <td>
-                      {t.match_status === "possible" && t.receipt_id && (
+                      {tx.match_status === "possible" && tx.receipt_id && (
                         <div className="row">
-                          <button className="btn btn-ghost" onClick={() => confirmMutation.mutate({ id: t.id, receiptId: t.receipt_id! })}>
-                            Confirm
+                          <button className="btn btn-ghost" onClick={() => confirmMutation.mutate({ id: tx.id, receiptId: tx.receipt_id! })}>
+                            {t("common.confirm")}
                           </button>
-                          <button className="btn btn-ghost" onClick={() => rejectMutation.mutate(t.id)}>
-                            Not a match
+                          <button className="btn btn-ghost" onClick={() => rejectMutation.mutate(tx.id)}>
+                            {t("opReconciliation.notAMatch")}
                           </button>
                         </div>
                       )}
@@ -180,7 +182,7 @@ export function OperationalReconciliationPage() {
                 {data?.transactions.length === 0 && (
                   <tr>
                     <td colSpan={7} className="empty-state">
-                      No transactions.
+                      {t("opReconciliation.noTransactions")}
                     </td>
                   </tr>
                 )}

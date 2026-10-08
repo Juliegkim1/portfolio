@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
 import { MobileHeader, MobileTabBar } from "./MobileShell";
 import { Sidebar } from "./Sidebar";
@@ -16,6 +17,7 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const { data: status } = useQuery({ queryKey: ["integrations-status"], queryFn: api.integrationsStatus });
+  const { t } = useTranslation();
 
   return (
     <div className="app-shell">
@@ -28,9 +30,9 @@ export function AppShell({
             {context && <div className="topbar-context">{context}</div>}
           </div>
           <div className="topbar-tags">
-            <span className="tag tag-outline">QuickBooks · {status?.quickbooks ? "Connected" : "Disconnected"}</span>
-            <span className="tag tag-outline">Adobe Acrobat · {status?.adobe_sign ? "Connected" : "Disconnected"}</span>
-            <span className="tag tag-outline">Google Workspace · {status?.google_workspace ? "Connected" : "Disconnected"}</span>
+            <span className="tag tag-outline">QuickBooks · {status?.quickbooks ? t("common.connected") : t("common.notConnected")}</span>
+            <span className="tag tag-outline">Adobe Acrobat · {status?.adobe_sign ? t("common.connected") : t("common.notConnected")}</span>
+            <span className="tag tag-outline">Google Workspace · {status?.google_workspace ? t("common.connected") : t("common.notConnected")}</span>
           </div>
         </header>
         <main className="content">

@@ -352,7 +352,11 @@ export interface AnalyticsResponse {
     collected_to_date: number;
   };
   timeline: { id: number; name: string; start_date: string; end_date: string; signed: boolean }[];
-  concurrency: { week_start: string; count: number }[];
+  concurrency: {
+    week_start: string;
+    count: number;
+    projects: { id: number; name: string; customer_name: string; property_address: string }[];
+  }[];
   peak_weeks: string[];
   revenue_projection: { month: string; collected: number; scheduled: number }[];
   revenue_by_project: { project_id: number; project_name: string; total: number; collected: number }[];

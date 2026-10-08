@@ -9,39 +9,42 @@ import {
   Receipt,
   Scale,
   ScrollText,
-  Users,
+  Settings,
   Wallet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export interface NavStep {
   number: number;
-  label: string;
-  mobileLabel: string;
+  labelKey: string;
+  mobileLabelKey: string;
   icon: LucideIcon;
   path: (projectId: number | null) => string;
 }
 
+// label/mobileLabel are i18next keys (see src/i18n), resolved at render time
+// with useTranslation() in Sidebar/MobileShell — not literal text, so the
+// nav relabels itself immediately when the language setting changes.
 export const WORKFLOW_STEPS: NavStep[] = [
-  { number: 1, label: "Customers & Projects", mobileLabel: "Projects", icon: Building2, path: () => "/projects" },
-  { number: 2, label: "Estimate Upload", mobileLabel: "Estimate", icon: FileSpreadsheet, path: () => "/estimate-upload" },
-  { number: 3, label: "Project Scope & Payment Schedule", mobileLabel: "Scope", icon: ScrollText, path: (id) => (id ? `/projects/${id}/scope` : "/projects") },
-  { number: 4, label: "Contract Package", mobileLabel: "Contract", icon: FileSignature, path: (id) => (id ? `/projects/${id}/contract` : "/projects") },
-  { number: 5, label: "Change Orders", mobileLabel: "Changes", icon: GitPullRequest, path: (id) => (id ? `/projects/${id}/change-orders` : "/projects") },
-  { number: 6, label: "Invoices", mobileLabel: "Invoices", icon: Receipt, path: (id) => (id ? `/projects/${id}/invoices` : "/projects") },
-  { number: 7, label: "Reconciliation & Closing", mobileLabel: "Recon.", icon: Scale, path: (id) => (id ? `/projects/${id}/reconciliation` : "/projects") },
+  { number: 1, labelKey: "nav.step1", mobileLabelKey: "nav.step1Mobile", icon: Building2, path: () => "/projects" },
+  { number: 2, labelKey: "nav.step2", mobileLabelKey: "nav.step2Mobile", icon: FileSpreadsheet, path: () => "/estimate-upload" },
+  { number: 3, labelKey: "nav.step3", mobileLabelKey: "nav.step3Mobile", icon: ScrollText, path: (id) => (id ? `/projects/${id}/scope` : "/projects") },
+  { number: 4, labelKey: "nav.step4", mobileLabelKey: "nav.step4Mobile", icon: FileSignature, path: (id) => (id ? `/projects/${id}/contract` : "/projects") },
+  { number: 5, labelKey: "nav.step5", mobileLabelKey: "nav.step5Mobile", icon: GitPullRequest, path: (id) => (id ? `/projects/${id}/change-orders` : "/projects") },
+  { number: 6, labelKey: "nav.step6", mobileLabelKey: "nav.step6Mobile", icon: Receipt, path: (id) => (id ? `/projects/${id}/invoices` : "/projects") },
+  { number: 7, labelKey: "nav.step7", mobileLabelKey: "nav.step7Mobile", icon: Scale, path: (id) => (id ? `/projects/${id}/reconciliation` : "/projects") },
 ];
 
 export interface CompanyNavItem {
-  label: string;
+  labelKey: string;
   icon: LucideIcon;
   path: string;
 }
 
 export const COMPANY_NAV: CompanyNavItem[] = [
-  { label: "Analytics", icon: BarChart3, path: "/analytics" },
-  { label: "Operational Reconciliation", icon: Landmark, path: "/operational-reconciliation" },
-  { label: "Import from Drive", icon: FolderInput, path: "/import-from-drive" },
-  { label: "Team & Users", icon: Users, path: "/team" },
-  { label: "Business Expenses", icon: Wallet, path: "/business-expenses" },
+  { labelKey: "nav.analytics", icon: BarChart3, path: "/analytics" },
+  { labelKey: "nav.operationalReconciliation", icon: Landmark, path: "/operational-reconciliation" },
+  { labelKey: "nav.importFromDrive", icon: FolderInput, path: "/import-from-drive" },
+  { labelKey: "nav.settings", icon: Settings, path: "/settings" },
+  { labelKey: "nav.businessExpenses", icon: Wallet, path: "/business-expenses" },
 ];

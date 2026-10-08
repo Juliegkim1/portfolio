@@ -83,6 +83,15 @@ class EstimateFetchRequest(BaseModel):
     estimate_number: str
 
 
+class EstimateTextPaste(BaseModel):
+    # Fallback for the Estimate Upload screen's "no estimate number" path,
+    # alongside the file upload — a .docx/.xlsx that isn't a valid Office
+    # document (common for an old .doc renamed, or a quirky export from
+    # another app) fails to parse, and copy-pasting its text sidesteps the
+    # file-format problem entirely since Gemini just reads the text itself.
+    text: str
+
+
 class EstimateFetchResult(BaseModel):
     found: bool
     estimate_number: str
@@ -123,6 +132,44 @@ class EstimateAmountOverride(BaseModel):
     # + tax + permit fees - discount) — lets an owner fix a total that was
     # extracted or entered wrong without having to re-edit every line item.
     total_override: float | None = None
+    # The real QuickBooks/contractor estimate number — editable here since an
+    # estimate sourced from a paste/upload/Drive-import gets a synthesized
+    # placeholder (e.g. "DOC-Pasted notes"), not a real number, and that
+    # placeholder is what the Contract Package's last page falls back to
+    # showing when no real estimate PDF is attached (see
+    # services/documents.py's generate_estimate_summary_page). Omitted/None
+    # leaves the current value unchanged — unlike total_override there's no
+    # "clear it" case, so this isn't a tristate the way that field is.
+    estimate_number: str | None = None
+
+
+class ProjectDatesUpdate(BaseModel):
+    # Backfills a project created before start_date/end_date were ever set
+    # automatically (see routers/projects.py's _derive_project_dates), or
+    # just corrects them — these drive the Analytics page's Project
+    # Timeline and Concurrency charts, which silently show nothing for any
+    # project missing either one.
+    start_date: dt.date | None = None
+    end_date: dt.date | None = None
+
+
+class ProjectTypeUpdate(BaseModel):
+    # Recategorizes a project after it's already been created/imported — the
+    # type picked at estimate-upload or Drive-import time (e.g. "Kitchen
+    # Remodel") is free text and easy to get wrong or need to change later.
+    project_type: str
+
+
+class ProjectDriveFolderUpdate(BaseModel):
+    # A pasted Drive folder link (any of its common URL shapes) or a raw
+    # folder ID — lets an owner point a project at the real Drive folder by
+    # hand when it wasn't discoverable through the automatic Drive ›
+    # Projects scan (see GET /projects/drive-importable — it only looks
+    # directly under that one root folder) or when a project was created
+    # without Google connected at all. The router does the URL-to-ID
+    # parsing, same as the frontend's own manual-folder-entry field on the
+    # Import from Drive page, so either a link or a bare ID works here too.
+    drive_folder_link: str
 
 
 # --- Drive import (pre-existing, already-signed projects) ------------------

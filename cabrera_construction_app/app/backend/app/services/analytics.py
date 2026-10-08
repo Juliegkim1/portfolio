@@ -40,12 +40,8 @@ def weekly_concurrency(projects: list, include_pending: bool = False) -> list[di
     result = []
     for week in weeks:
         week_end = week + dt.timedelta(days=6)
-        count = sum(
-            1
-            for p in ranged
-            if counts_project(p) and p.start_date <= week_end and p.end_date >= week
-        )
-        result.append({"week_start": week, "count": count})
+        overlapping = [p for p in ranged if counts_project(p) and p.start_date <= week_end and p.end_date >= week]
+        result.append({"week_start": week, "count": len(overlapping), "projects": overlapping})
     return result
 
 

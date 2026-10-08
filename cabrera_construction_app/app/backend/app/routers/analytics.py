@@ -68,7 +68,17 @@ def get_analytics(include_pending: bool = False, db: Session = Depends(get_db)):
             "collected_to_date": round(collected_to_date, 2),
         },
         "timeline": [project_row(p) for p in projects if p.start_date and p.end_date],
-        "concurrency": [{"week_start": row["week_start"], "count": row["count"]} for row in concurrency],
+        "concurrency": [
+            {
+                "week_start": row["week_start"],
+                "count": row["count"],
+                "projects": [
+                    {"id": p.id, "name": p.name, "customer_name": p.customer_name, "property_address": p.property_address}
+                    for p in row["projects"]
+                ],
+            }
+            for row in concurrency
+        ],
         "peak_weeks": peaks,
         "revenue_projection": revenue_projection,
         "revenue_by_project": [

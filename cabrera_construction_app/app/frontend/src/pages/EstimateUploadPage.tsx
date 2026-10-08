@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, FolderOpen, Upload, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ClipboardPaste, FolderOpen, Upload, XCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ApiError, api } from "../api/client";
 import type { EstimateFetchResult } from "../api/types";
@@ -9,14 +10,15 @@ import { DriveFilePickerDialog } from "../components/DriveFilePickerDialog";
 import { useProjectContext } from "../context/ProjectContext";
 import { dateTimeFmt, money } from "../format";
 
-const SECTIONS: { key: EstimateFetchResult["line_items"][number]["section"]; label: string }[] = [
-  { key: "demolition", label: "Demolition / Preparation" },
-  { key: "materials", label: "Materials" },
-  { key: "labor", label: "Labor" },
-  { key: "additional_work", label: "Additional Work" },
+const SECTION_KEYS: { key: EstimateFetchResult["line_items"][number]["section"]; labelKey: string }[] = [
+  { key: "demolition", labelKey: "estimateUpload.sectionDemolition" },
+  { key: "materials", labelKey: "estimateUpload.sectionMaterials" },
+  { key: "labor", labelKey: "estimateUpload.sectionLabor" },
+  { key: "additional_work", labelKey: "estimateUpload.sectionAdditionalWork" },
 ];
 
 export function EstimateUploadPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { setSelectedProjectId } = useProjectContext();
@@ -52,11 +54,11 @@ export function EstimateUploadPage() {
   const [debouncedCustomerName, setDebouncedCustomerName] = useState("");
   const [debouncedStreet, setDebouncedStreet] = useState("");
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       setDebouncedCustomerName(customerName.trim());
       setDebouncedStreet((propertyAddress.split(",")[0] || "").trim());
     }, 400);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [customerName, propertyAddress]);
   const driveFolderCheck = useQuery({
     queryKey: ["check-drive-folder", debouncedCustomerName, debouncedStreet],
@@ -139,11 +141,29 @@ export function EstimateUploadPage() {
     },
   });
 
+  // Fallback alongside file upload — a .docx/.xlsx that isn't actually a
+  // valid Office document (an old .doc renamed, a quirky export from some
+  // other app) fails to parse there; pasting the same text sidesteps the
+  // file-format problem entirely, since this still goes through the same
+  // Gemini extraction, just skipping the file-reading step.
+  const [showPaste, setShowPaste] = useState(false);
+  const [pastedText, setPastedText] = useState("");
+  const pasteEstimate = useMutation({
+    mutationFn: () => api.estimates.pasteText(pastedText),
+    onSuccess: (data) => {
+      applyResult(data);
+      setUploadedFileName(t("estimateUpload.pastedNotesLabel"));
+      setNotFound(false);
+      setShowPaste(false);
+      setPastedText("");
+    },
+  });
+
   const missingFields = result
     ? [
-        !customerName.trim() && "Customer name",
-        !propertyAddress.trim() && "Property address",
-        result.line_items.length === 0 && "At least one line item",
+        !customerName.trim() && t("estimateUpload.missingCustomerName"),
+        !propertyAddress.trim() && t("estimateUpload.missingPropertyAddress"),
+        result.line_items.length === 0 && t("estimateUpload.missingLineItem"),
       ].filter((x): x is string => Boolean(x))
     : [];
 
@@ -163,38 +183,38 @@ export function EstimateUploadPage() {
     },
   });
 
-  const sectionSummaries = SECTIONS.map((s) => {
+  const sectionSummaries = SECTION_KEYS.map((s) => {
     const items = result?.line_items.filter((li) => li.section === s.key) ?? [];
     const subtotal = items.reduce((sum, li) => sum + li.qty * li.unit_price, 0);
     return { ...s, count: items.length, subtotal };
   });
 
   return (
-    <AppShell title="Estimate Upload" context="Start a new project from a QuickBooks estimate">
+    <AppShell title={t("estimateUpload.title")} context={t("estimateUpload.context")}>
       <div className="section">
         <div className="card row-between" style={{ padding: "var(--space-3) var(--space-4)" }}>
           <div className="icon-text">
             {qbStatus.data?.connected ? <CheckCircle2 size={16} strokeWidth={1.5} /> : <XCircle size={16} strokeWidth={1.5} />}
             <span>
-              QuickBooks {qbStatus.data?.connected ? `connected (${qbStatus.data.environment})` : "not connected — fetches use demo data (1042, 2091)"}
+              QuickBooks {qbStatus.data?.connected ? t("estimateUpload.qbConnectedSuffix", { env: qbStatus.data.environment }) : t("estimateUpload.qbNotConnected")}
             </span>
           </div>
           {qbStatus.data?.connected ? (
             <button className="btn btn-secondary" disabled={qbDisconnect.isPending} onClick={() => qbDisconnect.mutate()}>
-              Disconnect
+              {t("common.disconnect")}
             </button>
           ) : (
             <a className="btn btn-primary" href={api.quickbooks.connectUrl}>
-              Connect QuickBooks
+              {t("estimateUpload.connectQuickBooks")}
             </a>
           )}
         </div>
         {qbRedirectNotice && (
           <div className={`banner ${qbRedirectNotice.kind !== "error" ? "banner-attention" : ""}`}>
-            {qbRedirectNotice.kind === "connected" && "QuickBooks connected. Estimate fetches now hit your real company data."}
-            {qbRedirectNotice.kind === "disconnected" && "QuickBooks was disconnected from the QuickBooks side (Manage Apps). Reconnect here whenever you're ready."}
+            {qbRedirectNotice.kind === "connected" && t("estimateUpload.qbConnectedBanner")}
+            {qbRedirectNotice.kind === "disconnected" && t("estimateUpload.qbDisconnectedBanner")}
             {qbRedirectNotice.kind === "error" &&
-              `QuickBooks connection failed${qbRedirectNotice.reason ? ` (${qbRedirectNotice.reason})` : ""}. Check the client ID/secret and redirect URI in app/backend/.env, then try again.`}
+              t("estimateUpload.qbErrorBanner", { reason: qbRedirectNotice.reason ? ` (${qbRedirectNotice.reason})` : "" })}
           </div>
         )}
 
@@ -203,36 +223,38 @@ export function EstimateUploadPage() {
             {googleStatus.data?.connected ? <CheckCircle2 size={16} strokeWidth={1.5} /> : <XCircle size={16} strokeWidth={1.5} />}
             <span>
               Google Workspace{" "}
-              {googleStatus.data?.connected ? `connected (${googleStatus.data.account_email})` : "not connected — Drive folders/Sheets use fake IDs"}
+              {googleStatus.data?.connected
+                ? t("estimateUpload.googleConnectedSuffix", { email: googleStatus.data.account_email })
+                : t("estimateUpload.googleNotConnected")}
             </span>
           </div>
           {googleStatus.data?.connected ? (
             <button className="btn btn-secondary" disabled={googleDisconnect.isPending} onClick={() => googleDisconnect.mutate()}>
-              Disconnect
+              {t("common.disconnect")}
             </button>
           ) : (
             <a className="btn btn-primary" href={api.google.connectUrl}>
-              Connect Google Workspace
+              {t("estimateUpload.connectGoogle")}
             </a>
           )}
         </div>
         {googleRedirectNotice && (
           <div className={`banner ${googleRedirectNotice.kind === "connected" ? "banner-attention" : ""}`}>
             {googleRedirectNotice.kind === "connected"
-              ? "Google Workspace connected. New projects now get a real Drive folder and reconciliation Sheet."
-              : `Google connection failed${googleRedirectNotice.reason ? ` (${googleRedirectNotice.reason})` : ""}. Check the client ID/secret and redirect URI in app/backend/.env, then try again.`}
+              ? t("estimateUpload.googleConnectedBanner")
+              : t("estimateUpload.googleErrorBanner", { reason: googleRedirectNotice.reason ? ` (${googleRedirectNotice.reason})` : "" })}
           </div>
         )}
         {googleStatus.data?.connected && (
           <div className="muted" style={{ fontSize: 13, marginTop: "var(--space-2)" }}>
-            Importing a project that already existed in Drive before this app? That's a separate flow — see{" "}
-            <a href="/import-from-drive">Import from Drive</a> in the Company menu.
+            {t("estimateUpload.importFromDriveNotePrefix")} <a href="/import-from-drive">{t("nav.importFromDrive")}</a>{" "}
+            {t("estimateUpload.importFromDriveNoteSuffix")}
           </div>
         )}
       </div>
 
       <div className="section">
-        <h3>Step 1 — Get the estimate from QuickBooks</h3>
+        <h3>{t("estimateUpload.step1Title")}</h3>
         <div className="card blueprint" style={{ padding: "var(--space-4)" }}>
           <i className="corner tl" />
           <i className="corner tr" />
@@ -242,21 +264,31 @@ export function EstimateUploadPage() {
             <input
               className="input"
               style={{ maxWidth: 220 }}
-              placeholder="Estimate Number (e.g. 1042)"
+              placeholder={t("estimateUpload.estimateNumberPlaceholder")}
               value={estimateNumber}
               onChange={(e) => setEstimateNumber(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && estimateNumber && fetchEstimate.mutate()}
             />
             <button className="btn btn-primary" disabled={!estimateNumber || fetchEstimate.isPending} onClick={() => fetchEstimate.mutate()}>
-              Fetch Estimate
+              {t("estimateUpload.fetchEstimateButton")}
             </button>
           </div>
 
           {result && !uploadedFileName && (
-            <div className="banner banner-attention icon-text" style={{ marginTop: "var(--space-3)" }}>
-              <CheckCircle2 size={16} strokeWidth={1.5} />
-              Found in QuickBooks — {result.estimate_number} · {result.customer_name} · {money(result.total)} · retrieved {dateTimeFmt(result.retrieved_at)}
-            </div>
+            <>
+              <div className="banner banner-attention icon-text" style={{ marginTop: "var(--space-3)" }}>
+                <CheckCircle2 size={16} strokeWidth={1.5} />
+                {t("estimateUpload.foundInQuickBooks", {
+                  number: result.estimate_number,
+                  customer: result.customer_name,
+                  total: money(result.total),
+                  date: dateTimeFmt(result.retrieved_at),
+                })}
+              </div>
+              <div className="muted" style={{ fontSize: 12, marginTop: "var(--space-2)" }}>
+                {t("estimateUpload.qbPdfHint")}
+              </div>
+            </>
           )}
           {fetchEstimate.isError && (
             <div className="banner banner-attention icon-text" style={{ marginTop: "var(--space-3)" }}>
@@ -265,7 +297,7 @@ export function EstimateUploadPage() {
                 <span>
                   {fetchEstimate.error.message}{" "}
                   <a href={api.quickbooks.connectUrl} style={{ fontWeight: 600 }}>
-                    Reconnect QuickBooks
+                    {t("estimateUpload.reconnectQuickBooks")}
                   </a>
                 </span>
               ) : (
@@ -276,14 +308,14 @@ export function EstimateUploadPage() {
           {notFound && (
             <div className="banner icon-text" style={{ marginTop: "var(--space-3)" }}>
               <XCircle size={16} strokeWidth={1.5} />
-              No estimate found for "{estimateNumber}". Try 1042 or 2091, or upload the PDF below.
+              {t("estimateUpload.notFoundMessage", { number: estimateNumber })}
             </div>
           )}
         </div>
 
         <div className="hr" />
         <div className="muted" style={{ fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-          Or, if there is no estimate number
+          {t("estimateUpload.orNoEstimateNumber")}
         </div>
 
         <div
@@ -296,14 +328,14 @@ export function EstimateUploadPage() {
           <i className="corner bl" />
           <i className="corner br" />
           <Upload size={20} strokeWidth={1.5} style={{ margin: "0 auto 8px" }} />
-          <div>{uploadEstimate.isPending ? "Reading the document…" : "Upload the estimate, or a contractor's job notes"}</div>
+          <div>{uploadEstimate.isPending ? t("estimateUpload.readingDocument") : t("estimateUpload.uploadPrompt")}</div>
           <div className="muted" style={{ fontSize: 12 }}>
-            PDF or DOCX
+            {t("estimateUpload.uploadFormats")}
           </div>
           <input
             ref={fileInputRef}
             type="file"
-            accept="application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            accept="application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             style={{ display: "none" }}
             disabled={uploadEstimate.isPending}
             onChange={(e) => {
@@ -319,10 +351,42 @@ export function EstimateUploadPage() {
             disabled={uploadFromDrive.isPending}
             onClick={() => setShowDrivePicker(true)}
           >
-            <FolderOpen size={14} strokeWidth={1.5} /> Or choose from Google Drive
+            <FolderOpen size={14} strokeWidth={1.5} /> {t("estimateUpload.orChooseFromDrive")}
           </button>
         )}
-        {uploadedFileName && !uploadEstimate.isError && !uploadFromDrive.isError && <div className="muted">Parsed: {uploadedFileName}</div>}
+        <button
+          className="btn btn-secondary btn-block"
+          style={{ marginTop: "var(--space-2)" }}
+          onClick={() => setShowPaste((v) => !v)}
+        >
+          <ClipboardPaste size={14} strokeWidth={1.5} /> {t("estimateUpload.orPasteDirectly")}
+        </button>
+        {showPaste && (
+          <div className="card" style={{ padding: "var(--space-3)", marginTop: "var(--space-2)" }}>
+            <div className="muted" style={{ fontSize: 12, marginBottom: "var(--space-2)" }}>
+              {t("estimateUpload.pasteHelperText")}
+            </div>
+            <textarea
+              className="input"
+              style={{ minHeight: 160 }}
+              placeholder={t("estimateUpload.pastePlaceholder")}
+              value={pastedText}
+              onChange={(e) => setPastedText(e.target.value)}
+              disabled={pasteEstimate.isPending}
+            />
+            <button
+              className="btn btn-primary btn-block"
+              style={{ marginTop: "var(--space-2)" }}
+              disabled={!pastedText.trim() || pasteEstimate.isPending}
+              onClick={() => pasteEstimate.mutate()}
+            >
+              {pasteEstimate.isPending ? t("estimateUpload.readingText") : t("estimateUpload.extractFromPastedText")}
+            </button>
+          </div>
+        )}
+        {uploadedFileName && !uploadEstimate.isError && !uploadFromDrive.isError && !pasteEstimate.isError && (
+          <div className="muted">{t("estimateUpload.parsed", { name: uploadedFileName })}</div>
+        )}
         {uploadEstimate.isError && (
           <div className="banner icon-text" style={{ marginTop: "var(--space-3)" }}>
             <XCircle size={16} strokeWidth={1.5} />
@@ -333,6 +397,12 @@ export function EstimateUploadPage() {
           <div className="banner icon-text" style={{ marginTop: "var(--space-3)" }}>
             <XCircle size={16} strokeWidth={1.5} />
             {(uploadFromDrive.error as Error).message}
+          </div>
+        )}
+        {pasteEstimate.isError && (
+          <div className="banner icon-text" style={{ marginTop: "var(--space-3)" }}>
+            <XCircle size={16} strokeWidth={1.5} />
+            {(pasteEstimate.error as Error).message}
           </div>
         )}
         {showDrivePicker && (
@@ -347,49 +417,53 @@ export function EstimateUploadPage() {
       {result && (
         <>
           <div className="section">
-            <h3>Extracted fields</h3>
+            <h3>{t("estimateUpload.extractedFieldsHeading")}</h3>
             <div className="card" style={{ padding: "var(--space-4)", opacity: 0.95 }}>
               <div className="form-grid">
                 <div className="field">
-                  <label>Customer {!customerName.trim() && <span style={{ color: "#b4432f" }}>— required</span>}</label>
-                  <input className="input" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Enter the customer's name" />
+                  <label>
+                    {t("common.customer")} {!customerName.trim() && <span style={{ color: "#b4432f" }}>{t("estimateUpload.requiredSuffix")}</span>}
+                  </label>
+                  <input className="input" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder={t("estimateUpload.customerPlaceholder")} />
                 </div>
                 <div className="field">
-                  <label>Address {!propertyAddress.trim() && <span style={{ color: "#b4432f" }}>— required</span>}</label>
-                  <input className="input" value={propertyAddress} onChange={(e) => setPropertyAddress(e.target.value)} placeholder="Enter the property address" />
+                  <label>
+                    {t("common.address")} {!propertyAddress.trim() && <span style={{ color: "#b4432f" }}>{t("estimateUpload.requiredSuffix")}</span>}
+                  </label>
+                  <input className="input" value={propertyAddress} onChange={(e) => setPropertyAddress(e.target.value)} placeholder={t("estimateUpload.addressPlaceholder")} />
                 </div>
                 <div className="field">
-                  <label>Phone</label>
-                  <input className="input" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Not found — optional" />
+                  <label>{t("common.phone")}</label>
+                  <input className="input" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder={t("estimateUpload.notFoundOptional")} />
                 </div>
                 <div className="field">
-                  <label>Email</label>
-                  <input className="input" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} placeholder="Not found — optional" />
+                  <label>{t("common.email")}</label>
+                  <input className="input" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} placeholder={t("estimateUpload.notFoundOptional")} />
                 </div>
                 <div className="field">
-                  <label>Estimate # / Date</label>
+                  <label>{t("estimateUpload.estimateNumberDate")}</label>
                   <input className="input" value={`${result.estimate_number} · ${result.date_issued ?? ""}`} readOnly style={{ opacity: 0.85 }} />
                 </div>
                 <div className="field">
-                  <label>Total</label>
+                  <label>{t("common.total")}</label>
                   <input className="input" value={money(result.total)} readOnly style={{ opacity: 0.85 }} />
                 </div>
               </div>
               <div className="field" style={{ marginTop: "var(--space-3)" }}>
-                <label>Project Scope</label>
+                <label>{t("estimateUpload.projectScope")}</label>
                 <textarea className="input" readOnly value={result.scope_text ?? ""} style={{ opacity: 0.85 }} />
               </div>
             </div>
           </div>
 
           <div className="section">
-            <h3>Line items</h3>
+            <h3>{t("estimateUpload.lineItemsHeading")}</h3>
             <div className="kpi-grid">
               {sectionSummaries.map((s) => (
                 <div key={s.key} className="card">
-                  <div className="card-kicker">{s.label}</div>
+                  <div className="card-kicker">{t(s.labelKey)}</div>
                   <div className="kpi-value">{money(s.subtotal)}</div>
-                  <div className="kpi-sub">{s.count} line items</div>
+                  <div className="kpi-sub">{t("estimateUpload.lineItemsCount", { count: s.count })}</div>
                 </div>
               ))}
             </div>
@@ -419,9 +493,9 @@ export function EstimateUploadPage() {
 
           {result.milestones && result.milestones.length > 0 && (
             <div className="section">
-              <h3>Payment schedule found ({result.milestones.length} milestones)</h3>
+              <h3>{t("estimateUpload.paymentScheduleHeading", { count: result.milestones.length })}</h3>
               <div className="muted" style={{ fontSize: 13, marginBottom: "var(--space-2)" }}>
-                This will pre-fill the Project Scope & Payment Schedule step instead of its usual deposit/final-payment default.
+                {t("estimateUpload.paymentScheduleHelp")}
               </div>
               <div className="record-list">
                 {result.milestones.map((m) => (
@@ -437,38 +511,47 @@ export function EstimateUploadPage() {
           )}
 
           <div className="section">
-            <h3>The app creates</h3>
+            <h3>{t("estimateUpload.appCreatesHeading")}</h3>
             <ul style={{ margin: 0, paddingLeft: 20, fontSize: 14 }}>
-              <li>A project record for {customerName || "—"}</li>
+              <li>{t("estimateUpload.appCreatesProjectRecord", { name: customerName || "—" })}</li>
               <li>
-                A Google Drive folder: Projects › {customerName || "—"} – {propertyAddress?.split(",")[0] || "—"} › {projectType || "—"}
+                {t("estimateUpload.appCreatesDriveFolder", {
+                  customer: customerName || "—",
+                  street: propertyAddress?.split(",")[0] || "—",
+                  type: projectType || "—",
+                })}
               </li>
               <li>
-                A Project Scope & Payment Schedule
-                {result.milestones && result.milestones.length > 0 ? ` — pre-filled with the ${result.milestones.length} milestones above` : ""}
+                {t("estimateUpload.appCreatesScopeSchedule")}
+                {result.milestones && result.milestones.length > 0
+                  ? t("estimateUpload.appCreatesScopeSchedulePrefilled", { count: result.milestones.length })
+                  : ""}
               </li>
-              <li>A Contract Package draft</li>
+              <li>{t("estimateUpload.appCreatesContractDraft")}</li>
             </ul>
             {driveFolderCheck.data?.exists && (
               <div className="banner banner-attention icon-text">
                 <AlertTriangle size={16} strokeWidth={1.5} />
-                {customerName} – {propertyAddress?.split(",")[0]} already has a Drive folder
-                {driveFolderCheck.data.existing_project_types.length > 0
-                  ? ` (${driveFolderCheck.data.existing_project_types.join(", ")})`
-                  : ""}
-                . This project will be filed as a new subfolder there, not a separate customer folder.
+                {t("estimateUpload.driveFolderExistsWarning", {
+                  customer: customerName,
+                  street: propertyAddress?.split(",")[0],
+                  types:
+                    driveFolderCheck.data.existing_project_types.length > 0
+                      ? ` (${driveFolderCheck.data.existing_project_types.join(", ")})`
+                      : "",
+                })}
               </div>
             )}
             <div className="form-grid">
               <div className="field">
-                <label>Project Type</label>
+                <label>{t("estimateUpload.projectTypeLabel")}</label>
                 <input className="input" value={projectType} onChange={(e) => setProjectType(e.target.value)} />
               </div>
             </div>
             {missingFields.length > 0 && (
               <div className="banner banner-attention icon-text">
                 <AlertTriangle size={16} strokeWidth={1.5} />
-                Fill in before creating the project: {missingFields.join(", ")}.
+                {t("estimateUpload.missingFieldsWarning", { fields: missingFields.join(", ") })}
               </div>
             )}
             {createProject.isError && <div className="error-state">{(createProject.error as Error).message}</div>}
@@ -477,7 +560,7 @@ export function EstimateUploadPage() {
               disabled={createProject.isPending || missingFields.length > 0}
               onClick={() => createProject.mutate()}
             >
-              {createProject.isPending ? "Creating…" : "Create Project & Continue to Scope"}
+              {createProject.isPending ? t("estimateUpload.creating") : t("estimateUpload.createProjectButton")}
             </button>
           </div>
         </>
