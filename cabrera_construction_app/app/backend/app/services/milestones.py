@@ -1,7 +1,8 @@
 """Milestone / balance business rules (CLAUDE.md "Business rules").
 
 - Milestone % = amount / contract total. Schedule must sum to 100% before saving.
-- Deposit (milestone 0) <= min($1,000, 10% of contract).
+- Deposit (milestone 0) <= min($1,000, 10% of contract) — advisory only; see
+  routers/scope_schedules.py's save_scope_schedule for why this doesn't block saving.
 - Invoice amount = milestone amount + signed CO deltas for that milestone.
 - Balance = revised contract - sum(payment receipts). Expenses never reduce balance.
 """

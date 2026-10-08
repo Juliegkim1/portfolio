@@ -92,7 +92,7 @@ Relationships: `Project` 1—1 `Estimate`; `Project` 1—1 `ScopeSchedule` 1—n
 Roles: **Owner/Admin** (full access, signs as Contractor, closes projects, manages users), **Project Manager** (can approve contract packages without Owner sign-off; cannot manage users or close projects), **Customer** (no login — signs via Adobe Acrobat Sign, pays via QuickBooks).
 
 ### Business rules that must be enforced server-side (README has the full list)
-- Milestone schedule must sum to 100% of contract total before saving; deposit (milestone 0) ≤ min($1,000, 10% of contract).
+- Milestone schedule must sum to 100% of contract total before saving (hard block). Deposit (milestone 0) ≤ min($1,000, 10% of contract) is advisory only — `PUT /projects/{id}/scope-schedule` still returns `deposit_ok`/`deposit_note` for the UI to warn with, but no longer rejects the save, since a real contract (e.g. a Drive-imported one) can already carry a deposit above this guideline and blocking the save made it impossible to even record that project's actual numbers.
 - Revised contract total = estimate total + Σ(signed change-order deltas). A change order only affects totals/milestones/dates once **both** Owner and Contractor have signed.
 - Invoice amount = milestone amount + signed CO deltas for that milestone; due date = issued + 15 days.
 - Balance = revised contract − Σ payment receipts (expenses never reduce balance); "Close Project" only allowed at exactly $0.00.

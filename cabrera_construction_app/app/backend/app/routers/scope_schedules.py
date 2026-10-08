@@ -77,11 +77,14 @@ def validate_scope_schedule(project_id: int, payload: schemas.ScopeScheduleIn, d
 def save_scope_schedule(project_id: int, payload: schemas.ScopeScheduleIn, db: Session = Depends(get_db)):
     project = get_project_or_404(db, project_id)
     contract_total = _revised_total(project)
-    balanced, balance_note, deposit_ok, deposit_note = _validate(payload, contract_total)
+    balanced, balance_note, _deposit_ok, _deposit_note = _validate(payload, contract_total)
     if not balanced:
         raise HTTPException(400, f"Cannot save: schedule is not balanced ({balance_note})")
-    if not deposit_ok:
-        raise HTTPException(400, f"Cannot save: {deposit_note}")
+    # Deposit cap is advisory, not enforced: a real signed contract (e.g. one
+    # pulled in via Drive import) can already have a deposit above the
+    # $1,000/10% guideline, and blocking the save made it impossible to even
+    # record that project's actual numbers. deposit_ok/deposit_note still
+    # come back in the response below so the UI can keep showing the warning.
 
     ss = project.scope_schedule
     if not ss:
