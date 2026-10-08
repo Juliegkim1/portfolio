@@ -136,6 +136,12 @@ export const api = {
       patch<Estimate>(`/projects/${projectId}/estimate`, { estimate_number: estimateNumber }),
     uploadFromDrive: (fileId: string) => post<EstimateFetchResult>(`/estimates/upload-from-drive/${encodeURIComponent(fileId)}`),
     pasteText: (text: string) => post<EstimateFetchResult>("/estimates/paste", { text }),
+    // Merges supplementary notes into whatever's already on screen (from
+    // QuickBooks, an upload, Drive, or an earlier paste) — for the real
+    // case where the estimate has the cost breakdown but no payment
+    // schedule and separate notes supply the phases, or vice versa.
+    combineNotes: (existing: EstimateFetchResult, notesText: string) =>
+      post<EstimateFetchResult>("/estimates/combine-notes", { existing, notes_text: notesText }),
     // The REAL estimate document (e.g. exported straight from QuickBooks as
     // a PDF) — distinct from the extraction uploads above, which read a
     // file to populate a project's fields. This just attaches the exact

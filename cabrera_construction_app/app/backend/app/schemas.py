@@ -122,6 +122,19 @@ class EstimateFetchResult(BaseModel):
     total_mismatch: str | None = None
 
 
+class EstimateCombineNotes(BaseModel):
+    # Merges a contractor's supplementary notes into an already-fetched/
+    # extracted estimate — the real-world case where the estimate document
+    # (or a QuickBooks lookup) has the cost breakdown but no payment
+    # schedule, and separate notes supply the phases/payment schedule (or
+    # vice versa). `existing` is whatever the Estimate Upload screen already
+    # has on screen (from QuickBooks, an upload, Drive, or an earlier
+    # paste) — sent back rather than re-fetched, since it may include
+    # hand-edited customer/address fields the user already corrected.
+    existing: EstimateFetchResult
+    notes_text: str
+
+
 class CreateProjectFromEstimate(BaseModel):
     project_type: str
     estimate: EstimateFetchResult

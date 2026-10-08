@@ -159,6 +159,24 @@ export function EstimateUploadPage() {
     },
   });
 
+  // Merges supplementary notes into the estimate already on screen — the
+  // real case where the estimate (QuickBooks, an upload, Drive, or an
+  // earlier paste) has the cost breakdown but no payment schedule, and
+  // separate notes (the contractor's own text) supply the phases/payment
+  // schedule, or fill in whatever else is missing. See
+  // gemini_service.combine_estimate_with_notes for the merge rules —
+  // milestones from the notes win outright and get renumbered 0..N.
+  const [showCombineNotes, setShowCombineNotes] = useState(false);
+  const [combineNotesText, setCombineNotesText] = useState("");
+  const combineNotes = useMutation({
+    mutationFn: () => api.estimates.combineNotes(result!, combineNotesText),
+    onSuccess: (data) => {
+      applyResult(data);
+      setShowCombineNotes(false);
+      setCombineNotesText("");
+    },
+  });
+
   const missingFields = result
     ? [
         !customerName.trim() && t("estimateUpload.missingCustomerName"),
@@ -491,24 +509,69 @@ export function EstimateUploadPage() {
             </div>
           )}
 
-          {result.milestones && result.milestones.length > 0 && (
-            <div className="section">
-              <h3>{t("estimateUpload.paymentScheduleHeading", { count: result.milestones.length })}</h3>
+          <div className="section">
+            <h3>{t("estimateUpload.paymentScheduleHeading", { count: result.milestones?.length ?? 0 })}</h3>
+            {result.milestones && result.milestones.length > 0 ? (
+              <>
+                <div className="muted" style={{ fontSize: 13, marginBottom: "var(--space-2)" }}>
+                  {t("estimateUpload.paymentScheduleHelp")}
+                </div>
+                <div className="record-list">
+                  {result.milestones.map((m) => (
+                    <div key={m.number} className="card row-between" style={{ padding: "var(--space-3)" }}>
+                      <span>
+                        {m.number}. {m.title}
+                      </span>
+                      <strong>{money(m.amount)}</strong>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
               <div className="muted" style={{ fontSize: 13, marginBottom: "var(--space-2)" }}>
-                {t("estimateUpload.paymentScheduleHelp")}
+                {t("estimateUpload.noPaymentScheduleYet")}
               </div>
-              <div className="record-list">
-                {result.milestones.map((m) => (
-                  <div key={m.number} className="card row-between" style={{ padding: "var(--space-3)" }}>
-                    <span>
-                      {m.number}. {m.title}
-                    </span>
-                    <strong>{money(m.amount)}</strong>
+            )}
+
+            {/* The estimate itself (QuickBooks, an upload, Drive) often has
+                the cost breakdown but not the phase/payment schedule — a
+                contractor's separate notes frequently supply exactly that.
+                Combining rather than replacing keeps whichever of the two
+                already has each piece of information. */}
+            <button className="btn btn-secondary btn-block" style={{ marginTop: "var(--space-3)" }} onClick={() => setShowCombineNotes((v) => !v)}>
+              <ClipboardPaste size={14} strokeWidth={1.5} /> {t("estimateUpload.addPhaseNotesButton")}
+            </button>
+            {showCombineNotes && (
+              <div className="card" style={{ padding: "var(--space-3)", marginTop: "var(--space-2)" }}>
+                <div className="muted" style={{ fontSize: 12, marginBottom: "var(--space-2)" }}>
+                  {t("estimateUpload.combineNotesHelp")}
+                </div>
+                <textarea
+                  className="input"
+                  style={{ minHeight: 140 }}
+                  placeholder={t("estimateUpload.combineNotesPlaceholder")}
+                  value={combineNotesText}
+                  onChange={(e) => setCombineNotesText(e.target.value)}
+                  disabled={combineNotes.isPending}
+                />
+                <button
+                  className="btn btn-primary btn-block"
+                  style={{ marginTop: "var(--space-2)" }}
+                  disabled={!combineNotesText.trim() || combineNotes.isPending}
+                  onClick={() => combineNotes.mutate()}
+                >
+                  {combineNotes.isPending ? t("estimateUpload.combining") : t("estimateUpload.combineNotesButton")}
+                </button>
+                {combineNotes.isError && (
+                  <div className="banner icon-text" style={{ marginTop: "var(--space-2)" }}>
+                    <XCircle size={16} strokeWidth={1.5} />
+                    {(combineNotes.error as Error).message}
                   </div>
-                ))}
+                )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
 
           <div className="section">
             <h3>{t("estimateUpload.appCreatesHeading")}</h3>

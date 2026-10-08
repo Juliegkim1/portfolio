@@ -320,6 +320,21 @@ def paste_estimate_text(payload: schemas.EstimateTextPaste):
         raise HTTPException(422, str(exc)) from exc
 
 
+@router.post("/estimates/combine-notes", response_model=schemas.EstimateFetchResult)
+def combine_estimate_notes(payload: schemas.EstimateCombineNotes):
+    """Merges supplementary notes into an estimate already on screen (from
+    QuickBooks, an upload, Drive, or an earlier paste) — for the real-world
+    case where the estimate has the cost breakdown but no payment schedule
+    and separate notes supply the phases, or vice versa. See
+    gemini_service.combine_estimate_with_notes for the merge rules."""
+    if not gemini_service.any_provider_configured():
+        raise HTTPException(400, "No AI extraction provider is configured — set GEMINI_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY in app/backend/.env.")
+    try:
+        return gemini_service.combine_estimate_with_notes(payload.existing, payload.notes_text)
+    except gemini_service.GeminiExtractionError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
 @router.get("/drive/documents")
 def search_drive_documents(search: str | None = None, db: Session = Depends(get_db)):
     """PDF/DOCX files anywhere in the connected Drive account, for the

@@ -397,6 +397,72 @@ def extract_estimate_from_documents(files: list[tuple[bytes, str, str]]) -> Esti
     )
 
 
+def combine_estimate_with_notes(existing: EstimateFetchResult, notes_text: str) -> EstimateFetchResult:
+    """Merges a contractor's supplementary notes into an already-fetched/
+    extracted estimate — the common case where the estimate (a QuickBooks
+    lookup or an uploaded document) has the cost breakdown but no payment
+    schedule, and separate notes (the contractor's own text) supply the
+    phases/payment schedule, or fill in whatever else the estimate is
+    missing. Rather than guessing how to blend two raw documents together,
+    this extracts the notes on their own — same extraction a standalone
+    paste gets — then layers that into `existing`:
+
+    - Milestones from the notes WIN outright when the notes have any: the
+      whole point of pasting notes here is almost always to supply or
+      correct the payment schedule, so "the notes mention a schedule" is
+      treated as "use it," not "use it only if nothing else exists."
+      Whichever list wins is renumbered 0..N afterward, so the resulting
+      Scope & Payment Schedule always gets clean, contiguous phase numbers
+      regardless of which source each milestone actually came from.
+    - Every other field (customer/property info, scope, total, line items,
+      payment/warranty terms) only falls back to the notes' extraction when
+      `existing` doesn't already have it — the estimate stays authoritative
+      for whatever it already covers.
+    """
+    notes_result = extract_estimate_from_text(notes_text)
+
+    def _or(current, fallback):
+        return current if current else fallback
+
+    merged_milestones = notes_result.milestones if notes_result.milestones else existing.milestones
+    renumbered_milestones = [
+        MilestonePreview(number=i, title=m.title, amount=m.amount, due_date=m.due_date) for i, m in enumerate(merged_milestones)
+    ]
+
+    merged_line_items = existing.line_items if existing.line_items else notes_result.line_items
+    merged_total = existing.total if existing.total else notes_result.total
+    subtotal = round(sum(li.qty * li.unit_price for li in merged_line_items), 2) if merged_line_items else 0.0
+    mismatch = _total_mismatch_message(merged_total, subtotal) if merged_line_items else existing.total_mismatch
+
+    logger.info(
+        "Combined notes into existing estimate: %d milestones (from %s), %d line items",
+        len(renumbered_milestones),
+        "notes" if notes_result.milestones else "existing",
+        len(merged_line_items),
+    )
+    return EstimateFetchResult(
+        found=True,
+        estimate_number=existing.estimate_number,
+        customer_name=_or(existing.customer_name, notes_result.customer_name),
+        customer_phone=_or(existing.customer_phone, notes_result.customer_phone),
+        customer_email=_or(existing.customer_email, notes_result.customer_email),
+        property_address=_or(existing.property_address, notes_result.property_address),
+        date_issued=existing.date_issued,
+        scope_text=_or(existing.scope_text, notes_result.scope_text),
+        tax_rate=existing.tax_rate,
+        permit_fees=existing.permit_fees,
+        discount=existing.discount,
+        line_items=merged_line_items,
+        total=merged_total,
+        retrieved_at=existing.retrieved_at,
+        milestones=renumbered_milestones,
+        contract_date=_or(existing.contract_date, notes_result.contract_date),
+        payment_terms=_or(existing.payment_terms, notes_result.payment_terms),
+        warranty_terms=_or(existing.warranty_terms, notes_result.warranty_terms),
+        total_mismatch=mismatch,
+    )
+
+
 _HISTORICAL_PROMPT = ai_schema.HISTORICAL_PROMPT
 
 _HISTORICAL_SCHEMA = {
