@@ -339,6 +339,7 @@
     "addReceipt": "Add Receipt",
     "type": "Type",
     "source": "Source",
+    "confirmDeleteReceipt": "Delete the receipt \"{{description}}\"? This can't be undone. If it's matched to a bank transaction, that transaction becomes unmatched instead of being deleted.",
     "receiptType": {
       "payment": "payment",
       "expense": "expense"
@@ -375,7 +376,9 @@
     "needsProjectCount_other": "{{count}} receipts need a project identified.",
     "expenseReceipts": "Expense Receipts",
     "projectNotIdentified": "Project not identified",
-    "businessExpenseOption": "Business expense"
+    "businessExpenseOption": "Business expense",
+    "deleteReceiptTitle": "Delete this receipt",
+    "confirmDeleteReceipt": "Delete the receipt \"{{description}}\"? This can't be undone."
   },
   "analytics": {
     "context": "Company-wide performance",

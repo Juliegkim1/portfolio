@@ -339,6 +339,7 @@
     "addReceipt": "Agregar Recibo",
     "type": "Tipo",
     "source": "Origen",
+    "confirmDeleteReceipt": "¿Eliminar el recibo \"{{description}}\"? Esto no se puede deshacer. Si está vinculado a una transacción bancaria, esa transacción quedará sin vincular en lugar de eliminarse.",
     "receiptType": {
       "payment": "pago",
       "expense": "gasto"
@@ -375,7 +376,9 @@
     "needsProjectCount_other": "{{count}} recibos necesitan que se identifique un proyecto.",
     "expenseReceipts": "Recibos de Gastos",
     "projectNotIdentified": "Proyecto no identificado",
-    "businessExpenseOption": "Gasto del negocio"
+    "businessExpenseOption": "Gasto del negocio",
+    "deleteReceiptTitle": "Eliminar este recibo",
+    "confirmDeleteReceipt": "¿Eliminar el recibo \"{{description}}\"? Esto no se puede deshacer."
   },
   "analytics": {
     "context": "Rendimiento de toda la empresa",

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Plus } from "lucide-react";
+import { AlertTriangle, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
@@ -21,6 +21,17 @@ export function BusinessExpensesPage() {
     mutationFn: ({ id, projectId }: { id: number; projectId: number | null }) => api.receipts.assignProject(id, projectId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["business-expenses"] }),
   });
+
+  const deleteReceipt = useMutation({
+    mutationFn: (id: number) => api.receipts.delete(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["business-expenses"] }),
+  });
+
+  function confirmDeleteReceipt(id: number, description: string) {
+    if (window.confirm(t("businessExpenses.confirmDeleteReceipt", { description }))) {
+      deleteReceipt.mutate(id);
+    }
+  }
 
   if (query.isLoading) {
     return (
@@ -78,6 +89,7 @@ export function BusinessExpensesPage() {
                 <th>{t("common.description")}</th>
                 <th>{t("common.amount")}</th>
                 <th>{t("common.project")}</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -107,11 +119,22 @@ export function BusinessExpensesPage() {
                       ))}
                     </select>
                   </td>
+                  <td>
+                    <button
+                      className="btn btn-icon"
+                      title={t("businessExpenses.deleteReceiptTitle")}
+                      disabled={deleteReceipt.isPending}
+                      onClick={() => confirmDeleteReceipt(r.id, r.description)}
+                    >
+                      <Trash2 size={14} strokeWidth={1.5} />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        {deleteReceipt.isError && <div className="error-state">{(deleteReceipt.error as Error).message}</div>}
       </div>
 
       {showAddReceipt && <AddReceiptDialog onClose={() => setShowAddReceipt(false)} />}

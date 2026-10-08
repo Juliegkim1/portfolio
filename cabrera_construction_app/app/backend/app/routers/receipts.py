@@ -9,7 +9,12 @@ from ..db import get_db
 router = APIRouter(prefix="/api", tags=["receipts"])
 
 
-def _apply_payment_to_milestone(db: Session, milestone: models.Milestone, receipt_amount: float) -> None:
+def _recompute_milestone_payment_status(db: Session, milestone: models.Milestone) -> None:
+    """Sums whatever payment receipts the milestone actually has right now
+    and sets status/invoice.status from that — called after a receipt is
+    added (status can only move up) or deleted (status can move back down:
+    paid -> partial -> invoiced/scheduled), so it has to read real current
+    state rather than just react to one receipt's amount."""
     total_paid = sum(
         float(r.amount)
         for r in db.query(models.Receipt).filter(
@@ -17,12 +22,18 @@ def _apply_payment_to_milestone(db: Session, milestone: models.Milestone, receip
         )
     )
     target = float(milestone.invoice.amount) if milestone.invoice else float(milestone.amount)
-    if total_paid >= target:
+    if target > 0 and total_paid >= target:
         milestone.status = "paid"
         if milestone.invoice:
             milestone.invoice.status = "paid"
     elif total_paid > 0:
         milestone.status = "partial"
+        if milestone.invoice and milestone.invoice.status == "paid":
+            milestone.invoice.status = "open"
+    else:
+        milestone.status = "invoiced" if milestone.invoice else "scheduled"
+        if milestone.invoice and milestone.invoice.status == "paid":
+            milestone.invoice.status = "open"
 
 
 @router.get("/receipts", response_model=list[schemas.ReceiptOut])
@@ -64,11 +75,39 @@ def create_receipt(payload: schemas.ReceiptIn, db: Session = Depends(get_db)):
     if payload.type == "payment" and payload.milestone_id:
         milestone = db.get(models.Milestone, payload.milestone_id)
         if milestone:
-            _apply_payment_to_milestone(db, milestone, payload.amount)
+            _recompute_milestone_payment_status(db, milestone)
 
     db.commit()
     db.refresh(receipt)
     return receipt
+
+
+@router.delete("/receipts/{receipt_id}", status_code=204)
+def delete_receipt(receipt_id: int, db: Session = Depends(get_db)):
+    """Deletes a receipt entirely — e.g. one entered by mistake or no
+    longer wanted, whether it's a business expense, a project expense, or
+    a payment. A bank transaction matched to it is unlinked (not deleted),
+    same as a deleted project's receipts are unlinked rather than taking
+    the transaction down with them. If this was a payment tied to a
+    milestone, the milestone's paid status is recomputed afterward — it can
+    move back down from paid/partial now that this payment no longer counts."""
+    receipt = db.get(models.Receipt, receipt_id)
+    if not receipt:
+        raise HTTPException(404, "Receipt not found")
+
+    db.query(models.BankTransaction).filter(models.BankTransaction.receipt_id == receipt_id).update(
+        {"receipt_id": None, "match_status": "unmatched"}, synchronize_session=False
+    )
+
+    milestone = db.get(models.Milestone, receipt.milestone_id) if receipt.type == "payment" and receipt.milestone_id else None
+
+    db.delete(receipt)
+    db.flush()
+
+    if milestone:
+        _recompute_milestone_payment_status(db, milestone)
+
+    db.commit()
 
 
 @router.patch("/receipts/{receipt_id}/assign-project", response_model=schemas.ReceiptOut)

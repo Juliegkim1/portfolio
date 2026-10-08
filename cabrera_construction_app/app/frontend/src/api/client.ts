@@ -228,6 +228,7 @@ export const api = {
       type: "payment" | "expense";
     }) => post<Receipt>("/receipts", payload),
     assignProject: (id: number, projectId: number | null) => patch<Receipt>(`/receipts/${id}/assign-project`, { project_id: projectId }),
+    delete: (id: number) => del(`/receipts/${id}`),
   },
 
   businessExpenses: {

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, Plus } from "lucide-react";
+import { ExternalLink, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
@@ -34,6 +34,23 @@ export function ReconciliationPage() {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
   });
+
+  // Deleting a payment receipt can revert the milestone it was tied to back
+  // from paid/partial — invalidating scope-schedule too keeps that status
+  // visible correctly on the Scope & Payment Schedule screen, not just here.
+  const deleteReceipt = useMutation({
+    mutationFn: (id: number) => api.receipts.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project-reconciliation", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["scope-schedule", projectId] });
+    },
+  });
+
+  function confirmDeleteReceipt(id: number, description: string) {
+    if (window.confirm(t("reconciliation.confirmDeleteReceipt", { description }))) {
+      deleteReceipt.mutate(id);
+    }
+  }
 
   if (query.isLoading) {
     return (
@@ -148,6 +165,7 @@ export function ReconciliationPage() {
                 <th>{t("reconciliation.type")}</th>
                 <th>{t("common.amount")}</th>
                 <th>{t("reconciliation.source")}</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -158,11 +176,21 @@ export function ReconciliationPage() {
                   <td className="muted">{t(`reconciliation.receiptType.${r.type}`, { defaultValue: r.type })}</td>
                   <td>{money(r.amount)}</td>
                   <td className="muted">{t(`reconciliation.receiptSource.${r.source}`, { defaultValue: r.source })}</td>
+                  <td>
+                    <button
+                      className="btn btn-icon"
+                      title={t("businessExpenses.deleteReceiptTitle")}
+                      disabled={deleteReceipt.isPending}
+                      onClick={() => confirmDeleteReceipt(r.id, r.description)}
+                    >
+                      <Trash2 size={14} strokeWidth={1.5} />
+                    </button>
+                  </td>
                 </tr>
               ))}
               {data.receipts.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="empty-state">
+                  <td colSpan={6} className="empty-state">
                     {t("reconciliation.noReceiptsYet")}
                   </td>
                 </tr>
