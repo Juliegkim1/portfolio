@@ -1,4 +1,4 @@
-# Handoff: Datana Solutions website
+# Datana Solutions website
 
 ## Overview
 This is a redesign of datanasolutions.com, which is currently a single long page. The new site is a multi-page consulting site with seven page types: Home, Services, Client work (an index plus three case studies), About, Contact, and Privacy/Terms. It aims to show engineering credibility through specifics and proof.
