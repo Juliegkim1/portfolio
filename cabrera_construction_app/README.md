@@ -1,4 +1,4 @@
-# Handoff: Cabrera Construction — Project Management App
+# Cabrera Construction — Project Management App
 
 ## Overview
 A web app for Cabrera Construction (Lic. #1135927, B-General Building) that runs a residential remodel from its QuickBooks estimate to close-out:
