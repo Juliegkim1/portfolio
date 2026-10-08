@@ -140,3 +140,42 @@ def test_generate_scope_schedule_pdf_omits_material_section_when_none(db):
     text = _extract_text(pdf_bytes)
 
     assert "Material Supply" not in text
+
+
+# --- generate_estimate_summary_page -----------------------------------------
+
+
+def test_estimate_summary_page_lists_line_items_when_imported(db):
+    """The Contract Package's Estimate page fallback (no real uploaded PDF)
+    now shows the actual line items rather than just a bare number/total,
+    since that data is real — it just didn't come from a genuine document."""
+    project = make_project(db)
+    estimate = make_estimate(db, project, estimate_number="DOC-Pasted notes")
+    make_line_item(db, estimate, section="materials", description="Custom cabinetry", qty=1, unit="ea", unit_price=14500)
+    make_line_item(db, estimate, section="labor", description="Cabinet installation", qty=8, unit="hr", unit_price=85)
+    db.commit()
+    db.refresh(estimate)
+
+    pdf_bytes = documents.generate_estimate_summary_page(estimate=estimate)
+    text = _extract_text(pdf_bytes)
+
+    assert "Custom cabinetry" in text
+    assert "Cabinet installation" in text
+    assert "$14,500.00" in text
+    assert "$680.00" in text  # 8 hr * $85
+    assert "Line Item Subtotal" in text
+    # Honest framing — never claims to be a QuickBooks document it isn't.
+    assert "QuickBooks" not in text
+
+
+def test_estimate_summary_page_omits_line_items_table_when_none(db):
+    project = make_project(db)
+    estimate = make_estimate(db, project)
+    db.commit()
+    db.refresh(estimate)
+
+    pdf_bytes = documents.generate_estimate_summary_page(estimate=estimate)
+    text = _extract_text(pdf_bytes)
+
+    assert "Line Items" not in text
+    assert estimate.estimate_number in text

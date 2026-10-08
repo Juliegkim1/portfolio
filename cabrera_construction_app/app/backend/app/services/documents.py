@@ -379,23 +379,57 @@ def generate_scope_schedule_pdf(*, project, estimate, scope_schedule, contract_t
     return buf.getvalue()
 
 
+_SECTION_ORDER = ["demolition", "materials", "labor", "additional_work"]
+_SECTION_LABELS = {"demolition": "Demolition / Prep", "materials": "Materials", "labor": "Labor", "additional_work": "Additional Work"}
+
+
 def generate_estimate_summary_page(*, estimate) -> bytes:
     """The Contract Package's last-page fallback when no real estimate PDF
-    has been uploaded (see POST /projects/{id}/estimate/upload-pdf) — just
-    the estimate number and total, not a reconstructed line-item breakdown.
-    A prior version tried to recreate the full estimate from extracted
-    data, which looked fine for a real QuickBooks DocNumber but produced a
-    visibly synthetic label for anything else (e.g. "QuickBooks Estimate
-    DOC-Pasted notes" for a pasted-text estimate) — this is deliberately
-    minimal instead of trying to paper over that gap."""
+    has been uploaded (see POST /projects/{id}/estimate/upload-pdf) — i.e.
+    whenever the project's estimate came from this app's own import/
+    extraction flow rather than a genuine uploaded document. Deliberately
+    never claims to BE a QuickBooks estimate or any other source document
+    it isn't (a prior version's synthetic "QuickBooks Estimate DOC-Pasted
+    notes" label for a pasted-text estimate looked fake) — but the line
+    items themselves are real, already-extracted data, so they're listed
+    here rather than leaving this page as a bare number-and-total stub."""
     buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=letter, leftMargin=0.85 * inch, rightMargin=0.85 * inch, topMargin=1.2 * inch, bottomMargin=1.2 * inch)
+    doc = SimpleDocTemplate(buf, pagesize=letter, leftMargin=0.85 * inch, rightMargin=0.85 * inch, topMargin=1.0 * inch, bottomMargin=0.85 * inch)
     story = [
         Paragraph("Estimate", _TITLE_STYLE),
         HRFlowable(width="100%", thickness=1.1, color=colors.black, spaceAfter=18, spaceBefore=6),
         Paragraph(f"Estimate #: {estimate.estimate_number}", _SECTION_STYLE),
         Paragraph(f"Total: {_fmt_money(estimate.total)}", _BODY_STYLE),
     ]
+    if estimate.line_items:
+        story.append(Paragraph("Line Items", _SECTION_STYLE))
+        header = ["Description", "Section", "Qty", "Unit Price", "Line Total"]
+        rows = [[_cell(h, _LABEL_STYLE) for h in header]]
+        def _section_key(li):
+            return (_SECTION_ORDER.index(li.section) if li.section in _SECTION_ORDER else len(_SECTION_ORDER), li.id or 0)
+
+        for li in sorted(estimate.line_items, key=_section_key):
+            qty = float(li.qty)
+            rows.append([
+                _cell(li.description),
+                _cell(_SECTION_LABELS.get(li.section, li.section)),
+                _cell(f"{qty:g} {li.unit}".strip()),
+                _cell(_fmt_money(float(li.unit_price))),
+                _cell(_fmt_money(qty * float(li.unit_price))),
+            ])
+        subtotal = sum(float(li.qty) * float(li.unit_price) for li in estimate.line_items)
+        rows.append(["", "", "", _cell("Line Item Subtotal", _LABEL_STYLE), _cell(_fmt_money(subtotal), _LABEL_STYLE)])
+        table = Table(rows, colWidths=[2.6 * inch, 1.15 * inch, 0.8 * inch, 0.9 * inch, 1.0 * inch], repeatRows=1)
+        table.setStyle(TableStyle([
+            ("LINEBELOW", (0, 0), (-1, 0), 1, colors.black),
+            ("LINEABOVE", (0, -1), (-1, -1), 1, colors.black),
+            ("LINEBELOW", (0, 1), (-1, -2), 0.5, _TABLE_GRID),
+            ("ALIGN", (2, 0), (4, -1), "RIGHT"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ]))
+        story.append(table)
     doc.build(story)
     return buf.getvalue()
 
