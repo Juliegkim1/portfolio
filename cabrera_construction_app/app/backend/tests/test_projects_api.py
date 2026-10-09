@@ -95,6 +95,54 @@ def test_update_project_address_404_for_missing_project(client):
     assert resp.status_code == 404
 
 
+# --- PATCH .../customer -------------------------------------------------------
+
+
+def test_update_project_customer_persists_all_fields(db, client):
+    project = make_project(db)
+    db.commit()
+
+    resp = client.patch(
+        f"/api/projects/{project.id}/customer",
+        json={"customer_name": "Jane Smith", "customer_phone": "(555) 111-2222", "customer_email": "jane.smith@example.com"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["customer_name"] == "Jane Smith"
+    assert body["customer_phone"] == "(555) 111-2222"
+    assert body["customer_email"] == "jane.smith@example.com"
+
+    resp2 = client.get(f"/api/projects/{project.id}")
+    assert resp2.json()["customer_name"] == "Jane Smith"
+
+
+def test_update_project_customer_allows_blank_phone_and_email(db, client):
+    project = make_project(db)
+    db.commit()
+
+    resp = client.patch(f"/api/projects/{project.id}/customer", json={"customer_name": "Jane Smith"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["customer_phone"] == ""
+    assert body["customer_email"] == ""
+
+
+def test_update_project_customer_rejects_empty_name(db, client):
+    project = make_project(db)
+    db.commit()
+
+    resp = client.patch(f"/api/projects/{project.id}/customer", json={"customer_name": "   "})
+    assert resp.status_code == 400
+
+    resp2 = client.get(f"/api/projects/{project.id}")
+    assert resp2.json()["customer_name"] == "Jane Doe"
+
+
+def test_update_project_customer_404_for_missing_project(client):
+    resp = client.patch("/api/projects/999999/customer", json={"customer_name": "Jane Smith"})
+    assert resp.status_code == 404
+
+
 # --- PATCH .../dates ---------------------------------------------------------
 
 

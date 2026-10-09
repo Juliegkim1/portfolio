@@ -285,6 +285,26 @@ def update_project_type(project_id: int, payload: schemas.ProjectTypeUpdate, db:
     return project
 
 
+@router.patch("/projects/{project_id}/customer", response_model=schemas.ProjectOut)
+def update_project_customer(project_id: int, payload: schemas.ProjectCustomerUpdate, db: Session = Depends(get_db)):
+    """Corrects the customer's name/phone/email after a project already
+    exists — extracted once at creation time (from a QuickBooks lookup,
+    an upload, or notes) and easy to come out wrong or incomplete, with no
+    way to fix it short of deleting and recreating the whole project.
+    Phone/email stay optional (blank is valid, same as at creation); only
+    the name is required."""
+    project = get_project_or_404(db, project_id)
+    new_name = payload.customer_name.strip()
+    if not new_name:
+        raise HTTPException(400, "Customer name cannot be empty")
+    project.customer_name = new_name
+    project.customer_phone = payload.customer_phone.strip()
+    project.customer_email = payload.customer_email.strip()
+    db.commit()
+    db.refresh(project)
+    return project
+
+
 @router.patch("/projects/{project_id}/address", response_model=schemas.ProjectOut)
 def update_project_address(project_id: int, payload: schemas.ProjectAddressUpdate, db: Session = Depends(get_db)):
     """Corrects the job site/property address after a project already

@@ -194,6 +194,16 @@ class ProjectTypeUpdate(BaseModel):
     project_type: str
 
 
+class ProjectCustomerUpdate(BaseModel):
+    # Corrects the customer's contact info after a project already exists
+    # — same reasoning as ProjectAddressUpdate below: these were extracted
+    # once at creation time and could easily come out wrong or incomplete,
+    # with no way to fix them short of deleting and recreating the project.
+    customer_name: str
+    customer_phone: str = ""
+    customer_email: str = ""
+
+
 class ProjectAddressUpdate(BaseModel):
     # Corrects the job site/property address after a project already
     # exists — e.g. noticed wrong while reviewing the Contract Package,

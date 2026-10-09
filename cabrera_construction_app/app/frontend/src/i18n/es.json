@@ -97,6 +97,8 @@
     "noProjectsInTab": "Aún no hay proyectos aquí.",
     "type": "Tipo",
     "editTypeTitle": "Cambiar el tipo de proyecto",
+    "editCustomerTitle": "Corregir el nombre, teléfono o correo del cliente",
+    "editAddressTitle": "Corregir la dirección de la propiedad",
     "typePlaceholder": "p. ej. Remodelación de Cocina",
     "start": "Inicio",
     "contractValue": "Valor del Contrato",

@@ -15,6 +15,39 @@ export function ProjectsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  // Corrects the customer's name/phone/email after a project already
+  // exists — extracted once at creation and easy to come out wrong or
+  // incomplete, with no way to fix it short of deleting and recreating
+  // the whole project.
+  const [editingCustomer, setEditingCustomer] = useState(false);
+  const [customerNameDraft, setCustomerNameDraft] = useState("");
+  const [customerPhoneDraft, setCustomerPhoneDraft] = useState("");
+  const [customerEmailDraft, setCustomerEmailDraft] = useState("");
+  const updateCustomer = useMutation({
+    mutationFn: () =>
+      api.projects.updateCustomer(selectedProject!.id, {
+        customer_name: customerNameDraft,
+        customer_phone: customerPhoneDraft,
+        customer_email: customerEmailDraft,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      setEditingCustomer(false);
+    },
+  });
+
+  // Corrects the job site/property address after a project already exists
+  // — same reasoning as Customer above.
+  const [editingAddress, setEditingAddress] = useState(false);
+  const [addressDraft, setAddressDraft] = useState("");
+  const updateAddress = useMutation({
+    mutationFn: () => api.projects.updateAddress(selectedProject!.id, addressDraft),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      setEditingAddress(false);
+    },
+  });
+
   const [editingAmount, setEditingAmount] = useState(false);
   const [amountDraft, setAmountDraft] = useState("");
 
@@ -233,13 +266,71 @@ export function ProjectsPage() {
             <div className="form-grid">
               <div>
                 <div className="card-kicker">{t("common.customer")}</div>
-                <div>{selectedProject.customer_name}</div>
-                <div className="muted">{selectedProject.customer_phone}</div>
-                <div className="muted">{selectedProject.customer_email}</div>
+                {editingCustomer ? (
+                  <div className="stack" style={{ gap: "var(--space-2)" }}>
+                    <input className="input" value={customerNameDraft} onChange={(e) => setCustomerNameDraft(e.target.value)} placeholder={t("estimateUpload.customerPlaceholder")} autoFocus />
+                    <input className="input" value={customerPhoneDraft} onChange={(e) => setCustomerPhoneDraft(e.target.value)} placeholder={t("common.phone")} />
+                    <input className="input" value={customerEmailDraft} onChange={(e) => setCustomerEmailDraft(e.target.value)} placeholder={t("common.email")} />
+                    <div className="row" style={{ gap: "var(--space-2)" }}>
+                      <button className="btn btn-primary" disabled={updateCustomer.isPending || !customerNameDraft.trim()} onClick={() => updateCustomer.mutate()}>
+                        {t("common.save")}
+                      </button>
+                      <button className="btn btn-secondary" onClick={() => setEditingCustomer(false)}>
+                        {t("common.cancel")}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="icon-text">
+                    <div>
+                      <div>{selectedProject.customer_name}</div>
+                      <div className="muted">{selectedProject.customer_phone}</div>
+                      <div className="muted">{selectedProject.customer_email}</div>
+                    </div>
+                    <button
+                      className="btn btn-icon"
+                      title={t("projects.editCustomerTitle")}
+                      onClick={() => {
+                        setCustomerNameDraft(selectedProject.customer_name);
+                        setCustomerPhoneDraft(selectedProject.customer_phone);
+                        setCustomerEmailDraft(selectedProject.customer_email);
+                        setEditingCustomer(true);
+                      }}
+                    >
+                      <Pencil size={14} strokeWidth={1.5} />
+                    </button>
+                  </div>
+                )}
+                {updateCustomer.isError && <div className="error-state">{(updateCustomer.error as Error).message}</div>}
               </div>
               <div>
                 <div className="card-kicker">{t("projects.property")}</div>
-                <div>{selectedProject.property_address}</div>
+                {editingAddress ? (
+                  <div className="row" style={{ gap: "var(--space-2)" }}>
+                    <input className="input" value={addressDraft} onChange={(e) => setAddressDraft(e.target.value)} autoFocus />
+                    <button className="btn btn-primary" disabled={updateAddress.isPending || !addressDraft.trim()} onClick={() => updateAddress.mutate()}>
+                      {t("common.save")}
+                    </button>
+                    <button className="btn btn-secondary" onClick={() => setEditingAddress(false)}>
+                      {t("common.cancel")}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="icon-text">
+                    <span>{selectedProject.property_address}</span>
+                    <button
+                      className="btn btn-icon"
+                      title={t("projects.editAddressTitle")}
+                      onClick={() => {
+                        setAddressDraft(selectedProject.property_address);
+                        setEditingAddress(true);
+                      }}
+                    >
+                      <Pencil size={14} strokeWidth={1.5} />
+                    </button>
+                  </div>
+                )}
+                {updateAddress.isError && <div className="error-state">{(updateAddress.error as Error).message}</div>}
               </div>
               <div>
                 <div className="card-kicker">{t("projects.type")}</div>
