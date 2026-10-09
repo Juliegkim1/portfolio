@@ -384,6 +384,8 @@
     "projectNotIdentified": "Proyecto no identificado",
     "businessExpenseOption": "Gasto del negocio",
     "deleteReceiptTitle": "Eliminar este recibo",
+    "viewReceiptPhoto": "Ver foto del recibo",
+    "importFromDrive": "Importar desde Drive",
     "confirmDeleteReceipt": "¿Eliminar el recibo \"{{description}}\"? Esto no se puede deshacer.",
     "syncReceiptsNow": "Sincronizar Recibos Ahora",
     "syncingReceipts": "Escaneando Mi unidad/Receipts…",
@@ -439,6 +441,14 @@
     "searching": "Buscando en Drive…",
     "noFilesMatching": "No se encontraron archivos PDF, DOCX o XLSX que coincidan con \"{{search}}\".",
     "noFilesInDrive": "No se encontraron archivos PDF, DOCX o XLSX en Drive."
+  },
+  "receiptDrivePicker": {
+    "title": "Importar un Recibo desde Google Drive",
+    "searchPlaceholder": "Busque en su Drive por nombre de archivo…",
+    "searching": "Buscando en Drive…",
+    "importing": "Leyendo y asociando este recibo…",
+    "noFilesMatching": "No se encontraron fotos que coincidan con \"{{search}}\".",
+    "noFilesInDrive": "No se encontraron fotos en Drive."
   },
   "driveImport": {
     "context": "Traiga a la app un proyecto que ya existía en Drive antes de esta app",

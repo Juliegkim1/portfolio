@@ -69,7 +69,11 @@ def _get_or_create_projects_root(db: Session) -> str:
     if conn and conn.projects_root_folder_id:
         return conn.projects_root_folder_id
 
-    query = f"name = 'Projects' and mimeType = '{FOLDER_MIME}' and trashed = false"
+    # Scoped to 'root' in parents (a direct child of My Drive) — without it,
+    # this matches ANY folder named "Projects" anywhere in the account, not
+    # just the intended top-level one (see get_or_create_receipts_root below
+    # for the real-world bug this exact pattern caused).
+    query = f"'root' in parents and name = 'Projects' and mimeType = '{FOLDER_MIME}' and trashed = false"
     resp = _request(db, "GET", f"{DRIVE_API}/files", params={"q": query, "fields": "files(id,name)"})
     matches = resp.json().get("files", [])
 
@@ -94,12 +98,22 @@ def get_or_create_receipts_root(db: Session) -> str:
     """Sibling of Projects (_get_or_create_projects_root above), directly
     under My Drive — not a subfolder of Projects. This is where the owner
     drops phone photos of paper receipts; see services/receipt_sync.py for
-    what scans it."""
+    what scans it.
+
+    'root' in parents matters here more than it might look: every project
+    that's had a matched receipt filed gets its OWN subfolder also named
+    "Receipts" (get_or_create_project_receipts_folder below). An unscoped
+    name match can return one of those instead of the real top-level inbox
+    — and since the result is cached on GoogleConnection, a wrong match
+    sticks forever, silently scanning the wrong folder (one existing file)
+    on every future sync instead of the real inbox (this actually happened
+    in production — see main.py's _run_light_migrations for the one-time
+    cache reset that self-heals an already-wrong cached value)."""
     conn = g_oauth.get_connection(db)
     if conn and conn.receipts_root_folder_id:
         return conn.receipts_root_folder_id
 
-    query = f"name = '{RECEIPTS_ROOT_NAME}' and mimeType = '{FOLDER_MIME}' and trashed = false"
+    query = f"'root' in parents and name = '{RECEIPTS_ROOT_NAME}' and mimeType = '{FOLDER_MIME}' and trashed = false"
     resp = _request(db, "GET", f"{DRIVE_API}/files", params={"q": query, "fields": "files(id,name)"})
     matches = resp.json().get("files", [])
 
@@ -270,6 +284,41 @@ def list_folder_documents(db: Session, folder_id: str) -> list[dict]:
 def get_file_name(db: Session, file_id: str) -> str:
     resp = _request(db, "GET", f"{DRIVE_API}/files/{file_id}", params={"fields": "name"})
     return resp.json().get("name", file_id)
+
+
+def get_file_mime_type(db: Session, file_id: str) -> str:
+    resp = _request(db, "GET", f"{DRIVE_API}/files/{file_id}", params={"fields": "mimeType"})
+    return resp.json().get("mimeType") or "application/octet-stream"
+
+
+def get_file_parents(db: Session, file_id: str) -> list[str]:
+    """A file's current parent folder ID(s) — needed before move_file can
+    remove them, for a file whose location isn't already known (e.g. one
+    picked from anywhere in Drive via the receipt picker, as opposed to
+    one found by scanning a specific folder, where the parent is already
+    the folder just scanned)."""
+    resp = _request(db, "GET", f"{DRIVE_API}/files/{file_id}", params={"fields": "parents"})
+    return resp.json().get("parents") or []
+
+
+def search_images(db: Session, search: str | None = None, limit: int = 20) -> list[dict]:
+    """Image files anywhere in the connected Drive account, with thumbnails
+    — the "pick a receipt photo from Google Drive" route on Business
+    Expenses, for a receipt the automatic Receipts-inbox scan hasn't
+    caught (filed somewhere else, synced to an unexpected folder, etc.).
+    Not scoped to any one folder, mirroring search_documents' same
+    "anywhere in the account" reach for picking an estimate document."""
+    mime_clause = " or ".join(f"name contains '{ext}'" for ext in _RECEIPT_IMAGE_EXTENSIONS)
+    query = f"trashed = false and (mimeType contains 'image/' or ({mime_clause}))"
+    if search and search.strip():
+        query += f" and name contains '{_escape_query_literal(search.strip())}'"
+    resp = _request(
+        db,
+        "GET",
+        f"{DRIVE_API}/files",
+        params={"q": query, "fields": "files(id,name,mimeType,modifiedTime)", "orderBy": "modifiedTime desc", "pageSize": limit},
+    )
+    return resp.json().get("files", [])
 
 
 def download_file(db: Session, file_id: str) -> bytes:

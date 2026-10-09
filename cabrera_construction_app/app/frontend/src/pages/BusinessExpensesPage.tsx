@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FolderSearch, ImageIcon, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
 import { AddReceiptDialog } from "../components/AddReceiptDialog";
 import { AppShell } from "../components/AppShell";
+import { ReceiptDrivePickerDialog } from "../components/ReceiptDrivePickerDialog";
+import { ReceiptImageDialog } from "../components/ReceiptImageDialog";
 import { ErrorState, LoadingState } from "../components/StateViews";
 import { useProjectContext } from "../context/ProjectContext";
 import { dateFmt, money } from "../format";
@@ -14,6 +16,8 @@ export function BusinessExpensesPage() {
   const queryClient = useQueryClient();
   const { projects } = useProjectContext();
   const [showAddReceipt, setShowAddReceipt] = useState(false);
+  const [showDrivePicker, setShowDrivePicker] = useState(false);
+  const [viewingReceipt, setViewingReceipt] = useState<{ driveFileId: string; description: string } | null>(null);
 
   const query = useQuery({ queryKey: ["business-expenses"], queryFn: api.businessExpenses.get });
 
@@ -34,6 +38,18 @@ export function BusinessExpensesPage() {
   const syncReceipts = useMutation({
     mutationFn: () => api.receipts.syncFromDrive(),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["business-expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["project-reconciliation"] });
+    },
+  });
+
+  // Single-file counterpart to syncReceipts above, for a receipt photo
+  // picked by hand from the Drive picker — the automatic inbox scan isn't
+  // the only way in, for a photo filed somewhere else in Drive.
+  const importReceipt = useMutation({
+    mutationFn: (fileId: string) => api.receipts.importFromDrive(fileId),
+    onSuccess: () => {
+      setShowDrivePicker(false);
       queryClient.invalidateQueries({ queryKey: ["business-expenses"] });
       queryClient.invalidateQueries({ queryKey: ["project-reconciliation"] });
     },
@@ -67,6 +83,9 @@ export function BusinessExpensesPage() {
       <div className="page-header">
         <div />
         <div className="page-header-actions">
+          <button className="btn btn-secondary" onClick={() => setShowDrivePicker(true)}>
+            <FolderSearch size={14} strokeWidth={1.5} /> {t("businessExpenses.importFromDrive")}
+          </button>
           <button className="btn btn-secondary" disabled={syncReceipts.isPending} onClick={() => syncReceipts.mutate()}>
             <RefreshCw size={14} strokeWidth={1.5} /> {syncReceipts.isPending ? t("businessExpenses.syncingReceipts") : t("businessExpenses.syncReceiptsNow")}
           </button>
@@ -146,6 +165,16 @@ export function BusinessExpensesPage() {
                         {t("businessExpenses.projectNotIdentified")}
                       </span>
                     )}
+                    {r.source === "drive_folder" && r.drive_file_id && (
+                      <button
+                        className="btn btn-icon"
+                        style={{ marginLeft: 6 }}
+                        title={t("businessExpenses.viewReceiptPhoto")}
+                        onClick={() => setViewingReceipt({ driveFileId: r.drive_file_id!, description: r.description })}
+                      >
+                        <ImageIcon size={14} strokeWidth={1.5} />
+                      </button>
+                    )}
                   </td>
                   <td>{money(r.amount)}</td>
                   <td>
@@ -181,6 +210,17 @@ export function BusinessExpensesPage() {
       </div>
 
       {showAddReceipt && <AddReceiptDialog onClose={() => setShowAddReceipt(false)} />}
+      {viewingReceipt && (
+        <ReceiptImageDialog driveFileId={viewingReceipt.driveFileId} description={viewingReceipt.description} onClose={() => setViewingReceipt(null)} />
+      )}
+      {showDrivePicker && (
+        <ReceiptDrivePickerDialog
+          onClose={() => setShowDrivePicker(false)}
+          onPick={(fileId) => importReceipt.mutate(fileId)}
+          importing={importReceipt.isPending}
+          error={importReceipt.isError ? (importReceipt.error as Error).message : null}
+        />
+      )}
     </AppShell>
   );
 }

@@ -5,8 +5,12 @@ transaction is unlinked, not deleted, and a milestone's paid status is
 recomputed from whatever payment receipts remain."""
 
 import datetime as dt
+from types import SimpleNamespace
 
 from app import models
+from app.schemas import ReceiptExtractionResult
+from app.services import gemini_service, google_service
+from app.services import google_oauth as g_oauth
 from tests.factories import make_estimate, make_project
 
 
@@ -113,3 +117,91 @@ def test_delete_one_of_two_payments_reverts_milestone_to_partial(db, client):
     db.expire_all()
     reverted = db.get(models.Milestone, milestone.id)
     assert reverted.status == "partial"
+
+
+# --- GET /drive/files/{id}/content -----------------------------------------
+# Generic Drive file proxy -- shows a synced receipt's original photo, and
+# previews a not-yet-imported candidate in the "import from Drive" picker.
+
+
+def test_drive_file_content_streams_bytes_and_content_type(client, monkeypatch):
+    monkeypatch.setattr(google_service, "download_file", lambda db, file_id: b"fake-jpeg-bytes")
+    monkeypatch.setattr(google_service, "get_file_mime_type", lambda db, file_id: "image/jpeg")
+
+    resp = client.get("/api/drive/files/file-1/content")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "image/jpeg"
+    assert resp.content == b"fake-jpeg-bytes"
+
+
+def test_drive_file_content_returns_409_when_google_not_connected(client, monkeypatch):
+    def _raise_not_connected(db, file_id):
+        raise g_oauth.GoogleNotConnected("Connect Google Workspace first.")
+
+    monkeypatch.setattr(google_service, "download_file", _raise_not_connected)
+
+    resp = client.get("/api/drive/files/file-1/content")
+    assert resp.status_code == 409
+
+
+# --- GET /drive/receipt-images & POST /receipts/import-from-drive/{id} ----
+# The manual picker: browse/search Drive for a receipt photo directly, for
+# when the automatic Receipts-inbox scan hasn't caught it, then import one.
+
+
+def test_search_receipt_images_returns_409_when_not_connected(client, monkeypatch):
+    monkeypatch.setattr(g_oauth, "get_connection", lambda db: None)
+
+    resp = client.get("/api/drive/receipt-images")
+    assert resp.status_code == 409
+
+
+def test_search_receipt_images_returns_matching_files(client, monkeypatch):
+    monkeypatch.setattr(g_oauth, "get_connection", lambda db: SimpleNamespace(id=1))
+    monkeypatch.setattr(
+        google_service,
+        "search_images",
+        lambda db, search=None: [{"id": "file-9", "name": "IMG_0001.jpg", "mimeType": "image/jpeg", "modifiedTime": "2026-09-16T00:00:00Z"}],
+    )
+
+    resp = client.get("/api/drive/receipt-images")
+    assert resp.status_code == 200
+    assert resp.json() == [{"id": "file-9", "name": "IMG_0001.jpg", "modified_time": "2026-09-16T00:00:00Z"}]
+
+
+def test_import_receipt_from_drive_matches_and_records_expense(db, client, monkeypatch):
+    project = make_project(db, customer_name="Francisco C. Rodriguez", drive_folder_id="project-folder-1")
+    db.commit()
+
+    monkeypatch.setattr(g_oauth, "get_connection", lambda db: SimpleNamespace(id=1))
+    monkeypatch.setattr(google_service, "get_file_name", lambda db, file_id: "IMG_0001.jpg")
+    monkeypatch.setattr(google_service, "get_file_mime_type", lambda db, file_id: "image/jpeg")
+    monkeypatch.setattr(google_service, "download_file", lambda db, file_id: b"fake-bytes")
+    monkeypatch.setattr(
+        gemini_service,
+        "extract_receipt_from_image",
+        lambda *a, **k: ReceiptExtractionResult(
+            found=True, vendor="Sherwin-Williams", date=dt.date(2026, 9, 16), amount=383.73, description="Paint and supplies", handwritten_name="francisco"
+        ),
+    )
+    monkeypatch.setattr(google_service, "get_file_parents", lambda db, file_id: ["some-other-folder"])
+    monkeypatch.setattr(google_service, "get_or_create_project_receipts_folder", lambda db, folder_id: "project-receipts-folder")
+    monkeypatch.setattr(google_service, "move_file", lambda db, file_id, new_parent, old_parent: None)
+
+    resp = client.post("/api/receipts/import-from-drive/file-9")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["project_id"] == project.id
+    assert body["amount"] == 383.73
+    assert body["source"] == "drive_folder"
+
+
+def test_import_receipt_from_drive_rejects_duplicate(db, client, monkeypatch):
+    receipt = models.Receipt(date=dt.date(2026, 1, 1), description="Already here", amount=10, type="expense", source="drive_folder", drive_file_id="file-9")
+    db.add(receipt)
+    db.commit()
+
+    monkeypatch.setattr(g_oauth, "get_connection", lambda db: SimpleNamespace(id=1))
+
+    resp = client.post("/api/receipts/import-from-drive/file-9")
+    assert resp.status_code == 409

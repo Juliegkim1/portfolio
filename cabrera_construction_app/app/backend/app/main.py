@@ -95,6 +95,17 @@ def _run_light_migrations() -> None:
             END
         """))
         conn.execute(text("ALTER TABLE google_connection ADD COLUMN IF NOT EXISTS receipts_root_folder_id VARCHAR(200)"))
+        # One-time self-heal: get_or_create_receipts_root's Drive lookup
+        # used to search the whole account for a folder named "Receipts"
+        # with no parent scoping, so it could match a PROJECT's own
+        # Receipts subfolder instead of the real top-level inbox -- and
+        # once wrong, it stayed wrong forever since the result is cached
+        # here. The lookup itself is now scoped ('root' in parents, see
+        # google_service.py); clearing the cache forces exactly one fresh,
+        # correctly-scoped re-resolution on the next sync. Safe to run
+        # every startup indefinitely -- re-resolving is cheap and this is
+        # a manually-triggered button, not a hot path.
+        conn.execute(text("UPDATE google_connection SET receipts_root_folder_id = NULL"))
 
 
 @app.on_event("startup")

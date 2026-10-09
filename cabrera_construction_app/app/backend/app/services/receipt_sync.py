@@ -27,6 +27,10 @@ from . import google_oauth as g_oauth
 logger = logging.getLogger("cabrera.receipt_sync")
 
 
+class ReceiptAlreadyImported(Exception):
+    pass
+
+
 def _match_project(db: Session, handwritten_name: str | None) -> models.Project | None:
     """Matches a handwritten note (usually just a first name, e.g.
     "francisco") against every project's customer_name — case-insensitive
@@ -148,3 +152,70 @@ def sync_receipts_from_drive(db: Session) -> schemas.ReceiptSyncResult:
         already_processed=already_count,
         matched_project_names=matched_names,
     )
+
+
+def import_receipt_from_drive(db: Session, file_id: str) -> models.Receipt:
+    """Single-file counterpart to sync_receipts_from_drive, for the "import
+    from Google Drive" picker on Business Expenses -- lets the owner pick
+    one receipt photo from ANYWHERE in Drive, not just the Receipts inbox,
+    for when the automatic scan hasn't caught it (synced to an unexpected
+    folder, or the inbox resolution itself was wrong -- see
+    google_service.get_or_create_receipts_root). Same extraction and
+    matching rules as the scan; the only real difference is this file's
+    current parent folder isn't already known, so it's fetched first
+    before the move (the scan already knows it -- it's whatever folder it
+    just listed).
+
+    Raises GeminiNotConfigured / GoogleNotConnected like the scan does,
+    plus ReceiptAlreadyImported (this exact file was already synced or
+    imported before) and lets GeminiExtractionError propagate rather than
+    silently filing it as "unreadable" -- a single deliberately-picked
+    file failing to read is something the owner should see and decide
+    about, not something to quietly route around."""
+    if not gemini_service.any_provider_configured():
+        raise gemini_service.GeminiNotConfigured(
+            "No AI extraction provider is configured — set GEMINI_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY in app/backend/.env."
+        )
+    if not g_oauth.get_connection(db):
+        raise g_oauth.GoogleNotConnected("Connect Google Workspace first.")
+    if db.query(models.Receipt.id).filter(models.Receipt.drive_file_id == file_id).first():
+        raise ReceiptAlreadyImported("This receipt has already been imported.")
+
+    file_name = google_service.get_file_name(db, file_id)
+    content_type = google_service.get_file_mime_type(db, file_id)
+    file_bytes = google_service.download_file(db, file_id)
+    result = gemini_service.extract_receipt_from_image(file_bytes, file_name, content_type)
+
+    project = _match_project(db, result.handwritten_name)
+    receipt_date = result.date or dt.date.today()
+    description = _describe(result.vendor, result.description)
+
+    receipt = models.Receipt(
+        project_id=project.id if project else None,
+        date=receipt_date,
+        description=description,
+        amount=result.amount,
+        type="expense",
+        needs_project=project is None,
+        source="drive_folder",
+        drive_file_id=file_id,
+    )
+    db.add(receipt)
+    db.commit()
+    db.refresh(receipt)
+
+    # Best-effort, same as the scan: the Receipt record above is already
+    # correct and committed either way.
+    try:
+        current_parents = google_service.get_file_parents(db, file_id)
+        if project and project.drive_folder_id:
+            target = google_service.get_or_create_project_receipts_folder(db, project.drive_folder_id)
+        else:
+            inbox_id = google_service.get_or_create_receipts_root(db)
+            target = google_service.get_or_create_month_subfolder(db, inbox_id, receipt_date)
+        if current_parents and target not in current_parents:
+            google_service.move_file(db, file_id, target, ",".join(current_parents))
+    except (g_oauth.GoogleNotConnected, google_service.GoogleApiError) as exc:
+        logger.error("Receipt %s recorded but couldn't be filed in Drive: %s", file_id, exc)
+
+    return receipt

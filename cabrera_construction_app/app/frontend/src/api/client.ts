@@ -169,6 +169,14 @@ export const api = {
   drive: {
     searchDocuments: (search: string) =>
       get<DriveDocument[]>(`/drive/documents${search.trim() ? `?search=${encodeURIComponent(search.trim())}` : ""}`),
+    // Image files anywhere in the connected Drive account — the "import
+    // from Google Drive" picker on Business Expenses, for a receipt the
+    // automatic Receipts-inbox scan hasn't caught.
+    searchReceiptImages: (search: string) =>
+      get<DriveDocument[]>(`/drive/receipt-images${search.trim() ? `?search=${encodeURIComponent(search.trim())}` : ""}`),
+    // Raw bytes for any Drive file by ID — a synced receipt's original
+    // photo, or a not-yet-imported candidate being previewed in the picker.
+    fileContentUrl: (fileId: string) => `${API_BASE}/drive/files/${encodeURIComponent(fileId)}/content`,
   },
 
   scopeSchedule: {
@@ -245,6 +253,10 @@ export const api = {
     // triggered for now ("Sync Receipts Now") — real daily automation is a
     // later phase.
     syncFromDrive: () => post<ReceiptSyncResult>("/receipts/sync-from-drive"),
+    // Single-file counterpart to syncFromDrive, for a receipt photo picked
+    // by hand via drive.searchReceiptImages (the automatic scan hasn't
+    // caught it, or the owner just wants to point at one directly).
+    importFromDrive: (fileId: string) => post<Receipt>(`/receipts/import-from-drive/${encodeURIComponent(fileId)}`),
   },
 
   businessExpenses: {

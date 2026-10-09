@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..db import get_db
-from ..services import gemini_service, receipt_sync
+from ..services import gemini_service, google_service, receipt_sync
 from ..services import google_oauth as g_oauth
 
 router = APIRouter(prefix="/api", tags=["receipts"])
@@ -124,6 +124,58 @@ def assign_project(receipt_id: int, payload: schemas.AssignProject, db: Session 
     db.commit()
     db.refresh(receipt)
     return receipt
+
+
+@router.get("/drive/files/{file_id}/content")
+def get_drive_file_content(file_id: str, db: Session = Depends(get_db)):
+    """Streams raw bytes for any Drive file by ID — used both to show a
+    synced receipt's original photo (keyed by Receipt.drive_file_id) and
+    to preview candidates in the "import from Google Drive" picker before
+    they're imported at all (so there's no Receipt row yet to key off
+    of). Generic on purpose rather than two near-identical endpoints."""
+    try:
+        content = google_service.download_file(db, file_id)
+        mime_type = google_service.get_file_mime_type(db, file_id)
+    except g_oauth.GoogleNotConnected as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except google_service.GoogleApiError as exc:
+        raise HTTPException(exc.status_code if exc.status_code < 500 else 502, str(exc)) from exc
+    return Response(content=content, media_type=mime_type)
+
+
+@router.get("/drive/receipt-images")
+def search_drive_receipt_images(search: str | None = None, db: Session = Depends(get_db)):
+    """Image files anywhere in the connected Drive account — the "import
+    from Google Drive" picker on Business Expenses, for a receipt the
+    automatic Receipts-inbox scan hasn't caught (filed somewhere else,
+    synced to an unexpected folder, or the inbox resolution itself was
+    briefly wrong — see google_service.get_or_create_receipts_root)."""
+    if not g_oauth.get_connection(db):
+        raise HTTPException(409, "Connect Google Workspace first.")
+    try:
+        files = google_service.search_images(db, search)
+    except (g_oauth.GoogleNotConnected, google_service.GoogleApiError) as exc:
+        raise HTTPException(502, f"Google Drive error: {exc}") from exc
+    return [{"id": f["id"], "name": f["name"], "modified_time": f.get("modifiedTime")} for f in files]
+
+
+@router.post("/receipts/import-from-drive/{file_id}", response_model=schemas.ReceiptOut)
+def import_receipt_from_drive(file_id: str, db: Session = Depends(get_db)):
+    """Reads, matches, and records one receipt photo picked from the
+    Drive picker above — the single-file counterpart to "Sync Receipts
+    Now" for when the automatic inbox scan hasn't caught it. See
+    services/receipt_sync.py's import_receipt_from_drive for the shared
+    extraction/matching pipeline."""
+    try:
+        return receipt_sync.import_receipt_from_drive(db, file_id)
+    except g_oauth.GoogleNotConnected as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except gemini_service.GeminiNotConfigured as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except receipt_sync.ReceiptAlreadyImported as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except gemini_service.GeminiExtractionError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @router.get("/business-expenses")
