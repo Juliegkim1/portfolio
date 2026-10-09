@@ -95,6 +95,15 @@ export const api = {
     status: () => get<GoogleStatus>("/integrations/google/status"),
     connectUrl: `${API_BASE}/integrations/google/connect`,
     disconnect: () => post<{ connected: boolean }>("/integrations/google/disconnect"),
+    // Automatic discovery (by folder name) can pick the wrong "Receipts"
+    // folder — every project with a matched receipt gets its own
+    // subfolder also named "Receipts", or the real inbox was shared from
+    // a different Google identity than the one connected here. This lets
+    // the owner point it at the real folder by hand; an empty link clears
+    // the override back to automatic discovery.
+    receiptsFolder: () => get<{ folder_id: string | null; auto: boolean }>("/integrations/google/receipts-folder"),
+    updateReceiptsFolder: (driveFolderLink: string) =>
+      patch<{ folder_id: string | null; auto: boolean }>("/integrations/google/receipts-folder", { drive_folder_link: driveFolderLink }),
   },
 
   projects: {

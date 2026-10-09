@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import datetime as dt
 import logging
-import re
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
@@ -342,20 +341,6 @@ def update_project_address(project_id: int, payload: schemas.ProjectAddressUpdat
     return project
 
 
-_DRIVE_FOLDER_LINK_PATTERNS = (re.compile(r"/folders/([a-zA-Z0-9_-]+)"), re.compile(r"[?&]id=([a-zA-Z0-9_-]+)"))
-
-
-def _extract_drive_folder_id(link_or_id: str) -> str:
-    """Same parsing as the frontend's manual-folder-entry field (Import
-    from Drive page) — accepts a pasted Drive URL in any of its common
-    shapes, or a bare folder ID, so either works here too."""
-    trimmed = link_or_id.strip()
-    for pattern in _DRIVE_FOLDER_LINK_PATTERNS:
-        if m := pattern.search(trimmed):
-            return m.group(1)
-    return trimmed
-
-
 @router.patch("/projects/{project_id}/drive-folder", response_model=schemas.ProjectOut)
 def update_project_drive_folder(project_id: int, payload: schemas.ProjectDriveFolderUpdate, db: Session = Depends(get_db)):
     """Manually points a project at a real Drive folder — for a project
@@ -366,7 +351,7 @@ def update_project_drive_folder(project_id: int, payload: schemas.ProjectDriveFo
     drive_folder_id already gets set from the automatic flows without a
     round-trip check, and a typo here is just as easy to re-correct."""
     project = get_project_or_404(db, project_id)
-    project.drive_folder_id = _extract_drive_folder_id(payload.drive_folder_link)
+    project.drive_folder_id = google_service.extract_drive_folder_id(payload.drive_folder_link)
     db.commit()
     db.refresh(project)
     return project

@@ -392,7 +392,11 @@
     "syncingReceipts": "Scanning My Drive/Receipts…",
     "syncResultNothingNew": "No new receipts found in My Drive/Receipts.",
     "syncResultSummary": "{{matched}} filed to projects, {{business}} filed as business expenses, {{unreadable}} couldn't be read.",
-    "receiptsInboxHint": "Take a photo of each receipt, upload it to My Drive/Receipts, and write the customer's first name on it (or in the photo) if it's for a specific job — Sync Receipts Now will file it to that project automatically. Unreadable or unmatched ones are kept as business expenses here for you to correct."
+    "receiptsInboxHint": "Take a photo of each receipt, upload it to My Drive/Receipts, and write the customer's first name on it (or in the photo) if it's for a specific job — Sync Receipts Now will file it to that project automatically. Unreadable or unmatched ones are kept as business expenses here for you to correct.",
+    "receiptsFolderAuto": "Receipts folder: auto-detected",
+    "receiptsFolderCustom": "Receipts folder: set by hand",
+    "editReceiptsFolderTitle": "If Sync Receipts Now isn't finding your photos, point it at the real Drive folder by hand",
+    "receiptsFolderPlaceholder": "Paste the My Drive/Receipts folder link or ID…"
   },
   "analytics": {
     "context": "Company-wide performance",

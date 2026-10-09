@@ -224,6 +224,18 @@ class ProjectDriveFolderUpdate(BaseModel):
     drive_folder_link: str
 
 
+class GoogleReceiptsFolderUpdate(BaseModel):
+    # Same idea as ProjectDriveFolderUpdate, for the single Receipts inbox
+    # folder rather than a per-project one — lets the owner point it at
+    # the real "My Drive/Receipts" by hand when automatic discovery by
+    # name (get_or_create_receipts_root) can't find it: a name collision
+    # with a project's own "Receipts" subfolder, or the real folder was
+    # shared from a different Google identity than the one connected
+    # here, so it never shows up under this account's own Drive root. An
+    # empty string clears the override back to automatic discovery.
+    drive_folder_link: str
+
+
 # --- Drive import (pre-existing, already-signed projects) ------------------
 #
 # Deliberately a separate pipeline from CreateProjectFromEstimate above: a

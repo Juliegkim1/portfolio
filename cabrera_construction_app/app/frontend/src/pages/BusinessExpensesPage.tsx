@@ -21,8 +21,24 @@ export function BusinessExpensesPage() {
   const [viewingReceipt, setViewingReceipt] = useState<{ driveFileId: string; description: string } | null>(null);
   const [editingReceiptId, setEditingReceiptId] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState({ date: "", description: "", amount: "" });
+  const [editingFolder, setEditingFolder] = useState(false);
+  const [folderDraft, setFolderDraft] = useState("");
 
   const query = useQuery({ queryKey: ["business-expenses"], queryFn: api.businessExpenses.get });
+
+  // Automatic discovery of the Receipts inbox (by folder name) can pick
+  // the wrong one -- see google_service.get_or_create_receipts_root.
+  // Only meaningful once Google is connected, so a 409 here (not
+  // connected) just means this control stays hidden rather than erroring.
+  const receiptsFolder = useQuery({ queryKey: ["google-receipts-folder"], queryFn: api.google.receiptsFolder, retry: false });
+
+  const updateReceiptsFolder = useMutation({
+    mutationFn: (link: string) => api.google.updateReceiptsFolder(link),
+    onSuccess: () => {
+      setEditingFolder(false);
+      queryClient.invalidateQueries({ queryKey: ["google-receipts-folder"] });
+    },
+  });
 
   const assignProject = useMutation({
     mutationFn: ({ id, projectId }: { id: number; projectId: number | null }) => api.receipts.assignProject(id, projectId),
@@ -120,6 +136,45 @@ export function BusinessExpensesPage() {
       <div className="muted" style={{ fontSize: 12, marginBottom: "var(--space-3)" }}>
         {t("businessExpenses.receiptsInboxHint")}
       </div>
+      {receiptsFolder.data && (
+        <div className="muted icon-text" style={{ fontSize: 12, marginBottom: "var(--space-3)" }}>
+          {editingFolder ? (
+            <>
+              <input
+                className="input"
+                style={{ fontSize: 12 }}
+                placeholder={t("businessExpenses.receiptsFolderPlaceholder")}
+                value={folderDraft}
+                onChange={(e) => setFolderDraft(e.target.value)}
+                autoFocus
+              />
+              <button className="btn btn-icon" disabled={updateReceiptsFolder.isPending} title={t("common.save")} onClick={() => updateReceiptsFolder.mutate(folderDraft)}>
+                {t("common.save")}
+              </button>
+              <button className="btn btn-icon" title={t("common.cancel")} onClick={() => setEditingFolder(false)}>
+                {t("common.cancel")}
+              </button>
+            </>
+          ) : (
+            <>
+              <span>
+                {receiptsFolder.data.auto ? t("businessExpenses.receiptsFolderAuto") : t("businessExpenses.receiptsFolderCustom")}
+              </span>
+              <button
+                className="btn btn-icon"
+                title={t("businessExpenses.editReceiptsFolderTitle")}
+                onClick={() => {
+                  setFolderDraft(receiptsFolder.data.folder_id ?? "");
+                  setEditingFolder(true);
+                }}
+              >
+                <Pencil size={12} strokeWidth={1.5} />
+              </button>
+            </>
+          )}
+        </div>
+      )}
+      {updateReceiptsFolder.isError && <div className="error-state" style={{ marginBottom: "var(--space-3)" }}>{(updateReceiptsFolder.error as Error).message}</div>}
       {syncReceipts.isError && (
         <div className="banner icon-text section">
           <AlertTriangle size={16} strokeWidth={1.5} />

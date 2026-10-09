@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 
 import httpx
 from sqlalchemy.orm import Session
@@ -130,6 +131,19 @@ def get_or_create_receipts_root(db: Session) -> str:
     return folder_id
 
 
+def _is_image_file(f: dict) -> bool:
+    """Drive's own query-side mimeType filtering below is a soft
+    narrowing, not a guarantee -- in production it let a folder and a PDF
+    through a query that should only have matched images, so every
+    caller re-checks here rather than trusting the query alone."""
+    mime = (f.get("mimeType") or "").lower()
+    if mime == FOLDER_MIME:
+        return False
+    if mime.startswith("image/"):
+        return True
+    return f.get("name", "").lower().endswith(tuple(_RECEIPT_IMAGE_EXTENSIONS))
+
+
 def list_receipt_images(db: Session, folder_id: str) -> list[dict]:
     """Image files directly inside a folder (not subfolders) — the "new
     receipts to process" set for receipt_sync.py. Deliberately shallow
@@ -140,7 +154,7 @@ def list_receipt_images(db: Session, folder_id: str) -> list[dict]:
     mime_clause = " or ".join(f"name contains '{ext}'" for ext in _RECEIPT_IMAGE_EXTENSIONS)
     query = f"'{folder_id}' in parents and trashed = false and (mimeType contains 'image/' or ({mime_clause}))"
     resp = _request(db, "GET", f"{DRIVE_API}/files", params={"q": query, "fields": "files(id,name,mimeType)", "pageSize": 100})
-    return resp.json().get("files", [])
+    return [f for f in resp.json().get("files", []) if _is_image_file(f)]
 
 
 def move_file(db: Session, file_id: str, new_parent_id: str, old_parent_id: str) -> None:
@@ -316,9 +330,12 @@ def search_images(db: Session, search: str | None = None, limit: int = 20) -> li
         db,
         "GET",
         f"{DRIVE_API}/files",
-        params={"q": query, "fields": "files(id,name,mimeType,modifiedTime)", "orderBy": "modifiedTime desc", "pageSize": limit},
+        # Over-fetches relative to `limit` since the post-filter below can
+        # drop some of what Drive's own query-side filtering let through.
+        params={"q": query, "fields": "files(id,name,mimeType,modifiedTime)", "orderBy": "modifiedTime desc", "pageSize": max(limit * 4, 100)},
     )
-    return resp.json().get("files", [])
+    files = [f for f in resp.json().get("files", []) if _is_image_file(f)]
+    return files[:limit]
 
 
 def download_file(db: Session, file_id: str) -> bytes:
@@ -369,3 +386,22 @@ def search_documents(db: Session, search: str | None = None, limit: int = 20) ->
         params={"q": query, "fields": "files(id,name,mimeType,modifiedTime)", "orderBy": "modifiedTime desc", "pageSize": limit},
     )
     return resp.json().get("files", [])
+
+
+_DRIVE_FOLDER_LINK_PATTERNS = (re.compile(r"/folders/([a-zA-Z0-9_-]+)"), re.compile(r"[?&]id=([a-zA-Z0-9_-]+)"))
+
+
+def extract_drive_folder_id(link_or_id: str) -> str:
+    """Accepts a pasted Drive folder URL in any of its common shapes, or a
+    bare folder ID — shared by every "manually point this at a real Drive
+    folder" field in the app (a project's drive-folder override, and the
+    Receipts inbox override), since automatic folder discovery by NAME
+    (see get_or_create_receipts_root) can genuinely fail to find the
+    right one — a name collision, or a folder shared from a different
+    Google identity than the one connected here, so it never shows up
+    under this account's own 'root' in parents."""
+    trimmed = link_or_id.strip()
+    for pattern in _DRIVE_FOLDER_LINK_PATTERNS:
+        if m := pattern.search(trimmed):
+            return m.group(1)
+    return trimmed
