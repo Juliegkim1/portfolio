@@ -175,7 +175,18 @@ export function EstimateUploadPage() {
   const [showCombineNotes, setShowCombineNotes] = useState(false);
   const [combineNotesText, setCombineNotesText] = useState("");
   const combineNotes = useMutation({
-    mutationFn: () => api.estimates.combineNotes(result!, combineNotesText),
+    // Send the CURRENT edited form fields, not the stale `result` snapshot
+    // from whenever the estimate was first fetched/uploaded/pasted — the
+    // user may have hand-corrected the customer name, address, phone, or
+    // email since then (e.g. the extracted address was wrong), and those
+    // corrections only live in this local state until the project is
+    // actually created. Sending the stale snapshot here silently reverted
+    // any such correction once applyResult(data) ran on the response.
+    mutationFn: () =>
+      api.estimates.combineNotes(
+        { ...result!, customer_name: customerName, property_address: propertyAddress, customer_phone: customerPhone, customer_email: customerEmail },
+        combineNotesText
+      ),
     onSuccess: (data) => {
       applyResult(data);
       setShowCombineNotes(false);
