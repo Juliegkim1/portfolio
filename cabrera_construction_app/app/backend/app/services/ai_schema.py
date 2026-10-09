@@ -158,3 +158,38 @@ def _result_schema(found_description: str) -> dict:
 
 EXTRACTION_SCHEMA = _result_schema("false only if this document has no usable estimate/job information at all")
 HISTORICAL_SCHEMA = _result_schema("false only if these documents have no usable project information at all")
+
+
+RECEIPT_PROMPT = (
+    "This is a photo of a paper receipt from a hardware store, material supplier, or similar vendor. "
+    "The person who took the photo may also have handwritten something on it — usually just a "
+    "customer's first name, written in pen or marker, noting which job this purchase was for.\n\n"
+    "Extract:\n"
+    "- vendor: the store/vendor name printed on the receipt (e.g. 'Sherwin-Williams', 'Home Depot').\n"
+    "- date: the purchase date printed on the receipt, ISO format (YYYY-MM-DD), if legible.\n"
+    "- amount: the final TOTAL amount actually paid — not the subtotal, not tax by itself, the number "
+    "charged to the card or paid in cash.\n"
+    "- description: a short, specific 3-8 word description of what was purchased, suitable for one "
+    "line in an expense log (e.g. 'Interior paint and supplies', 'Lumber and fasteners') — not a copy "
+    "of every line item, just what the purchase was for overall.\n"
+    "- handwritten_name: any handwritten name or short note on the receipt that looks like it's "
+    "identifying a customer or job — null if there's no handwriting on it, or if what's handwritten "
+    "doesn't read as a name/job reference (a price correction, a store employee's initials, etc. "
+    "isn't this).\n\n"
+    "found is false only if this image isn't actually a readable receipt at all (e.g. it's blank, "
+    "illegible, or a photo of something else entirely)."
+)
+
+RECEIPT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "found": {"type": "boolean", "description": "false only if this image isn't actually a readable receipt at all"},
+        "vendor": {"type": ["string", "null"]},
+        "date": {"type": ["string", "null"], "description": "ISO date (YYYY-MM-DD) if legible, else null"},
+        "amount": {"type": ["number", "null"]},
+        "description": {"type": ["string", "null"]},
+        "handwritten_name": {"type": ["string", "null"]},
+    },
+    "required": ["found", "vendor", "date", "amount", "description", "handwritten_name"],
+    "additionalProperties": False,
+}

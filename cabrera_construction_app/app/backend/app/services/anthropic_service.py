@@ -17,7 +17,7 @@ import logging
 import httpx
 
 from ..config import settings
-from .document_text import DocumentReadError, DocumentPart, PdfPart, TextPart, build_document_parts
+from .document_text import DocumentReadError, DocumentPart, ImagePart, PdfPart, TextPart, build_document_parts
 
 logger = logging.getLogger("cabrera.anthropic")
 
@@ -40,6 +40,8 @@ def _content_block(part: DocumentPart) -> dict:
         return {"type": "text", "text": part.text}
     if isinstance(part, PdfPart):
         return {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": base64.b64encode(part.data).decode("ascii")}}
+    if isinstance(part, ImagePart):
+        return {"type": "image", "source": {"type": "base64", "media_type": part.mime_type, "data": base64.b64encode(part.data).decode("ascii")}}
     raise TypeError(f"Unknown document part type: {type(part)!r}")
 
 

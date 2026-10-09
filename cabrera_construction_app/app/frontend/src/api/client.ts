@@ -19,6 +19,7 @@ import type {
   QuickBooksInvoice,
   QuickBooksStatus,
   Receipt,
+  ReceiptSyncResult,
   ScopeSchedule,
   ScopeScheduleIn,
   User,
@@ -239,6 +240,11 @@ export const api = {
     }) => post<Receipt>("/receipts", payload),
     assignProject: (id: number, projectId: number | null) => patch<Receipt>(`/receipts/${id}/assign-project`, { project_id: projectId }),
     delete: (id: number) => del(`/receipts/${id}`),
+    // Scans My Drive/Receipts for new receipt photos, reads each one, and
+    // files + records the result (see services/receipt_sync.py). Manually
+    // triggered for now ("Sync Receipts Now") — real daily automation is a
+    // later phase.
+    syncFromDrive: () => post<ReceiptSyncResult>("/receipts/sync-from-drive"),
   },
 
   businessExpenses: {

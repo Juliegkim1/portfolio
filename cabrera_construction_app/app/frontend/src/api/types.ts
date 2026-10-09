@@ -347,6 +347,15 @@ export interface BusinessExpensesResponse {
   needs_project_count: number;
 }
 
+export interface ReceiptSyncResult {
+  scanned: number;
+  matched_to_project: number;
+  filed_as_business_expense: number;
+  unreadable: number;
+  already_processed: number;
+  matched_project_names: string[];
+}
+
 export interface AnalyticsResponse {
   kpis: {
     in_progress_today: number;

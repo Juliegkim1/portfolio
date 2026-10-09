@@ -384,7 +384,12 @@
     "projectNotIdentified": "Project not identified",
     "businessExpenseOption": "Business expense",
     "deleteReceiptTitle": "Delete this receipt",
-    "confirmDeleteReceipt": "Delete the receipt \"{{description}}\"? This can't be undone."
+    "confirmDeleteReceipt": "Delete the receipt \"{{description}}\"? This can't be undone.",
+    "syncReceiptsNow": "Sync Receipts Now",
+    "syncingReceipts": "Scanning My Drive/Receipts…",
+    "syncResultNothingNew": "No new receipts found in My Drive/Receipts.",
+    "syncResultSummary": "{{matched}} filed to projects, {{business}} filed as business expenses, {{unreadable}} couldn't be read.",
+    "receiptsInboxHint": "Take a photo of each receipt, upload it to My Drive/Receipts, and write the customer's first name on it (or in the photo) if it's for a specific job — Sync Receipts Now will file it to that project automatically. Unreadable or unmatched ones are kept as business expenses here for you to correct."
   },
   "analytics": {
     "context": "Company-wide performance",

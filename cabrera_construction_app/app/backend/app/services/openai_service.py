@@ -24,7 +24,7 @@ import logging
 import httpx
 
 from ..config import settings
-from .document_text import DocumentReadError, DocumentPart, PdfPart, TextPart, build_document_parts
+from .document_text import DocumentReadError, DocumentPart, ImagePart, PdfPart, TextPart, build_document_parts
 
 logger = logging.getLogger("cabrera.openai")
 
@@ -46,6 +46,9 @@ def _content_part(part: DocumentPart) -> dict:
     if isinstance(part, PdfPart):
         b64 = base64.b64encode(part.data).decode("ascii")
         return {"type": "input_file", "filename": "document.pdf", "file_data": f"data:application/pdf;base64,{b64}"}
+    if isinstance(part, ImagePart):
+        b64 = base64.b64encode(part.data).decode("ascii")
+        return {"type": "input_image", "image_url": f"data:{part.mime_type};base64,{b64}"}
     raise TypeError(f"Unknown document part type: {type(part)!r}")
 
 

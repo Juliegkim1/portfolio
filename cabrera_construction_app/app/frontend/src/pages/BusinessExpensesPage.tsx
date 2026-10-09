@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
@@ -27,6 +27,18 @@ export function BusinessExpensesPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["business-expenses"] }),
   });
 
+  // Scans My Drive/Receipts for new receipt photos (the owner's workflow:
+  // take a picture, upload it there, handwrite the customer's first name
+  // on it) and files + records each one — see services/receipt_sync.py.
+  // Manually triggered for now; real daily automation is a later phase.
+  const syncReceipts = useMutation({
+    mutationFn: () => api.receipts.syncFromDrive(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["business-expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["project-reconciliation"] });
+    },
+  });
+
   function confirmDeleteReceipt(id: number, description: string) {
     if (window.confirm(t("businessExpenses.confirmDeleteReceipt", { description }))) {
       deleteReceipt.mutate(id);
@@ -52,6 +64,37 @@ export function BusinessExpensesPage() {
 
   return (
     <AppShell title={t("nav.businessExpenses")} context={t("businessExpenses.context")}>
+      <div className="page-header">
+        <div />
+        <div className="page-header-actions">
+          <button className="btn btn-secondary" disabled={syncReceipts.isPending} onClick={() => syncReceipts.mutate()}>
+            <RefreshCw size={14} strokeWidth={1.5} /> {syncReceipts.isPending ? t("businessExpenses.syncingReceipts") : t("businessExpenses.syncReceiptsNow")}
+          </button>
+        </div>
+      </div>
+      <div className="muted" style={{ fontSize: 12, marginBottom: "var(--space-3)" }}>
+        {t("businessExpenses.receiptsInboxHint")}
+      </div>
+      {syncReceipts.isError && (
+        <div className="banner icon-text section">
+          <AlertTriangle size={16} strokeWidth={1.5} />
+          {(syncReceipts.error as Error).message}
+        </div>
+      )}
+      {syncReceipts.data && (
+        <div className="banner banner-attention icon-text section">
+          <CheckCircle2 size={16} strokeWidth={1.5} />
+          {syncReceipts.data.scanned === 0
+            ? t("businessExpenses.syncResultNothingNew")
+            : t("businessExpenses.syncResultSummary", {
+                matched: syncReceipts.data.matched_to_project,
+                business: syncReceipts.data.filed_as_business_expense,
+                unreadable: syncReceipts.data.unreadable,
+              })}
+          {syncReceipts.data.matched_project_names.length > 0 && ` (${syncReceipts.data.matched_project_names.join(", ")})`}
+        </div>
+      )}
+
       <div className="kpi-grid section">
         <div className="card">
           <div className="card-kicker">{t("common.total")}</div>

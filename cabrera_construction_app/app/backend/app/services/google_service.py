@@ -86,6 +86,73 @@ def _get_or_create_projects_root(db: Session) -> str:
     return folder_id
 
 
+RECEIPTS_ROOT_NAME = "Receipts"
+_RECEIPT_IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".heic", ".webp")
+
+
+def get_or_create_receipts_root(db: Session) -> str:
+    """Sibling of Projects (_get_or_create_projects_root above), directly
+    under My Drive — not a subfolder of Projects. This is where the owner
+    drops phone photos of paper receipts; see services/receipt_sync.py for
+    what scans it."""
+    conn = g_oauth.get_connection(db)
+    if conn and conn.receipts_root_folder_id:
+        return conn.receipts_root_folder_id
+
+    query = f"name = '{RECEIPTS_ROOT_NAME}' and mimeType = '{FOLDER_MIME}' and trashed = false"
+    resp = _request(db, "GET", f"{DRIVE_API}/files", params={"q": query, "fields": "files(id,name)"})
+    matches = resp.json().get("files", [])
+
+    if matches:
+        folder_id = matches[0]["id"]
+    else:
+        create_resp = _request(db, "POST", f"{DRIVE_API}/files", json={"name": RECEIPTS_ROOT_NAME, "mimeType": FOLDER_MIME})
+        folder_id = create_resp.json()["id"]
+
+    conn = g_oauth.get_connection(db)
+    if conn:
+        conn.receipts_root_folder_id = folder_id
+        db.commit()
+    return folder_id
+
+
+def list_receipt_images(db: Session, folder_id: str) -> list[dict]:
+    """Image files directly inside a folder (not subfolders) — the "new
+    receipts to process" set for receipt_sync.py. Deliberately shallow
+    (not recursive): once a receipt's been filed into a month subfolder or
+    a project's own Receipts subfolder, it's no longer "new" and shouldn't
+    be rescanned just because it's still somewhere under the Receipts
+    root."""
+    mime_clause = " or ".join(f"name contains '{ext}'" for ext in _RECEIPT_IMAGE_EXTENSIONS)
+    query = f"'{folder_id}' in parents and trashed = false and (mimeType contains 'image/' or ({mime_clause}))"
+    resp = _request(db, "GET", f"{DRIVE_API}/files", params={"q": query, "fields": "files(id,name,mimeType)", "pageSize": 100})
+    return resp.json().get("files", [])
+
+
+def move_file(db: Session, file_id: str, new_parent_id: str, old_parent_id: str) -> None:
+    """Re-parents a file — same addParents/removeParents PATCH create_sheet
+    already uses to relocate a newly-created Sheet, generalized to move any
+    existing file. Drive files can have multiple parents in principle, but
+    every file this app creates or scans has exactly one, so this is a
+    clean cut-and-paste, not an additional share."""
+    _request(db, "PATCH", f"{DRIVE_API}/files/{file_id}", params={"addParents": new_parent_id, "removeParents": old_parent_id, "fields": "id,parents"})
+
+
+def get_or_create_month_subfolder(db: Session, parent_id: str, for_date) -> str:
+    """{parent_id}/YYYY-MM — where an unmatched receipt (no readable
+    handwritten name, or one that didn't match any project) gets filed
+    within the Receipts inbox, so the inbox itself stays short even as
+    unmatched business-expense receipts accumulate month over month."""
+    return _find_or_create_subfolder(db, parent_id, for_date.strftime("%Y-%m"))
+
+
+def get_or_create_project_receipts_folder(db: Session, project_drive_folder_id: str) -> str:
+    """{project folder}/Receipts — where a receipt confidently matched to a
+    project gets moved, alongside whatever else lives in that project's
+    own Drive folder."""
+    return _find_or_create_subfolder(db, project_drive_folder_id, "Receipts")
+
+
 def _escape_query_literal(value: str) -> str:
     """Drive API query strings are single-quoted; a literal apostrophe in a
     customer name (e.g. "O'Brien") needs escaping or it breaks the query

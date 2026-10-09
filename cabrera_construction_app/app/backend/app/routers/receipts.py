@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..db import get_db
+from ..services import gemini_service, receipt_sync
+from ..services import google_oauth as g_oauth
 
 router = APIRouter(prefix="/api", tags=["receipts"])
 
@@ -135,3 +137,19 @@ def business_expenses(db: Session = Depends(get_db)):
         "receipts": [schemas.ReceiptOut.model_validate(r) for r in expenses],
         "needs_project_count": sum(1 for r in expenses if r.needs_project),
     }
+
+
+@router.post("/receipts/sync-from-drive", response_model=schemas.ReceiptSyncResult)
+def sync_receipts_from_drive(db: Session = Depends(get_db)):
+    """"Sync Receipts Now" — scans My Drive/Receipts for new receipt
+    photos, reads each one, matches any handwritten customer name against
+    existing projects, and files + records the result. See
+    services/receipt_sync.py for the full pipeline. Real daily automation
+    (Cloud Scheduler hitting this same endpoint) is a planned later phase,
+    not built here — this is manually triggered for now."""
+    try:
+        return receipt_sync.sync_receipts_from_drive(db)
+    except g_oauth.GoogleNotConnected as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except gemini_service.GeminiNotConfigured as exc:
+        raise HTTPException(400, str(exc)) from exc

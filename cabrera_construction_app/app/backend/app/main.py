@@ -94,6 +94,7 @@ def _run_light_migrations() -> None:
                 ELSE customer_name
             END
         """))
+        conn.execute(text("ALTER TABLE google_connection ADD COLUMN IF NOT EXISTS receipts_root_folder_id VARCHAR(200)"))
 
 
 @app.on_event("startup")

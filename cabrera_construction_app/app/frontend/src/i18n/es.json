@@ -384,7 +384,12 @@
     "projectNotIdentified": "Proyecto no identificado",
     "businessExpenseOption": "Gasto del negocio",
     "deleteReceiptTitle": "Eliminar este recibo",
-    "confirmDeleteReceipt": "¿Eliminar el recibo \"{{description}}\"? Esto no se puede deshacer."
+    "confirmDeleteReceipt": "¿Eliminar el recibo \"{{description}}\"? Esto no se puede deshacer.",
+    "syncReceiptsNow": "Sincronizar Recibos Ahora",
+    "syncingReceipts": "Escaneando Mi unidad/Receipts…",
+    "syncResultNothingNew": "No se encontraron recibos nuevos en Mi unidad/Receipts.",
+    "syncResultSummary": "{{matched}} archivados en proyectos, {{business}} archivados como gastos del negocio, {{unreadable}} no se pudieron leer.",
+    "receiptsInboxHint": "Tome una foto de cada recibo, súbala a Mi unidad/Receipts, y escriba a mano el primer nombre del cliente en ella si es para un trabajo específico — Sincronizar Recibos Ahora lo archivará en ese proyecto automáticamente. Los que no se puedan leer o no coincidan se guardan aquí como gastos del negocio para que usted los corrija."
   },
   "analytics": {
     "context": "Rendimiento de toda la empresa",

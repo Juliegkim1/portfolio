@@ -34,9 +34,9 @@ import time
 import httpx
 
 from ..config import settings
-from ..schemas import DriveImportPreview, EstimateFetchResult, EstimateLineItemIn, MilestonePreview
+from ..schemas import DriveImportPreview, EstimateFetchResult, EstimateLineItemIn, MilestonePreview, ReceiptExtractionResult
 from . import ai_schema, anthropic_service, openai_service
-from .document_text import DocumentPart, DocumentReadError, PdfPart, TextPart, build_document_parts
+from .document_text import DocumentPart, DocumentReadError, ImagePart, PdfPart, TextPart, build_document_parts
 
 logger = logging.getLogger("cabrera.gemini")
 
@@ -219,6 +219,8 @@ def _to_gemini_part(part: DocumentPart) -> dict:
         return {"text": part.text}
     if isinstance(part, PdfPart):
         return {"inline_data": {"mime_type": "application/pdf", "data": base64.b64encode(part.data).decode("ascii")}}
+    if isinstance(part, ImagePart):
+        return {"inline_data": {"mime_type": part.mime_type, "data": base64.b64encode(part.data).decode("ascii")}}
     raise TypeError(f"Unknown document part type: {type(part)!r}")
 
 
@@ -253,6 +255,10 @@ def any_provider_configured() -> bool:
     return bool(settings.gemini_api_key) or anthropic_service.is_configured() or openai_service.is_configured()
 
 
+def _default_is_usable(data: dict) -> bool:
+    return bool(data.get("found")) and bool(data.get("line_items") or data.get("milestones"))
+
+
 def _extract_with_fallback(
     files: list[tuple[bytes, str, str]],
     *,
@@ -262,14 +268,18 @@ def _extract_with_fallback(
     standard_prompt: str,
     standard_schema: dict,
     not_found_message: str,
+    is_usable=_default_is_usable,
 ) -> dict:
     """Tries each configured provider in order (Gemini, Claude, GPT),
-    returning the first one's raw extracted dict once it actually found
-    something usable (found=true, at least one line item or milestone).
-    Raises GeminiNotConfigured if nothing is configured at all, or
-    GeminiExtractionError with every attempted provider's reason if all
-    configured ones failed or came up empty — not just the last one tried,
-    since which provider struggles with a given document varies."""
+    returning the first one's raw extracted dict once `is_usable` says it
+    actually found something (defaults to the estimate-extraction shape:
+    found=true, at least one line item or milestone — a caller extracting
+    a differently-shaped result, e.g. a single receipt photo, passes its
+    own check). Raises GeminiNotConfigured if nothing is configured at
+    all, or GeminiExtractionError with every attempted provider's reason
+    if all configured ones failed or came up empty — not just the last
+    one tried, since which provider struggles with a given document
+    varies."""
     if not files:
         raise GeminiExtractionError("No documents to extract from.")
     try:
@@ -302,7 +312,7 @@ def _extract_with_fallback(
             logger.info("%s extraction attempt failed for %s: %s", provider_name, names, exc)
             reasons.append(f"{provider_name}: {exc}")
             continue
-        if not data.get("found") or (not data.get("line_items") and not data.get("milestones")):
+        if not is_usable(data):
             logger.info("%s found nothing usable for %s", provider_name, names)
             reasons.append(f"{provider_name}: {not_found_message}")
             continue
@@ -690,4 +700,51 @@ def extract_historical_project(folder_id: str, folder_name: str, files: list[tup
         warranty_terms=data.get("warranty_terms") or "",
         milestones=milestones,
         total_mismatch=mismatch,
+    )
+
+
+_RECEIPT_PROMPT = ai_schema.RECEIPT_PROMPT
+
+_RECEIPT_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "found": {"type": "BOOLEAN", "description": "false only if this image isn't actually a readable receipt at all"},
+        "vendor": {"type": "STRING"},
+        "date": {"type": "STRING", "description": "ISO date (YYYY-MM-DD) if legible"},
+        "amount": {"type": "NUMBER"},
+        "description": {"type": "STRING"},
+        "handwritten_name": {"type": "STRING"},
+    },
+    "required": ["found"],
+}
+
+
+def extract_receipt_from_image(image_bytes: bytes, filename: str, content_type: str) -> ReceiptExtractionResult:
+    """Reads one receipt photo — vendor, date, total amount, a short
+    description, and (the whole point of this feature) any handwritten
+    name on it identifying which customer/job it's for. See
+    services/receipt_sync.py for what calls this and what it does with
+    handwritten_name. Raises GeminiNotConfigured/GeminiExtractionError on
+    total failure, same as every other extraction entry point — unlike
+    those, a plain "couldn't read this one" is an expected, routine
+    outcome here (a blurry photo, a non-receipt image) so the caller is
+    expected to catch GeminiExtractionError per-file and keep going
+    rather than letting one bad photo stop the whole sync."""
+    data = _extract_with_fallback(
+        [(image_bytes, filename, content_type)],
+        gemini_prompt=_RECEIPT_PROMPT,
+        gemini_schema=_RECEIPT_SCHEMA,
+        gemini_timeout=45,
+        standard_prompt=ai_schema.RECEIPT_PROMPT,
+        standard_schema=ai_schema.RECEIPT_SCHEMA,
+        not_found_message="Couldn't read this as a receipt.",
+        is_usable=lambda d: bool(d.get("found")) and d.get("amount") is not None,
+    )
+    return ReceiptExtractionResult(
+        found=True,
+        vendor=data.get("vendor") or "",
+        date=_parse_date(data.get("date")),
+        amount=float(data.get("amount") or 0),
+        description=data.get("description") or "",
+        handwritten_name=(data.get("handwritten_name") or "").strip() or None,
     )

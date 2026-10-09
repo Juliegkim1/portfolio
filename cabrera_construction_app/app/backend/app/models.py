@@ -315,4 +315,8 @@ class GoogleConnection(Base):
     refresh_token: Mapped[str] = mapped_column(Text)
     access_token_expires_at: Mapped[dt.datetime] = mapped_column(DateTime)
     projects_root_folder_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # Same caching role as projects_root_folder_id, for the "Receipts"
+    # folder the receipt-sync feature scans (see services/receipt_sync.py)
+    # — a sibling of Projects directly under My Drive, not a subfolder of it.
+    receipts_root_folder_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
     connected_at: Mapped[dt.datetime] = mapped_column(DateTime, server_default=func.now())

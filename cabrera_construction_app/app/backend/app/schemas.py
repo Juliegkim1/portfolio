@@ -465,6 +465,34 @@ class ReceiptOut(ORMBase, ReceiptIn):
     drive_file_id: str | None
 
 
+class ReceiptExtractionResult(BaseModel):
+    # Raw read of one receipt photo — see
+    # gemini_service.extract_receipt_from_image. handwritten_name is the
+    # whole point of this feature (My Drive/Receipts — see
+    # services/receipt_sync.py): the owner's handwritten note on the
+    # receipt (usually just a customer's first name) is what gets matched
+    # against existing projects' customer_name to decide which project's
+    # Drive folder (and which Receipt.project_id) this receipt belongs to.
+    found: bool
+    vendor: str = ""
+    date: dt.date | None = None
+    amount: float = 0.0
+    description: str = ""
+    handwritten_name: str | None = None
+
+
+class ReceiptSyncResult(BaseModel):
+    # Summary of one POST /receipts/sync-from-drive run, for the "Sync
+    # Receipts Now" button to show the owner what happened without them
+    # having to go dig through Drive or the Business Expenses table.
+    scanned: int
+    matched_to_project: int
+    filed_as_business_expense: int
+    unreadable: int
+    already_processed: int
+    matched_project_names: list[str] = []
+
+
 # --- Reconciliation / Bank ----------------------------------------------------
 
 class BankTransactionOut(ORMBase):

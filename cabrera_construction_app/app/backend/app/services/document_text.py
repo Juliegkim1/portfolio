@@ -16,6 +16,16 @@ import openpyxl
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
+# Extension -> real MIME type, for an image whose content_type arrives as
+# something generic (a raw upload, or a Drive file lacking useful metadata).
+_IMAGE_EXTENSIONS = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".heic": "image/heic",
+    ".webp": "image/webp",
+}
+
 
 class DocumentReadError(Exception):
     """A file claims to be .docx/.xlsx but isn't actually readable as one —
@@ -34,7 +44,19 @@ class PdfPart:
     data: bytes
 
 
-DocumentPart = TextPart | PdfPart
+@dataclass
+class ImagePart:
+    # A real photo (e.g. a receipt) needs real vision support, not the
+    # "wrap it as a PdfPart and hope" treatment this file used to give any
+    # non-text/docx/xlsx file — that mislabels a JPEG as application/pdf
+    # once it reaches a provider, which doesn't parse. mime_type is kept
+    # explicit (not re-derived from a filename) since every provider's
+    # image block needs the real one.
+    data: bytes
+    mime_type: str
+
+
+DocumentPart = TextPart | PdfPart | ImagePart
 
 
 def extract_docx_text(docx_bytes: bytes) -> str:
@@ -105,10 +127,15 @@ def build_document_parts(files: list[tuple[bytes, str, str]]) -> list[DocumentPa
             continue
         is_docx = content_type == DOCX_MIME or filename.lower().endswith(".docx")
         is_xlsx = content_type == XLSX_MIME or filename.lower().endswith(".xlsx")
+        image_ext = next((ext for ext in _IMAGE_EXTENSIONS if filename.lower().endswith(ext)), None)
+        is_image = content_type.startswith("image/") or image_ext is not None
         if is_docx:
             parts.append(TextPart(text="Document contents:\n\n" + extract_docx_text(file_bytes)))
         elif is_xlsx:
             parts.append(TextPart(text="Spreadsheet contents:\n\n" + extract_xlsx_text(file_bytes)))
+        elif is_image:
+            mime = content_type if content_type.startswith("image/") else _IMAGE_EXTENSIONS[image_ext]
+            parts.append(ImagePart(data=file_bytes, mime_type=mime))
         else:
             parts.append(PdfPart(data=file_bytes))
     return parts
