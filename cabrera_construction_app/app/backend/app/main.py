@@ -78,6 +78,22 @@ def _run_light_migrations() -> None:
         conn.execute(text("ALTER TABLE estimate_line_items ALTER COLUMN description TYPE TEXT"))
         conn.execute(text("ALTER TABLE estimates ADD COLUMN IF NOT EXISTS total_override NUMERIC(12,2)"))
         conn.execute(text("ALTER TABLE change_orders ADD COLUMN IF NOT EXISTS drive_file_id VARCHAR(200)"))
+        # One-time backfill for projects whose name ("{Customer} — {Street}")
+        # went stale before routers/projects.py's update_project_customer/
+        # update_project_address started recomputing it on every edit —
+        # re-derives it from each project's CURRENT customer_name/
+        # property_address, same formula _project_display_name() uses.
+        # Idempotent (already-correct rows are rewritten to the same value)
+        # and cheap even run on every startup, so it stays here rather than
+        # as a true one-off script.
+        conn.execute(text("""
+            UPDATE projects
+            SET name = CASE
+                WHEN property_address IS NOT NULL AND split_part(property_address, ',', 1) != ''
+                THEN customer_name || ' — ' || split_part(property_address, ',', 1)
+                ELSE customer_name
+            END
+        """))
 
 
 @app.on_event("startup")

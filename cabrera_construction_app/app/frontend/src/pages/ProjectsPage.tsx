@@ -210,12 +210,17 @@ export function ProjectsPage() {
               <tbody>
                 {visibleProjects.map((p) => (
                   <tr key={p.id} onClick={() => setSelectedProjectId(p.id)} style={{ cursor: "pointer", background: p.id === selectedProjectId ? "var(--color-accent-100)" : undefined }}>
-                    <td>
-                      <div>{p.name}</div>
-                      <div className="muted" style={{ fontSize: 12 }}>
-                        {p.property_address}
-                      </div>
-                    </td>
+                    {/* Just the address here, not p.name ("{Customer} — {Street}") —
+                        the Customer column right next to it already shows the
+                        name, so repeating it in this column too (on top of the
+                        full address right underneath) was two redundant copies
+                        of the same information on one row. Two projects for the
+                        same customer at different addresses (a real, legitimate
+                        case — same person, two separate jobs) now read as the
+                        same name in the Customer column with clearly different
+                        addresses here, instead of two confusingly similar
+                        "Customer — Street" titles. */}
+                    <td>{p.property_address}</td>
                     <td>{p.customer_name}</td>
                     <td>{p.project_type}</td>
                     <td>
@@ -237,7 +242,7 @@ export function ProjectsPage() {
               <i className="corner tr" />
               <i className="corner bl" />
               <i className="corner br" />
-              <div className="record-card-title">{p.name}</div>
+              <div className="record-card-title">{p.property_address}</div>
               <div className="record-card-row">
                 <span className="label">{t("common.customer")}</span>
                 <span>{p.customer_name}</span>

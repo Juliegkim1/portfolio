@@ -142,6 +142,27 @@ def test_update_project_customer_recomputes_display_name(db, client):
     assert resp.json()["name"] == "Jane Smith — 123 Main St"
 
 
+def test_startup_migration_backfills_already_stale_project_names(db):
+    """Covers projects that went stale BEFORE update_project_customer/
+    update_project_address started recomputing name on every edit — e.g.
+    two real production rows for the same customer at different
+    addresses, where one still showed a leftover name from before the
+    address was corrected. _run_light_migrations re-derives every
+    project's name from its current customer_name/property_address on
+    every startup, so this self-heals without any manual data fix."""
+    from app.main import _run_light_migrations
+
+    stale = make_project(db, name="Old Stale Title", customer_name="Jan Hofwegen", property_address="624 Castro St, San Francisco, CA 94114")
+    already_correct = make_project(db, name="Jan Hofwegen — 241 Hartford Street", customer_name="Jan Hofwegen", property_address="241 Hartford Street, San Francisco, CA 94114")
+    db.commit()
+
+    _run_light_migrations()
+
+    db.expire_all()
+    assert db.get(models.Project, stale.id).name == "Jan Hofwegen — 624 Castro St"
+    assert db.get(models.Project, already_correct.id).name == "Jan Hofwegen — 241 Hartford Street"
+
+
 def test_update_project_customer_allows_blank_phone_and_email(db, client):
     project = make_project(db)
     db.commit()
