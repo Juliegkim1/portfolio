@@ -79,6 +79,20 @@ def test_update_project_address_persists(db, client):
     assert resp2.json()["property_address"] == "456 Oak Ave, Springfield, CA 90001"
 
 
+def test_update_project_address_recomputes_display_name(db, client):
+    """Regression: project.name ("{Customer} — {Street}") is a separately
+    stored field, not derived at render time — correcting the address used
+    to leave the project list's bold title showing the old street forever,
+    even though the Customer column and address sub-line both already
+    showed the fix."""
+    project = make_project(db, name="Jane Doe — 123 Main St")
+    db.commit()
+
+    resp = client.patch(f"/api/projects/{project.id}/address", json={"property_address": "456 Oak Ave, Springfield, CA 90001"})
+    assert resp.status_code == 200
+    assert resp.json()["name"] == "Jane Doe — 456 Oak Ave"
+
+
 def test_update_project_address_rejects_empty_string(db, client):
     project = make_project(db)
     db.commit()
@@ -114,6 +128,18 @@ def test_update_project_customer_persists_all_fields(db, client):
 
     resp2 = client.get(f"/api/projects/{project.id}")
     assert resp2.json()["customer_name"] == "Jane Smith"
+
+
+def test_update_project_customer_recomputes_display_name(db, client):
+    """Same regression as test_update_project_address_recomputes_display_name,
+    the other way around: correcting the customer name must also refresh
+    project.name, not just the customer_name column."""
+    project = make_project(db, name="Jane Doe — 123 Main St", property_address="123 Main St, Springfield, CA 90000")
+    db.commit()
+
+    resp = client.patch(f"/api/projects/{project.id}/customer", json={"customer_name": "Jane Smith"})
+    assert resp.status_code == 200
+    assert resp.json()["name"] == "Jane Smith — 123 Main St"
 
 
 def test_update_project_customer_allows_blank_phone_and_email(db, client):

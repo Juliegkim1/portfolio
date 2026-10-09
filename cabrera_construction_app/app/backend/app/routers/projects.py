@@ -44,6 +44,19 @@ def get_project_or_404(db: Session, project_id: int) -> models.Project:
     return project
 
 
+def _project_display_name(customer_name: str, property_address: str) -> str:
+    """"{Customer} — {Street}" — the table/record-card title shown
+    everywhere a project list is rendered. Not a computed property on the
+    model: it's stored on Project.name so it survives independently of
+    whatever the live customer_name/property_address are at render time —
+    but that means anything that changes either of those two fields after
+    creation (update_project_customer, update_project_address) has to
+    recompute and re-save this too, or the title silently goes stale even
+    though the fields it's titling have already been corrected."""
+    street = property_address.split(",")[0] if property_address else ""
+    return f"{customer_name} — {street}" if street else customer_name
+
+
 @router.get("/projects", response_model=list[schemas.ProjectOut])
 def list_projects(db: Session = Depends(get_db)):
     return db.query(models.Project).order_by(models.Project.created_at.desc()).all()
@@ -300,6 +313,12 @@ def update_project_customer(project_id: int, payload: schemas.ProjectCustomerUpd
     project.customer_name = new_name
     project.customer_phone = payload.customer_phone.strip()
     project.customer_email = payload.customer_email.strip()
+    # project.name ("{Customer} — {Street}") is a separate stored field, not
+    # computed from customer_name/property_address at render time — without
+    # this it silently goes stale: the Customer column and this card both
+    # show the corrected name, but the bold project title everywhere else
+    # keeps showing the old one.
+    project.name = _project_display_name(project.customer_name, project.property_address)
     db.commit()
     db.refresh(project)
     return project
@@ -316,6 +335,8 @@ def update_project_address(project_id: int, payload: schemas.ProjectAddressUpdat
     if not new_address:
         raise HTTPException(400, "Property address cannot be empty")
     project.property_address = new_address
+    # See update_project_customer above for why this has to be recomputed too.
+    project.name = _project_display_name(project.customer_name, project.property_address)
     db.commit()
     db.refresh(project)
     return project
@@ -539,10 +560,9 @@ def confirm_drive_import(folder_id: str, payload: schemas.DriveImportConfirm, db
         raise HTTPException(422, f"Missing required information before this project can be imported: {', '.join(missing)}.")
 
     customer_name = preview.customer_name
-    street = preview.property_address.split(",")[0] if preview.property_address else ""
 
     project = models.Project(
-        name=f"{customer_name} — {street}" if street else customer_name,
+        name=_project_display_name(customer_name, preview.property_address or ""),
         project_type=payload.project_type,
         customer_name=customer_name,
         customer_phone=preview.customer_phone,
@@ -677,7 +697,7 @@ def create_project_from_estimate(payload: schemas.CreateProjectFromEstimate, db:
     # folder/Sheet with no project behind it, and a later Drive/Sheets
     # failure can't lose an already-valid project record either.
     project = models.Project(
-        name=f"{customer_name} — {street}" if street else customer_name,
+        name=_project_display_name(customer_name, est.property_address or ""),
         project_type=payload.project_type,
         customer_name=est.customer_name or "",
         customer_phone=est.customer_phone or "",
