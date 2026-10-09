@@ -625,12 +625,25 @@ _HISTORICAL_SCHEMA = {
 
 
 def _parse_date(value: str | None) -> dt.date | None:
+    """Every prompt that extracts a date asks for ISO (YYYY-MM-DD), and
+    every provider mostly complies — but "mostly" isn't "always": a
+    receipt's own date is often printed MM/DD/YY on the register tape
+    itself, and a model occasionally echoes that literal format instead
+    of converting it. Falling straight to None on the first format miss
+    (as this used to) meant a date that doesn't parse silently becomes no
+    date at all — and in receipt_sync.py, no date means today's date, which
+    reads as "parsed wrong" rather than "didn't parse." Trying a couple of
+    the formats a US receipt actually prints, before giving up, fixes the
+    common case instead of just failing it more quietly."""
     if not value:
         return None
-    try:
-        return dt.date.fromisoformat(value[:10])
-    except ValueError:
-        return None
+    value = value.strip()
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%m-%d-%Y", "%m-%d-%y"):
+        try:
+            return dt.datetime.strptime(value[:10] if fmt == "%Y-%m-%d" else value, fmt).date()
+        except ValueError:
+            continue
+    return None
 
 
 def extract_historical_project(folder_id: str, folder_name: str, files: list[tuple[bytes, str, str]]) -> DriveImportPreview:
@@ -714,6 +727,7 @@ _RECEIPT_SCHEMA = {
         "amount": {"type": "NUMBER"},
         "description": {"type": "STRING"},
         "handwritten_name": {"type": "STRING"},
+        "written_address": {"type": "STRING"},
     },
     "required": ["found"],
 }
@@ -747,4 +761,5 @@ def extract_receipt_from_image(image_bytes: bytes, filename: str, content_type: 
         amount=float(data.get("amount") or 0),
         description=data.get("description") or "",
         handwritten_name=(data.get("handwritten_name") or "").strip() or None,
+        written_address=(data.get("written_address") or "").strip() or None,
     )

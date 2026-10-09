@@ -64,6 +64,50 @@ def test_match_project_no_match_returns_none(db):
     assert receipt_sync._match_project(db, "nonexistent name") is None
 
 
+def test_match_project_falls_back_to_written_address_when_no_name(db):
+    """A materials yard (e.g. Golden State Lumber) commonly writes the
+    job-site address on a delivery slip instead of a customer name."""
+    project = make_project(db, customer_name="Elena Ortiz", property_address="116 Mountain Road, Reno, NV 89501")
+    db.commit()
+
+    matched = receipt_sync._match_project(db, None, "116 Mountain Road")
+    assert matched is not None
+    assert matched.id == project.id
+
+
+def test_match_project_address_off_by_one_digit_does_not_match(db):
+    """Deliberately NOT fuzzy/tolerant of a wrong digit -- a store clerk's
+    typo (115 written on the receipt, 116 is the real address) must not
+    silently resolve to a guess; the receipt stays unmatched for the
+    owner to notice and correct by hand."""
+    make_project(db, customer_name="Elena Ortiz", property_address="116 Mountain Road, Reno, NV 89501")
+    db.commit()
+
+    assert receipt_sync._match_project(db, None, "115 Mountain Road") is None
+
+
+def test_match_project_prefers_name_over_address_when_both_present(db):
+    name_match = make_project(db, customer_name="Francisco Rodriguez", property_address="1 A St, SF, CA 94100")
+    make_project(db, customer_name="Someone Else", property_address="2 B St, SF, CA 94100")
+    db.commit()
+
+    matched = receipt_sync._match_project(db, "francisco", "2 B St")
+    assert matched is not None
+    assert matched.id == name_match.id
+
+
+# --- _describe -----------------------------------------------------------
+
+
+def test_describe_omits_address_when_not_passed():
+    assert receipt_sync._describe("Golden State Lumber", "Lumber delivery") == "Golden State Lumber — Lumber delivery"
+
+
+def test_describe_includes_written_address_so_owner_can_spot_a_typo():
+    described = receipt_sync._describe("Golden State Lumber", "Lumber delivery", "115 Mountain Road")
+    assert described == "Golden State Lumber — Lumber delivery (115 Mountain Road)"
+
+
 # --- sync_receipts_from_drive --------------------------------------------------
 
 

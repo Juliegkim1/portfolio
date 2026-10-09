@@ -467,18 +467,21 @@ class ReceiptOut(ORMBase, ReceiptIn):
 
 class ReceiptExtractionResult(BaseModel):
     # Raw read of one receipt photo — see
-    # gemini_service.extract_receipt_from_image. handwritten_name is the
-    # whole point of this feature (My Drive/Receipts — see
-    # services/receipt_sync.py): the owner's handwritten note on the
-    # receipt (usually just a customer's first name) is what gets matched
-    # against existing projects' customer_name to decide which project's
-    # Drive folder (and which Receipt.project_id) this receipt belongs to.
+    # gemini_service.extract_receipt_from_image. handwritten_name and
+    # written_address are the whole point of this feature (My
+    # Drive/Receipts — see services/receipt_sync.py): whichever of the two
+    # is actually on the receipt (a customer's first name, or — common for
+    # a materials yard preparing a delivery — a job-site address instead)
+    # is what gets matched against existing projects to decide which
+    # project's Drive folder (and which Receipt.project_id) this receipt
+    # belongs to.
     found: bool
     vendor: str = ""
     date: dt.date | None = None
     amount: float = 0.0
     description: str = ""
     handwritten_name: str | None = None
+    written_address: str | None = None
 
 
 class ReceiptSyncResult(BaseModel):
@@ -522,6 +525,20 @@ class ConfirmMatch(BaseModel):
 
 class AssignProject(BaseModel):
     project_id: int | None = None  # None reassigns back to "business expense"
+
+
+class ReceiptUpdate(BaseModel):
+    # Lets the owner correct whatever AI extraction (or a manual entry)
+    # got wrong — a receipt's real date is easy for OCR to misread, and a
+    # vendor/description can come out garbled. Only fields actually
+    # present in the request are touched (model_fields_set), same pattern
+    # as the estimate's total_override/estimate_number update, though none
+    # of these three have a meaningful "clear it to null" case the way
+    # total_override does — Receipt.date/description/amount are all
+    # required columns.
+    date: dt.date | None = None
+    description: str | None = None
+    amount: float | None = None
 
 
 # --- Users -------------------------------------------------------------------

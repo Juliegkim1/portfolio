@@ -162,20 +162,27 @@ HISTORICAL_SCHEMA = _result_schema("false only if these documents have no usable
 
 RECEIPT_PROMPT = (
     "This is a photo of a paper receipt from a hardware store, material supplier, or similar vendor. "
-    "The person who took the photo may also have handwritten something on it — usually just a "
-    "customer's first name, written in pen or marker, noting which job this purchase was for.\n\n"
+    "The person who took the photo may also have handwritten something on it, or a store clerk may "
+    "have written something on a delivery slip — usually a customer's first name, or sometimes a job "
+    "site address instead of a name (common for a materials yard preparing a delivery), noting which "
+    "job this purchase was for.\n\n"
     "Extract:\n"
     "- vendor: the store/vendor name printed on the receipt (e.g. 'Sherwin-Williams', 'Home Depot').\n"
-    "- date: the purchase date printed on the receipt, ISO format (YYYY-MM-DD), if legible.\n"
+    "- date: the purchase date printed on the receipt, ISO format (YYYY-MM-DD), if legible. Look "
+    "carefully at the actual printed digits — a register receipt's date is easy to misread, and the "
+    "day and month are NOT interchangeable (an American receipt prints MM/DD, not DD/MM).\n"
     "- amount: the final TOTAL amount actually paid — not the subtotal, not tax by itself, the number "
     "charged to the card or paid in cash.\n"
     "- description: a short, specific 3-8 word description of what was purchased, suitable for one "
     "line in an expense log (e.g. 'Interior paint and supplies', 'Lumber and fasteners') — not a copy "
     "of every line item, just what the purchase was for overall.\n"
     "- handwritten_name: any handwritten name or short note on the receipt that looks like it's "
-    "identifying a customer or job — null if there's no handwriting on it, or if what's handwritten "
-    "doesn't read as a name/job reference (a price correction, a store employee's initials, etc. "
-    "isn't this).\n\n"
+    "identifying a customer — null if there's no handwriting on it, or if what's handwritten doesn't "
+    "read as a name (a price correction, a store employee's initials, etc. isn't this).\n"
+    "- written_address: a street address written or printed anywhere on the receipt as a delivery or "
+    "job-site address (NOT the store's own printed business address) — null if none. Transcribe it "
+    "exactly as written, digit for digit, even if a house number looks unusual; never correct or "
+    "guess at it.\n\n"
     "found is false only if this image isn't actually a readable receipt at all (e.g. it's blank, "
     "illegible, or a photo of something else entirely)."
 )
@@ -189,7 +196,8 @@ RECEIPT_SCHEMA = {
         "amount": {"type": ["number", "null"]},
         "description": {"type": ["string", "null"]},
         "handwritten_name": {"type": ["string", "null"]},
+        "written_address": {"type": ["string", "null"]},
     },
-    "required": ["found", "vendor", "date", "amount", "description", "handwritten_name"],
+    "required": ["found", "vendor", "date", "amount", "description", "handwritten_name", "written_address"],
     "additionalProperties": False,
 }

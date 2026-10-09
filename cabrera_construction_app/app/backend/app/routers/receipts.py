@@ -112,6 +112,36 @@ def delete_receipt(receipt_id: int, db: Session = Depends(get_db)):
     db.commit()
 
 
+@router.patch("/receipts/{receipt_id}", response_model=schemas.ReceiptOut)
+def update_receipt(receipt_id: int, payload: schemas.ReceiptUpdate, db: Session = Depends(get_db)):
+    """Corrects a receipt's date/description/amount by hand — AI
+    extraction (or a manual entry) isn't always right, and this is the
+    one place to fix it, same way assign-project below fixes which
+    project it's on. A payment's milestone paid-status is recomputed
+    afterward since an amount edit can move it across the paid/partial
+    threshold either direction."""
+    receipt = db.get(models.Receipt, receipt_id)
+    if not receipt:
+        raise HTTPException(404, "Receipt not found")
+
+    fields_set = payload.model_fields_set
+    if "date" in fields_set and payload.date is not None:
+        receipt.date = payload.date
+    if "description" in fields_set and payload.description is not None:
+        receipt.description = payload.description
+    if "amount" in fields_set and payload.amount is not None:
+        receipt.amount = payload.amount
+
+    if receipt.type == "payment" and receipt.milestone_id:
+        milestone = db.get(models.Milestone, receipt.milestone_id)
+        if milestone:
+            _recompute_milestone_payment_status(db, milestone)
+
+    db.commit()
+    db.refresh(receipt)
+    return receipt
+
+
 @router.patch("/receipts/{receipt_id}/assign-project", response_model=schemas.ReceiptOut)
 def assign_project(receipt_id: int, payload: schemas.AssignProject, db: Session = Depends(get_db)):
     receipt = db.get(models.Receipt, receipt_id)

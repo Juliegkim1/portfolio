@@ -31,29 +31,63 @@ class ReceiptAlreadyImported(Exception):
     pass
 
 
-def _match_project(db: Session, handwritten_name: str | None) -> models.Project | None:
+def _match_by_name(handwritten_name: str | None, projects: list[models.Project]) -> models.Project | None:
     """Matches a handwritten note (usually just a first name, e.g.
     "francisco") against every project's customer_name — case-insensitive
     substring, either direction, so "francisco" matches "Francisco C.
     Rodriguez" and a handwritten full name would still match a
-    shorter name on file. Returns a project ONLY when exactly one matches:
-    zero or several candidates are both treated as "not confident enough"
-    rather than guessing, since a wrong guess here means a real client's
-    receipt lands in the wrong project's Drive folder."""
+    shorter name on file."""
     if not handwritten_name or not handwritten_name.strip():
         return None
     needle = handwritten_name.strip().lower()
-    projects = db.query(models.Project).all()
     matches = [p for p in projects if needle in p.customer_name.lower() or p.customer_name.lower() in needle]
     return matches[0] if len(matches) == 1 else None
 
 
-def _describe(vendor: str, description: str) -> str:
+def _match_by_address(written_address: str | None, projects: list[models.Project]) -> models.Project | None:
+    """Same confidence rule as _match_by_name, for a materials yard that
+    writes a delivery/job-site address instead of a customer name (common
+    for a lumber supplier). Exact-ish substring match on the street line
+    only — deliberately NOT tolerant of a wrong digit (e.g. "115 Mountain
+    Road" written on a receipt that should say "116"): silently treating
+    those as the same address risks filing a receipt to the wrong
+    project's Drive folder over a store clerk's typo, which is worse than
+    leaving it for the owner to notice and fix by hand (now editable —
+    see PATCH /receipts/{id})."""
+    if not written_address or not written_address.strip():
+        return None
+    needle = written_address.strip().lower()
+    matches = [
+        p
+        for p in projects
+        if p.property_address and (needle in p.property_address.lower() or p.property_address.lower().split(",")[0].strip() in needle)
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
+def _match_project(db: Session, handwritten_name: str | None, written_address: str | None = None) -> models.Project | None:
+    """Tries a handwritten customer name first, then a written job-site
+    address (see _match_by_address) -- either one, matched with the same
+    exactly-one-candidate confidence rule: zero or several candidates are
+    both treated as "not confident enough" rather than guessing, since a
+    wrong guess here means a real client's receipt lands in the wrong
+    project's Drive folder."""
+    projects = db.query(models.Project).all()
+    return _match_by_name(handwritten_name, projects) or _match_by_address(written_address, projects)
+
+
+def _describe(vendor: str, description: str, written_address: str | None = None) -> str:
     vendor = vendor.strip()
     description = description.strip()
-    if vendor and description:
-        return f"{vendor} — {description}"
-    return vendor or description or "Receipt"
+    base = f"{vendor} — {description}" if vendor and description else vendor or description or "Receipt"
+    # Surfaces whatever was actually written on the receipt even when it
+    # didn't produce a confident match -- lets the owner recognize "that's
+    # really 116 Mountain Road, just written wrong" and fix it by hand
+    # (edit the description, or reassign the project) instead of having to
+    # open the Drive photo to see what was on it.
+    if written_address and written_address.strip():
+        base = f"{base} ({written_address.strip()})"
+    return base
 
 
 def sync_receipts_from_drive(db: Session) -> schemas.ReceiptSyncResult:
@@ -107,9 +141,9 @@ def sync_receipts_from_drive(db: Session) -> schemas.ReceiptSyncResult:
                 logger.error("Couldn't file unreadable receipt %s out of the inbox: %s", file_id, move_exc)
             continue
 
-        project = _match_project(db, result.handwritten_name)
+        project = _match_project(db, result.handwritten_name, result.written_address)
         receipt_date = result.date or dt.date.today()
-        description = _describe(result.vendor, result.description)
+        description = _describe(result.vendor, result.description, result.written_address if not project else None)
 
         receipt = models.Receipt(
             project_id=project.id if project else None,
@@ -186,9 +220,9 @@ def import_receipt_from_drive(db: Session, file_id: str) -> models.Receipt:
     file_bytes = google_service.download_file(db, file_id)
     result = gemini_service.extract_receipt_from_image(file_bytes, file_name, content_type)
 
-    project = _match_project(db, result.handwritten_name)
+    project = _match_project(db, result.handwritten_name, result.written_address)
     receipt_date = result.date or dt.date.today()
-    description = _describe(result.vendor, result.description)
+    description = _describe(result.vendor, result.description, result.written_address if not project else None)
 
     receipt = models.Receipt(
         project_id=project.id if project else None,

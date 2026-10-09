@@ -384,6 +384,7 @@
     "projectNotIdentified": "Project not identified",
     "businessExpenseOption": "Business expense",
     "deleteReceiptTitle": "Delete this receipt",
+    "editReceiptTitle": "Edit date, description, or amount",
     "viewReceiptPhoto": "View receipt photo",
     "importFromDrive": "Import from Drive",
     "confirmDeleteReceipt": "Delete the receipt \"{{description}}\"? This can't be undone.",

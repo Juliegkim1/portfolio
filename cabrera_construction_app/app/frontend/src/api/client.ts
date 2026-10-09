@@ -247,6 +247,9 @@ export const api = {
       type: "payment" | "expense";
     }) => post<Receipt>("/receipts", payload),
     assignProject: (id: number, projectId: number | null) => patch<Receipt>(`/receipts/${id}/assign-project`, { project_id: projectId }),
+    // Corrects a receipt's date/description/amount by hand -- extraction
+    // (AI or manual entry) isn't always right. Only the given fields change.
+    update: (id: number, payload: { date?: string; description?: string; amount?: number }) => patch<Receipt>(`/receipts/${id}`, payload),
     delete: (id: number) => del(`/receipts/${id}`),
     // Scans My Drive/Receipts for new receipt photos, reads each one, and
     // files + records the result (see services/receipt_sync.py). Manually

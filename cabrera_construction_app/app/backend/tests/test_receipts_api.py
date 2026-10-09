@@ -14,6 +14,67 @@ from app.services import google_oauth as g_oauth
 from tests.factories import make_estimate, make_project
 
 
+# --- PATCH /receipts/{id} --------------------------------------------------
+# Lets the owner correct a receipt's date/description/amount by hand --
+# e.g. AI misread a date, or a vendor name/description came out wrong.
+
+
+def test_update_receipt_date_description_and_amount(db, client):
+    receipt = models.Receipt(date=dt.date(2026, 1, 1), description="Golden State Lumber — Lumber delivery (115 Mountain Road)", amount=200, type="expense", source="drive_folder", drive_file_id="file-1")
+    db.add(receipt)
+    db.commit()
+
+    resp = client.patch(f"/api/receipts/{receipt.id}", json={"date": "2026-01-05", "description": "Golden State Lumber — Lumber delivery", "amount": 215.40})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["date"] == "2026-01-05"
+    assert body["description"] == "Golden State Lumber — Lumber delivery"
+    assert body["amount"] == 215.40
+
+
+def test_update_receipt_partial_only_touches_given_fields(db, client):
+    receipt = models.Receipt(date=dt.date(2026, 1, 1), description="Office supplies", amount=50, type="expense", source="manual")
+    db.add(receipt)
+    db.commit()
+
+    resp = client.patch(f"/api/receipts/{receipt.id}", json={"amount": 75})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["amount"] == 75
+    assert body["date"] == "2026-01-01"
+    assert body["description"] == "Office supplies"
+
+
+def test_update_receipt_404_for_missing_receipt(client):
+    resp = client.patch("/api/receipts/999999", json={"amount": 10})
+    assert resp.status_code == 404
+
+
+def test_update_payment_amount_recomputes_milestone_status(db, client):
+    project = make_project(db)
+    scope_schedule = models.ScopeSchedule(project_id=project.id, contract_type="Fixed-Price Agreement")
+    db.add(scope_schedule)
+    db.flush()
+    milestone = models.Milestone(scope_schedule_id=scope_schedule.id, number=0, title="Deposit", amount=1000)
+    db.add(milestone)
+    db.commit()
+
+    create_resp = client.post(
+        "/api/receipts",
+        json={"project_id": project.id, "milestone_id": milestone.id, "date": "2026-01-01", "description": "Partial deposit", "amount": 400, "type": "payment"},
+    )
+    receipt_id = create_resp.json()["id"]
+    db.refresh(milestone)
+    assert milestone.status == "partial"
+
+    resp = client.patch(f"/api/receipts/{receipt_id}", json={"amount": 1000})
+    assert resp.status_code == 200
+
+    db.expire_all()
+    updated_milestone = db.get(models.Milestone, milestone.id)
+    assert updated_milestone.status == "paid"
+
+
 def test_delete_business_expense_receipt(db, client):
     receipt = models.Receipt(date=dt.date(2026, 1, 1), description="Office supplies", amount=50, type="expense", source="manual")
     db.add(receipt)

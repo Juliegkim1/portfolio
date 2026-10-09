@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, FolderSearch, ImageIcon, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FolderSearch, ImageIcon, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "../api/client";
+import type { Receipt } from "../api/types";
 import { AddReceiptDialog } from "../components/AddReceiptDialog";
 import { AppShell } from "../components/AppShell";
 import { ReceiptDrivePickerDialog } from "../components/ReceiptDrivePickerDialog";
@@ -18,6 +19,8 @@ export function BusinessExpensesPage() {
   const [showAddReceipt, setShowAddReceipt] = useState(false);
   const [showDrivePicker, setShowDrivePicker] = useState(false);
   const [viewingReceipt, setViewingReceipt] = useState<{ driveFileId: string; description: string } | null>(null);
+  const [editingReceiptId, setEditingReceiptId] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState({ date: "", description: "", amount: "" });
 
   const query = useQuery({ queryKey: ["business-expenses"], queryFn: api.businessExpenses.get });
 
@@ -30,6 +33,29 @@ export function BusinessExpensesPage() {
     mutationFn: (id: number) => api.receipts.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["business-expenses"] }),
   });
+
+  // Corrects a receipt's date/description/amount by hand -- AI extraction
+  // (or a manual entry) isn't always right, e.g. a misread date or a
+  // garbled vendor name.
+  const updateReceipt = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: { date?: string; description?: string; amount?: number } }) => api.receipts.update(id, payload),
+    onSuccess: () => {
+      setEditingReceiptId(null);
+      queryClient.invalidateQueries({ queryKey: ["business-expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["project-reconciliation"] });
+    },
+  });
+
+  function startEditingReceipt(r: Receipt) {
+    setEditDraft({ date: r.date.slice(0, 10), description: r.description, amount: String(r.amount) });
+    setEditingReceiptId(r.id);
+  }
+
+  function saveEditingReceipt(id: number) {
+    const amount = Number(editDraft.amount);
+    if (!editDraft.date || !editDraft.description.trim() || Number.isNaN(amount)) return;
+    updateReceipt.mutate({ id, payload: { date: editDraft.date, description: editDraft.description.trim(), amount } });
+  }
 
   // Scans My Drive/Receipts for new receipt photos (the owner's workflow:
   // take a picture, upload it there, handwrite the customer's first name
@@ -155,54 +181,100 @@ export function BusinessExpensesPage() {
               </tr>
             </thead>
             <tbody>
-              {data.receipts.map((r) => (
-                <tr key={r.id}>
-                  <td>{dateFmt(r.date)}</td>
-                  <td>
-                    {r.description}
-                    {r.needs_project && (
-                      <span className="tag tag-outline" style={{ marginLeft: 6 }}>
-                        {t("businessExpenses.projectNotIdentified")}
-                      </span>
-                    )}
-                    {r.source === "drive_folder" && r.drive_file_id && (
-                      <button
-                        className="btn btn-icon"
-                        style={{ marginLeft: 6 }}
-                        title={t("businessExpenses.viewReceiptPhoto")}
-                        onClick={() => setViewingReceipt({ driveFileId: r.drive_file_id!, description: r.description })}
+              {data.receipts.map((r) =>
+                editingReceiptId === r.id ? (
+                  <tr key={r.id}>
+                    <td>
+                      <input
+                        className="input"
+                        type="date"
+                        value={editDraft.date}
+                        onChange={(e) => setEditDraft({ ...editDraft, date: e.target.value })}
+                        autoFocus
+                      />
+                    </td>
+                    <td>
+                      <input className="input" value={editDraft.description} onChange={(e) => setEditDraft({ ...editDraft, description: e.target.value })} />
+                    </td>
+                    <td>
+                      <input
+                        className="input"
+                        type="number"
+                        step="0.01"
+                        value={editDraft.amount}
+                        onChange={(e) => setEditDraft({ ...editDraft, amount: e.target.value })}
+                        style={{ width: 100 }}
+                      />
+                    </td>
+                    <td className="muted" style={{ fontSize: 12 }}>
+                      {r.project_id ? projects.find((p) => p.id === r.project_id)?.name : t("businessExpenses.businessExpenseOption")}
+                    </td>
+                    <td>
+                      <div className="row" style={{ gap: 4 }}>
+                        <button className="btn btn-primary" disabled={updateReceipt.isPending} onClick={() => saveEditingReceipt(r.id)}>
+                          {t("common.save")}
+                        </button>
+                        <button className="btn btn-secondary" onClick={() => setEditingReceiptId(null)}>
+                          {t("common.cancel")}
+                        </button>
+                      </div>
+                      {updateReceipt.isError && <div className="error-state">{(updateReceipt.error as Error).message}</div>}
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={r.id}>
+                    <td>{dateFmt(r.date)}</td>
+                    <td>
+                      {r.description}
+                      {r.needs_project && (
+                        <span className="tag tag-outline" style={{ marginLeft: 6 }}>
+                          {t("businessExpenses.projectNotIdentified")}
+                        </span>
+                      )}
+                      {r.source === "drive_folder" && r.drive_file_id && (
+                        <button
+                          className="btn btn-icon"
+                          style={{ marginLeft: 6 }}
+                          title={t("businessExpenses.viewReceiptPhoto")}
+                          onClick={() => setViewingReceipt({ driveFileId: r.drive_file_id!, description: r.description })}
+                        >
+                          <ImageIcon size={14} strokeWidth={1.5} />
+                        </button>
+                      )}
+                    </td>
+                    <td>{money(r.amount)}</td>
+                    <td>
+                      <select
+                        className="input"
+                        value={r.project_id ?? ""}
+                        onChange={(e) => assignProject.mutate({ id: r.id, projectId: e.target.value === "" ? null : Number(e.target.value) })}
                       >
-                        <ImageIcon size={14} strokeWidth={1.5} />
-                      </button>
-                    )}
-                  </td>
-                  <td>{money(r.amount)}</td>
-                  <td>
-                    <select
-                      className="input"
-                      value={r.project_id ?? ""}
-                      onChange={(e) => assignProject.mutate({ id: r.id, projectId: e.target.value === "" ? null : Number(e.target.value) })}
-                    >
-                      <option value="">{t("businessExpenses.businessExpenseOption")}</option>
-                      {projects.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <button
-                      className="btn btn-icon"
-                      title={t("businessExpenses.deleteReceiptTitle")}
-                      disabled={deleteReceipt.isPending}
-                      onClick={() => confirmDeleteReceipt(r.id, r.description)}
-                    >
-                      <Trash2 size={14} strokeWidth={1.5} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                        <option value="">{t("businessExpenses.businessExpenseOption")}</option>
+                        {projects.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <div className="row" style={{ gap: 4 }}>
+                        <button className="btn btn-icon" title={t("businessExpenses.editReceiptTitle")} onClick={() => startEditingReceipt(r)}>
+                          <Pencil size={14} strokeWidth={1.5} />
+                        </button>
+                        <button
+                          className="btn btn-icon"
+                          title={t("businessExpenses.deleteReceiptTitle")}
+                          disabled={deleteReceipt.isPending}
+                          onClick={() => confirmDeleteReceipt(r.id, r.description)}
+                        >
+                          <Trash2 size={14} strokeWidth={1.5} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              )}
             </tbody>
           </table>
         </div>
