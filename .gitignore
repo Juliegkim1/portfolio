@@ -26,6 +26,11 @@ construction_app/output/
 .DS_Store
 **/.DS_Store
 
+# Deploy artifact — zipped for manual Cloud Run upload; git can't see inside
+# it to exclude .env the way the zip command's own -x flags do, so one past
+# version of it leaked real OAuth secrets. Never track this again.
+cabrera_construction_app/cabrera-deploy.zip
+
 # Kivy
 *.pyc
 .kivy/
