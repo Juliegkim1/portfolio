@@ -64,6 +64,7 @@ def project_reconciliation(project_id: int, db: Session = Depends(get_db)):
             {
                 "milestone_id": m.id,
                 "title": m.title,
+                "due_date": m.due_date,
                 "amount": float(m.amount),
                 "status": m.status,
                 "invoice_number": m.invoice.invoice_number if m.invoice else None,

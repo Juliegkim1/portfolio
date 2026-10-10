@@ -338,6 +338,7 @@ export interface ProjectReconciliation {
   milestones: {
     milestone_id: number;
     title: string;
+    due_date: string | null;
     amount: number;
     status: MilestoneStatus;
     invoice_number: string | null;

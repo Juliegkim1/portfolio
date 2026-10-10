@@ -187,6 +187,7 @@ export function ReconciliationPage() {
             <thead>
               <tr>
                 <th>{t("contract.milestoneColumn")}</th>
+                <th>{t("scopeSchedule.targetDue")}</th>
                 <th>{t("common.amount")}</th>
                 <th>{t("reconciliation.invoice")}</th>
                 <th>{t("reconciliation.invoicedColumn")}</th>
@@ -198,6 +199,7 @@ export function ReconciliationPage() {
               {data.milestones.map((m) => (
                 <tr key={m.milestone_id} style={{ cursor: "pointer" }} onClick={() => setPaymentMilestone(m)}>
                   <td>{m.title}</td>
+                  <td className="muted">{m.due_date ? dateFmt(m.due_date) : "—"}</td>
                   <td>{money(m.amount)}</td>
                   <td className="muted">{m.invoice_number ?? "—"}</td>
                   <td>{m.invoiced_amount !== null ? money(m.invoiced_amount) : "—"}</td>

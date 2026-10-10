@@ -12,6 +12,27 @@ from app import models
 from tests.factories import make_estimate, make_project
 
 
+def test_reconciliation_milestones_include_due_date_from_schedule(db, client):
+    """The milestone's own target due date from the Scope & Payment
+    Schedule must come through here -- it used to be left off the
+    reconciliation response entirely."""
+    project = make_project(db)
+    make_estimate(db, project)
+    db.commit()
+    scope_schedule = models.ScopeSchedule(project_id=project.id, contract_type="Fixed-Price Agreement")
+    db.add(scope_schedule)
+    db.flush()
+    db.add(models.Milestone(scope_schedule_id=scope_schedule.id, number=0, title="Deposit", amount=1000, due_date=dt.date(2026, 3, 15)))
+    db.add(models.Milestone(scope_schedule_id=scope_schedule.id, number=1, title="Final", amount=1000, due_date=None))
+    db.commit()
+
+    resp = client.get(f"/api/projects/{project.id}/reconciliation")
+    body = resp.json()
+    by_title = {m["title"]: m["due_date"] for m in body["milestones"]}
+    assert by_title["Deposit"] == "2026-03-15"
+    assert by_title["Final"] is None
+
+
 def test_reconciliation_does_not_404_without_an_estimate(db, client):
     """This used to raise 404 and hide the whole page -- including any
     expense/labor receipts already tied to the project -- whenever a
