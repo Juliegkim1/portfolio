@@ -163,6 +163,35 @@ def test_startup_migration_backfills_already_stale_project_names(db):
     assert db.get(models.Project, already_correct.id).name == "Jan Hofwegen — 241 Hartford Street"
 
 
+def test_startup_migration_marks_imported_projects_signed(db):
+    """A project imported from Drive (imported_at set) was, by
+    definition, already signed before this app existed --
+    confirm_drive_import already creates its ContractPackage as
+    status="signed" directly, but this backfills any that predate that
+    or drifted some other way. A non-imported project's contract status
+    is left untouched either way."""
+    from app.main import _run_light_migrations
+
+    imported_but_not_signed = make_project(db, imported_at=dt.datetime(2026, 1, 1))
+    db.flush()
+    db.add(models.ContractPackage(project_id=imported_but_not_signed.id, status="draft"))
+
+    fresh_project = make_project(db, imported_at=None)
+    db.flush()
+    db.add(models.ContractPackage(project_id=fresh_project.id, status="draft"))
+    db.commit()
+
+    _run_light_migrations()
+
+    db.expire_all()
+    imported_cp = db.query(models.ContractPackage).filter(models.ContractPackage.project_id == imported_but_not_signed.id).one()
+    assert imported_cp.status == "signed"
+    assert imported_cp.approved_by == "Imported from Drive"
+
+    fresh_cp = db.query(models.ContractPackage).filter(models.ContractPackage.project_id == fresh_project.id).one()
+    assert fresh_cp.status == "draft"
+
+
 def test_update_project_customer_allows_blank_phone_and_email(db, client):
     project = make_project(db)
     db.commit()

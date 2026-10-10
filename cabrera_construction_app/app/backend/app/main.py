@@ -106,6 +106,19 @@ def _run_light_migrations() -> None:
         # every startup indefinitely -- re-resolving is cheap and this is
         # a manually-triggered button, not a hot path.
         conn.execute(text("UPDATE google_connection SET receipts_root_folder_id = NULL"))
+        # A project imported from Drive (projects.imported_at set) was, by
+        # definition, already signed before this app ever existed --
+        # routers/projects.py's confirm_drive_import already creates its
+        # ContractPackage with status="signed" directly, but this backfills
+        # any that predate that, or that drifted some other way. Idempotent
+        # (a row already "signed" is a no-op) and cheap, so it stays here
+        # rather than as a one-off script against production.
+        conn.execute(text("""
+            UPDATE contract_packages cp
+            SET status = 'signed', approved_by = COALESCE(cp.approved_by, 'Imported from Drive'), approved_at = COALESCE(cp.approved_at, now())
+            FROM projects p
+            WHERE cp.project_id = p.id AND p.imported_at IS NOT NULL AND cp.status != 'signed'
+        """))
 
 
 @app.on_event("startup")
