@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, Plus, Trash2 } from "lucide-react";
+import { ExternalLink, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
-import type { ProjectReconciliation } from "../api/types";
+import type { LaborEntry, ProjectReconciliation } from "../api/types";
+import { AddLaborDialog } from "../components/AddLaborDialog";
 import { AddReceiptDialog } from "../components/AddReceiptDialog";
 import { AppShell } from "../components/AppShell";
 import { ErrorState, LoadingState, StatusTag } from "../components/StateViews";
@@ -25,6 +26,9 @@ export function ReconciliationPage() {
   const project = projects.find((p) => p.id === projectId);
   const [showAddReceipt, setShowAddReceipt] = useState(false);
   const [paymentMilestone, setPaymentMilestone] = useState<ProjectReconciliation["milestones"][number] | null>(null);
+  const [showAddLabor, setShowAddLabor] = useState(false);
+  const [editingLabor, setEditingLabor] = useState<LaborEntry | null>(null);
+  const [laborDraft, setLaborDraft] = useState({ person_name: "", date: "", amount: "" });
 
   const query = useQuery({ queryKey: ["project-reconciliation", projectId], queryFn: () => api.reconciliation.project(projectId) });
   const closeMutation = useMutation({
@@ -50,6 +54,46 @@ export function ReconciliationPage() {
     if (window.confirm(t("reconciliation.confirmDeleteReceipt", { description }))) {
       deleteReceipt.mutate(id);
     }
+  }
+
+  const addLabor = useMutation({
+    mutationFn: (payload: { person_name: string; date: string; amount: number }) => api.reconciliation.addLabor(projectId, payload),
+    onSuccess: () => {
+      setShowAddLabor(false);
+      queryClient.invalidateQueries({ queryKey: ["project-reconciliation", projectId] });
+    },
+  });
+
+  const updateLabor = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: { person_name?: string; date?: string; amount?: number } }) =>
+      api.reconciliation.updateLabor(id, payload),
+    onSuccess: () => {
+      setEditingLabor(null);
+      queryClient.invalidateQueries({ queryKey: ["project-reconciliation", projectId] });
+    },
+  });
+
+  const deleteLabor = useMutation({
+    mutationFn: (id: number) => api.reconciliation.deleteLabor(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["project-reconciliation", projectId] }),
+  });
+
+  function confirmDeleteLabor(id: number, personName: string) {
+    if (window.confirm(t("reconciliation.confirmDeleteLabor", { personName }))) {
+      deleteLabor.mutate(id);
+    }
+  }
+
+  function startEditingLabor(entry: LaborEntry) {
+    setLaborDraft({ person_name: entry.person_name, date: entry.date.slice(0, 10), amount: String(entry.amount) });
+    setEditingLabor(entry);
+  }
+
+  function saveEditingLabor() {
+    if (!editingLabor) return;
+    const amount = Number(laborDraft.amount);
+    if (!laborDraft.person_name.trim() || !laborDraft.date || Number.isNaN(amount)) return;
+    updateLabor.mutate({ id: editingLabor.id, payload: { person_name: laborDraft.person_name.trim(), date: laborDraft.date, amount } });
   }
 
   if (query.isLoading) {
@@ -95,6 +139,10 @@ export function ReconciliationPage() {
           <div className="kpi-value">{money(data.kpis.change_orders)}</div>
         </div>
         <div className="card">
+          <div className="card-kicker">{t("reconciliation.discountsGiven")}</div>
+          <div className="kpi-value">{money(data.kpis.discounts_given)}</div>
+        </div>
+        <div className="card">
           <div className="card-kicker">{t("reconciliation.revised")}</div>
           <div className="kpi-value">{money(data.kpis.revised)}</div>
         </div>
@@ -109,6 +157,21 @@ export function ReconciliationPage() {
         <div className="card">
           <div className="card-kicker">{t("reconciliation.balanceDue")}</div>
           <div className="kpi-value">{money(data.kpis.balance_due)}</div>
+        </div>
+      </div>
+
+      <div className="kpi-grid section">
+        <div className="card">
+          <div className="card-kicker">{t("reconciliation.totalExpenses")}</div>
+          <div className="kpi-value">{money(data.kpis.total_expenses)}</div>
+        </div>
+        <div className="card">
+          <div className="card-kicker">{t("reconciliation.totalLabor")}</div>
+          <div className="kpi-value">{money(data.kpis.total_labor)}</div>
+        </div>
+        <div className="card">
+          <div className="card-kicker">{t("reconciliation.margin")}</div>
+          <div className="kpi-value">{money(data.kpis.margin)}</div>
         </div>
       </div>
 
@@ -200,6 +263,90 @@ export function ReconciliationPage() {
         </div>
       </div>
 
+      <div className="section">
+        <div className="row-between">
+          <h3>{t("reconciliation.labor")}</h3>
+          <button className="btn btn-secondary" onClick={() => setShowAddLabor(true)}>
+            <Plus size={14} strokeWidth={1.5} /> {t("reconciliation.addLabor")}
+          </button>
+        </div>
+        <div className="table-scroll">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>{t("common.date")}</th>
+                <th>{t("reconciliation.person")}</th>
+                <th>{t("common.amount")}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.labor_entries.map((entry) =>
+                editingLabor?.id === entry.id ? (
+                  <tr key={entry.id}>
+                    <td>
+                      <input className="input" type="date" value={laborDraft.date} onChange={(e) => setLaborDraft({ ...laborDraft, date: e.target.value })} autoFocus />
+                    </td>
+                    <td>
+                      <input className="input" value={laborDraft.person_name} onChange={(e) => setLaborDraft({ ...laborDraft, person_name: e.target.value })} />
+                    </td>
+                    <td>
+                      <input
+                        className="input"
+                        type="number"
+                        step="0.01"
+                        value={laborDraft.amount}
+                        onChange={(e) => setLaborDraft({ ...laborDraft, amount: e.target.value })}
+                        style={{ width: 100 }}
+                      />
+                    </td>
+                    <td>
+                      <div className="row" style={{ gap: 4 }}>
+                        <button className="btn btn-primary" disabled={updateLabor.isPending} onClick={saveEditingLabor}>
+                          {t("common.save")}
+                        </button>
+                        <button className="btn btn-secondary" onClick={() => setEditingLabor(null)}>
+                          {t("common.cancel")}
+                        </button>
+                      </div>
+                      {updateLabor.isError && <div className="error-state">{(updateLabor.error as Error).message}</div>}
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={entry.id}>
+                    <td>{dateFmt(entry.date)}</td>
+                    <td>{entry.person_name}</td>
+                    <td>{money(entry.amount)}</td>
+                    <td>
+                      <div className="row" style={{ gap: 4 }}>
+                        <button className="btn btn-icon" title={t("common.edit")} onClick={() => startEditingLabor(entry)}>
+                          <Pencil size={14} strokeWidth={1.5} />
+                        </button>
+                        <button
+                          className="btn btn-icon"
+                          title={t("reconciliation.deleteLaborTitle")}
+                          disabled={deleteLabor.isPending}
+                          onClick={() => confirmDeleteLabor(entry.id, entry.person_name)}
+                        >
+                          <Trash2 size={14} strokeWidth={1.5} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              )}
+              {data.labor_entries.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="empty-state">
+                    {t("reconciliation.noLaborYet")}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div className="row-between">
         <div className="muted icon-text" style={{ fontSize: 13 }}>
           <ExternalLink size={14} strokeWidth={1.5} /> {t("reconciliation.googleSheets")}: {data.sheet_id ?? t("reconciliation.notCreated")}
@@ -217,6 +364,14 @@ export function ReconciliationPage() {
           defaultProjectId={projectId}
           defaultMilestoneId={paymentMilestone.milestone_id}
           milestoneContext={{ title: paymentMilestone.title, amount: paymentMilestone.amount, received: paymentMilestone.received }}
+        />
+      )}
+      {showAddLabor && (
+        <AddLaborDialog
+          onClose={() => setShowAddLabor(false)}
+          onSave={(payload) => addLabor.mutate(payload)}
+          saving={addLabor.isPending}
+          error={addLabor.isError ? (addLabor.error as Error).message : null}
         />
       )}
     </AppShell>

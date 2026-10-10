@@ -359,7 +359,17 @@
     "noReceiptsYet": "Aún no hay recibos.",
     "googleSheets": "Google Sheets",
     "notCreated": "No creado",
-    "closeProject": "Cerrar Proyecto"
+    "closeProject": "Cerrar Proyecto",
+    "discountsGiven": "Descuentos Otorgados",
+    "totalExpenses": "Gastos Totales",
+    "totalLabor": "Mano de Obra Total",
+    "margin": "Margen",
+    "labor": "Mano de Obra",
+    "addLabor": "Agregar Mano de Obra",
+    "person": "Persona",
+    "deleteLaborTitle": "Eliminar este registro de mano de obra",
+    "noLaborYet": "Aún no hay registros de mano de obra.",
+    "confirmDeleteLabor": "¿Eliminar el registro de mano de obra de \"{{personName}}\"? Esto no se puede deshacer."
   },
   "addReceipt": {
     "title": "Agregar Recibo",
@@ -392,6 +402,8 @@
     "syncingReceipts": "Escaneando Mi unidad/Receipts…",
     "syncResultNothingNew": "No se encontraron recibos nuevos en Mi unidad/Receipts.",
     "syncResultSummary": "{{matched}} archivados en proyectos, {{business}} archivados como gastos del negocio, {{unreadable}} no se pudieron leer.",
+    "matchedNotFiledWarning_one": "{{count}} recibo se asoció a un proyecto, pero su foto no se pudo archivar en la carpeta de Drive de ese proyecto — es posible que el proyecto aún no tenga una carpeta de Drive configurada. El gasto en sí se registró correctamente.",
+    "matchedNotFiledWarning_other": "{{count}} recibos se asociaron a un proyecto, pero sus fotos no se pudieron archivar en la carpeta de Drive de ese proyecto — es posible que el proyecto aún no tenga una carpeta de Drive configurada. Los gastos en sí se registraron correctamente.",
     "receiptsInboxHint": "Tome una foto de cada recibo, súbala a Mi unidad/Receipts, y escriba a mano el primer nombre del cliente en ella si es para un trabajo específico — Sincronizar Recibos Ahora lo archivará en ese proyecto automáticamente. Los que no se puedan leer o no coincidan se guardan aquí como gastos del negocio para que usted los corrija.",
     "receiptsFolderAuto": "Carpeta de recibos: detectada automáticamente",
     "receiptsFolderCustom": "Carpeta de recibos: definida manualmente",

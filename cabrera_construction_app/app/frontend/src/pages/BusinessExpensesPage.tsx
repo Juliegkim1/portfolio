@@ -194,6 +194,12 @@ export function BusinessExpensesPage() {
           {syncReceipts.data.matched_project_names.length > 0 && ` (${syncReceipts.data.matched_project_names.join(", ")})`}
         </div>
       )}
+      {syncReceipts.data && syncReceipts.data.matched_not_filed > 0 && (
+        <div className="banner icon-text section">
+          <AlertTriangle size={16} strokeWidth={1.5} />
+          {t("businessExpenses.matchedNotFiledWarning", { count: syncReceipts.data.matched_not_filed })}
+        </div>
+      )}
 
       <div className="kpi-grid section">
         <div className="card">

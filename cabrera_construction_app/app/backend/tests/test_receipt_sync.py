@@ -266,8 +266,41 @@ def test_sync_matched_project_without_drive_folder_still_records_receipt(db, mon
     result = receipt_sync.sync_receipts_from_drive(db)
 
     assert result.matched_to_project == 1
+    assert result.matched_not_filed == 1
     move_mock.assert_not_called()
     receipt = db.query(models.Receipt).filter(models.Receipt.drive_file_id == "file-5").one()
+    assert receipt.project_id == project.id
+
+
+def test_sync_counts_matched_not_filed_when_move_fails(db, monkeypatch):
+    """A matched project WITH a drive_folder_id, but the move itself fails
+    (a transient Drive error) -- still recorded correctly, still counted
+    as matched_not_filed so the owner finds out from the sync summary."""
+    _stub_connected(monkeypatch)
+    _stub_provider_configured(monkeypatch)
+    project = make_project(db, customer_name="Francisco C. Rodriguez", drive_folder_id="project-folder-1")
+    db.commit()
+
+    monkeypatch.setattr(google_service, "get_or_create_receipts_root", lambda db: "inbox-id")
+    monkeypatch.setattr(google_service, "list_receipt_images", lambda db, folder_id: [{"id": "file-10", "name": "receipt.jpg", "mimeType": "image/jpeg"}])
+    monkeypatch.setattr(google_service, "download_file", lambda db, file_id: b"fake-bytes")
+    monkeypatch.setattr(
+        gemini_service,
+        "extract_receipt_from_image",
+        lambda *a, **k: ReceiptExtractionResult(found=True, vendor="Sherwin-Williams", date=dt.date(2026, 9, 16), amount=100, description="Paint", handwritten_name="francisco"),
+    )
+    monkeypatch.setattr(google_service, "get_or_create_project_receipts_folder", lambda db, folder_id: "project-receipts-folder")
+
+    def _raise_api_error(db, file_id, new_parent, old_parent):
+        raise google_service.GoogleApiError("transient failure", status_code=500)
+
+    monkeypatch.setattr(google_service, "move_file", _raise_api_error)
+
+    result = receipt_sync.sync_receipts_from_drive(db)
+
+    assert result.matched_to_project == 1
+    assert result.matched_not_filed == 1
+    receipt = db.query(models.Receipt).filter(models.Receipt.drive_file_id == "file-10").one()
     assert receipt.project_id == project.id
 
 
@@ -298,7 +331,15 @@ def test_sync_endpoint_returns_summary_on_success(client, monkeypatch):
     resp = client.post("/api/receipts/sync-from-drive")
     assert resp.status_code == 200
     body = resp.json()
-    assert body == {"scanned": 0, "matched_to_project": 0, "filed_as_business_expense": 0, "unreadable": 0, "already_processed": 0, "matched_project_names": []}
+    assert body == {
+        "scanned": 0,
+        "matched_to_project": 0,
+        "filed_as_business_expense": 0,
+        "unreadable": 0,
+        "already_processed": 0,
+        "matched_project_names": [],
+        "matched_not_filed": 0,
+    }
 
 
 def test_matched_receipt_shows_up_in_project_reconciliation(db, client, monkeypatch):

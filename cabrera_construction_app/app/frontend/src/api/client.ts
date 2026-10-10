@@ -13,6 +13,7 @@ import type {
   GoogleStatus,
   IntegrationsStatus,
   Invoice,
+  LaborEntry,
   NextInvoiceDraft,
   Project,
   ProjectReconciliation,
@@ -278,6 +279,11 @@ export const api = {
   reconciliation: {
     project: (projectId: number) => get<ProjectReconciliation>(`/projects/${projectId}/reconciliation`),
     close: (projectId: number) => post<{ status: string }>(`/projects/${projectId}/close`),
+    addLabor: (projectId: number, payload: { person_name: string; date: string; amount: number }) =>
+      post<LaborEntry>(`/projects/${projectId}/labor`, payload),
+    updateLabor: (laborId: number, payload: { person_name?: string; date?: string; amount?: number }) =>
+      patch<LaborEntry>(`/labor/${laborId}`, payload),
+    deleteLabor: (laborId: number) => del(`/labor/${laborId}`),
     bankTransactions: (status?: string) => get<BankTransactionsResponse>(`/reconciliation/bank-transactions${status ? `?status=${status}` : ""}`),
     importBankFile: (file: File) => {
       const form = new FormData();

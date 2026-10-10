@@ -308,14 +308,32 @@ export interface BankTransaction {
   match_status: BankMatchStatus;
 }
 
+export interface LaborEntry {
+  id: number;
+  project_id: number;
+  person_name: string;
+  date: string;
+  amount: number;
+}
+
 export interface ProjectReconciliation {
   kpis: {
     original: number;
     change_orders: number;
+    // Net change_orders above combines both; these two are the same
+    // signed-change-order totals broken apart, since "how much did we
+    // discount this job" needs its own number, not one buried inside a
+    // net figure that could just as easily be a scope addition.
+    scope_additions: number;
+    discounts_given: number;
     revised: number;
     invoiced: number;
     received: number;
     balance_due: number;
+    total_expenses: number;
+    total_labor: number;
+    // revised - total_expenses - total_labor
+    margin: number;
   };
   milestones: {
     milestone_id: number;
@@ -327,6 +345,7 @@ export interface ProjectReconciliation {
     received: number;
   }[];
   receipts: Receipt[];
+  labor_entries: LaborEntry[];
   sheet_id: string | null;
   can_close: boolean;
 }
@@ -354,6 +373,7 @@ export interface ReceiptSyncResult {
   unreadable: number;
   already_processed: number;
   matched_project_names: string[];
+  matched_not_filed: number;
 }
 
 export interface AnalyticsResponse {

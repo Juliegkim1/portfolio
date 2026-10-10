@@ -477,6 +477,27 @@ class ReceiptOut(ORMBase, ReceiptIn):
     drive_file_id: str | None
 
 
+# --- Labor ---------------------------------------------------------------
+
+class LaborEntryIn(BaseModel):
+    person_name: str
+    date: dt.date
+    amount: float
+
+
+class LaborEntryOut(ORMBase, LaborEntryIn):
+    id: int
+    project_id: int
+
+
+class LaborEntryUpdate(BaseModel):
+    # Same partial-update pattern as ReceiptUpdate — only fields actually
+    # present in the request are touched.
+    person_name: str | None = None
+    date: dt.date | None = None
+    amount: float | None = None
+
+
 class ReceiptExtractionResult(BaseModel):
     # Raw read of one receipt photo — see
     # gemini_service.extract_receipt_from_image. handwritten_name and
@@ -506,6 +527,15 @@ class ReceiptSyncResult(BaseModel):
     unreadable: int
     already_processed: int
     matched_project_names: list[str] = []
+    # Matched to a project (its Receipt.project_id IS set correctly) but
+    # the PHOTO itself never got moved into that project's Drive folder --
+    # most commonly because the project has no drive_folder_id set yet, so
+    # there's nowhere to file it to. The receipt/expense record is never
+    # lost either way; only the Drive organization step is skipped. Surfaced
+    # separately from matched_to_project (not just logged server-side) so
+    # the owner knows to go set the project's Drive folder rather than
+    # wondering why a photo "disappeared."
+    matched_not_filed: int = 0
 
 
 # --- Reconciliation / Bank ----------------------------------------------------

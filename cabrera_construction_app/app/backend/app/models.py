@@ -55,6 +55,7 @@ class Project(Base):
     contract_package: Mapped["ContractPackage"] = relationship(back_populates="project", uselist=False, cascade="all, delete-orphan")
     change_orders: Mapped[list["ChangeOrder"]] = relationship(back_populates="project", cascade="all, delete-orphan")
     receipts: Mapped[list["Receipt"]] = relationship(back_populates="project")
+    labor_entries: Mapped[list["LaborEntry"]] = relationship(back_populates="project", cascade="all, delete-orphan")
 
     @property
     def estimate_total(self) -> float | None:
@@ -250,6 +251,25 @@ class Receipt(Base):
     drive_file_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     project: Mapped[Project | None] = relationship(back_populates="receipts")
+
+
+class LaborEntry(Base):
+    """Actual labor cost — distinct from Receipt (materials/business
+    purchases, or a customer payment) since it has no vendor/Drive photo
+    and isn't ever a "business expense" the way an unassigned Receipt can
+    be: labor is always for a specific project, so project_id is required
+    and deleting the project takes its labor entries with it (same as the
+    rest of a project's own records — see Project.labor_entries' cascade)."""
+
+    __tablename__ = "labor_entries"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"))
+    person_name: Mapped[str] = mapped_column(String(200))
+    date: Mapped[dt.date] = mapped_column(Date)
+    amount: Mapped[float] = _money()
+
+    project: Mapped[Project] = relationship(back_populates="labor_entries")
 
 
 class BankTransaction(Base):

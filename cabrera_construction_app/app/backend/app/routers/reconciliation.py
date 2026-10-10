@@ -21,20 +21,41 @@ router = APIRouter(prefix="/api", tags=["reconciliation"])
 
 @router.get("/projects/{project_id}/reconciliation")
 def project_reconciliation(project_id: int, db: Session = Depends(get_db)):
+    """Expenses (and now labor) must always be visible here, even for a
+    project with no estimate yet -- this used to 404 the WHOLE page in
+    that case, hiding every expense/labor entry tied to the project along
+    with the contract math that genuinely can't be computed without one.
+    Only the contract-amount KPIs degrade to zero; receipts, labor, and
+    their totals are never gated on an estimate existing."""
     project = get_project_or_404(db, project_id)
-    if not project.estimate:
-        raise HTTPException(404, "No estimate for this project yet")
 
-    original = project.estimate.total
     all_cos = sorted(project.change_orders, key=lambda c: c.number)
-    co_total = co_rules.revised_contract_total(original, all_cos) - original
-    revised = original + co_total
+    signed_cos = [co for co in all_cos if co_rules.is_signed(co)]
+    # Shown separately from the net "change_orders" figure below so a
+    # discount (a signed CO that's pure amount_subtracted) doesn't get
+    # buried inside a netted number -- any contractual change, discounts
+    # included, goes through Change Orders (see ChangeOrdersPage), but
+    # Reconciliation is where the owner actually looks for "how much did
+    # we discount this job."
+    scope_additions = sum(float(co.amount_added) for co in signed_cos)
+    discounts_given = sum(float(co.amount_subtracted) for co in signed_cos)
+
+    if project.estimate:
+        original = project.estimate.total
+        co_total = co_rules.revised_contract_total(original, all_cos) - original
+        revised = original + co_total
+    else:
+        original = co_total = revised = 0.0
 
     milestones = sorted(project.scope_schedule.milestones, key=lambda m: m.number) if project.scope_schedule else []
     invoiced = sum(float(m.invoice.amount) for m in milestones if m.invoice)
     payment_receipts = [r for r in project.receipts if r.type == "payment"]
+    expense_receipts = [r for r in project.receipts if r.type == "expense"]
     received = sum(float(r.amount) for r in payment_receipts)
-    balance = milestone_rules.project_balance(revised, [float(r.amount) for r in payment_receipts])
+    total_expenses = sum(float(r.amount) for r in expense_receipts)
+    total_labor = sum(float(entry.amount) for entry in project.labor_entries)
+    balance = milestone_rules.project_balance(revised, [float(r.amount) for r in payment_receipts]) if project.estimate else 0.0
+    margin = revised - total_expenses - total_labor
 
     milestone_rows = []
     for m in milestones:
@@ -55,15 +76,21 @@ def project_reconciliation(project_id: int, db: Session = Depends(get_db)):
         "kpis": {
             "original": round(original, 2),
             "change_orders": round(co_total, 2),
+            "scope_additions": round(scope_additions, 2),
+            "discounts_given": round(discounts_given, 2),
             "revised": round(revised, 2),
             "invoiced": round(invoiced, 2),
             "received": round(received, 2),
             "balance_due": round(balance, 2),
+            "total_expenses": round(total_expenses, 2),
+            "total_labor": round(total_labor, 2),
+            "margin": round(margin, 2),
         },
         "milestones": milestone_rows,
         "receipts": [schemas.ReceiptOut.model_validate(r) for r in sorted(project.receipts, key=lambda r: r.date, reverse=True)],
+        "labor_entries": [schemas.LaborEntryOut.model_validate(entry) for entry in sorted(project.labor_entries, key=lambda e: e.date, reverse=True)],
         "sheet_id": project.sheet_id,
-        "can_close": round(balance, 2) == 0.0 and project.status != "completed",
+        "can_close": project.estimate is not None and round(balance, 2) == 0.0 and project.status != "completed",
     }
 
 
@@ -76,6 +103,49 @@ def close_project(project_id: int, db: Session = Depends(get_db)):
     project.status = "completed"
     db.commit()
     return {"status": "completed"}
+
+
+# --- Labor -------------------------------------------------------------------
+# Actual labor cost, entered straight on the Reconciliation page (person,
+# date, amount) -- separate from Receipt since it's never a "business
+# expense" the way an unassigned receipt can be; it's always tied to one
+# project. Counted into that project's margin the same way material
+# expenses are.
+
+@router.post("/projects/{project_id}/labor", response_model=schemas.LaborEntryOut)
+def create_labor_entry(project_id: int, payload: schemas.LaborEntryIn, db: Session = Depends(get_db)):
+    get_project_or_404(db, project_id)
+    entry = models.LaborEntry(project_id=project_id, person_name=payload.person_name, date=payload.date, amount=payload.amount)
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    return entry
+
+
+@router.patch("/labor/{labor_id}", response_model=schemas.LaborEntryOut)
+def update_labor_entry(labor_id: int, payload: schemas.LaborEntryUpdate, db: Session = Depends(get_db)):
+    entry = db.get(models.LaborEntry, labor_id)
+    if not entry:
+        raise HTTPException(404, "Labor entry not found")
+    fields_set = payload.model_fields_set
+    if "person_name" in fields_set and payload.person_name is not None:
+        entry.person_name = payload.person_name
+    if "date" in fields_set and payload.date is not None:
+        entry.date = payload.date
+    if "amount" in fields_set and payload.amount is not None:
+        entry.amount = payload.amount
+    db.commit()
+    db.refresh(entry)
+    return entry
+
+
+@router.delete("/labor/{labor_id}", status_code=204)
+def delete_labor_entry(labor_id: int, db: Session = Depends(get_db)):
+    entry = db.get(models.LaborEntry, labor_id)
+    if not entry:
+        raise HTTPException(404, "Labor entry not found")
+    db.delete(entry)
+    db.commit()
 
 
 # --- Operational Reconciliation (company-wide bank matching) -----------------

@@ -359,7 +359,17 @@
     "noReceiptsYet": "No receipts yet.",
     "googleSheets": "Google Sheets",
     "notCreated": "Not created",
-    "closeProject": "Close Project"
+    "closeProject": "Close Project",
+    "discountsGiven": "Discounts Given",
+    "totalExpenses": "Total Expenses",
+    "totalLabor": "Total Labor",
+    "margin": "Margin",
+    "labor": "Labor",
+    "addLabor": "Add Labor",
+    "person": "Person",
+    "deleteLaborTitle": "Delete this labor entry",
+    "noLaborYet": "No labor entries yet.",
+    "confirmDeleteLabor": "Delete the labor entry for \"{{personName}}\"? This can't be undone."
   },
   "addReceipt": {
     "title": "Add Receipt",
@@ -392,6 +402,8 @@
     "syncingReceipts": "Scanning My Drive/Receipts…",
     "syncResultNothingNew": "No new receipts found in My Drive/Receipts.",
     "syncResultSummary": "{{matched}} filed to projects, {{business}} filed as business expenses, {{unreadable}} couldn't be read.",
+    "matchedNotFiledWarning_one": "{{count}} receipt was matched to a project but its photo couldn't be filed into that project's Drive folder — the project may not have a Drive folder set yet. The expense itself was still recorded correctly.",
+    "matchedNotFiledWarning_other": "{{count}} receipts were matched to a project but their photos couldn't be filed into that project's Drive folder — the project(s) may not have a Drive folder set yet. The expenses themselves were still recorded correctly.",
     "receiptsInboxHint": "Take a photo of each receipt, upload it to My Drive/Receipts, and write the customer's first name on it (or in the photo) if it's for a specific job — Sync Receipts Now will file it to that project automatically. Unreadable or unmatched ones are kept as business expenses here for you to correct.",
     "receiptsFolderAuto": "Receipts folder: auto-detected",
     "receiptsFolderCustom": "Receipts folder: set by hand",

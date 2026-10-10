@@ -118,6 +118,7 @@ def sync_receipts_from_drive(db: Session) -> schemas.ReceiptSyncResult:
     filed_business_count = 0
     unreadable_count = 0
     already_count = 0
+    not_filed_count = 0
     matched_names: list[str] = []
 
     for image in images:
@@ -168,15 +169,25 @@ def sync_receipts_from_drive(db: Session) -> schemas.ReceiptSyncResult:
         # committed either way — a failed move here just leaves the file
         # sitting in the inbox (annoying, not incorrect), and it won't be
         # rescanned since its drive_file_id is already on a Receipt row.
-        try:
-            if project and project.drive_folder_id:
-                target = google_service.get_or_create_project_receipts_folder(db, project.drive_folder_id)
-                google_service.move_file(db, file_id, target, inbox_id)
-            elif not project:
-                target = google_service.get_or_create_month_subfolder(db, inbox_id, receipt_date)
-                google_service.move_file(db, file_id, target, inbox_id)
-        except (g_oauth.GoogleNotConnected, google_service.GoogleApiError) as exc:
-            logger.error("Receipt %s recorded but couldn't be filed in Drive: %s", file_id, exc)
+        # A matched project with no drive_folder_id yet has nowhere to
+        # file to at all -- that's not a failure to retry, just nothing to
+        # do, but it's still worth counting separately (see
+        # matched_not_filed on ReceiptSyncResult) so the owner finds out
+        # from the sync summary, not by noticing a photo never moved.
+        if project and not project.drive_folder_id:
+            not_filed_count += 1
+        else:
+            try:
+                if project and project.drive_folder_id:
+                    target = google_service.get_or_create_project_receipts_folder(db, project.drive_folder_id)
+                    google_service.move_file(db, file_id, target, inbox_id)
+                elif not project:
+                    target = google_service.get_or_create_month_subfolder(db, inbox_id, receipt_date)
+                    google_service.move_file(db, file_id, target, inbox_id)
+            except (g_oauth.GoogleNotConnected, google_service.GoogleApiError) as exc:
+                logger.error("Receipt %s recorded but couldn't be filed in Drive: %s", file_id, exc)
+                if project:
+                    not_filed_count += 1
 
     return schemas.ReceiptSyncResult(
         scanned=len(images),
@@ -185,6 +196,7 @@ def sync_receipts_from_drive(db: Session) -> schemas.ReceiptSyncResult:
         unreadable=unreadable_count,
         already_processed=already_count,
         matched_project_names=matched_names,
+        matched_not_filed=not_filed_count,
     )
 
 
